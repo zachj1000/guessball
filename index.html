@@ -553,7 +553,7 @@ select.player-input{cursor:pointer}
       <button class="btn-secondary" style="margin-top:0" onclick="goTo('screen-data-tools')">DATA TOOLS →</button>
       <button class="btn-danger" onclick="clearActiveGame()">CLEAR ACTIVE GAME</button>
     </div>
-    <div style="text-align:center;padding:16px 0;font-size:10px;color:var(--subtext);letter-spacing:.08em">GUESS BALL v1.4.0</div>
+    <div style="text-align:center;padding:16px 0;font-size:10px;color:var(--subtext);letter-spacing:.08em">GUESS BALL v1.5.0</div>
   </div>
 </div>
 
@@ -862,6 +862,8 @@ function fbGet(path){
 function seedHistoricalData(){
   // run if never seeded OR if history is still empty after Firebase load
   if(lsGet('gb_hist_seeded')&&gameHistory.length>0)return;
+  // mark seeded immediately so UI never blocks
+  lsSet('gb_hist_seeded',true);
 
   const SD='San Diego Padres', PETCO='Petco Park';
 
@@ -928,9 +930,20 @@ function seedHistoricalData(){
   const rosterPlayers=['Zach','Stu','Evan','Arian','James','Jacob'];
   rosterPlayers.forEach(name=>{if(!roster.includes(name))roster.push(name);});
 
-  saveMeta();
+  // save locally immediately so UI works
+  lsSet('gb_lb',leaderboard);
+  lsSet('gb_hist',gameHistory);
   lsSet('gb_roster',roster);
-  lsSet('gb_hist_seeded',true);
+  // push to Firebase in background without blocking
+  setTimeout(()=>{
+    const histObj={};gameHistory.forEach((g,i)=>{histObj[i]=g;});
+    if(db){
+      db.ref('leaderboard').set(leaderboard).catch(()=>{});
+      db.ref('gameHistory').set(histObj).catch(()=>{});
+      const rObj={};roster.forEach((r,i)=>{rObj[i]=r;});
+      db.ref('roster').set(rObj).catch(()=>{});
+    }
+  },2000);
 }
 
 async function loadData(){
