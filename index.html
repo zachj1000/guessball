@@ -32,7 +32,7 @@ html,body{min-height:100%;font-family:'Courier New',monospace;background-color:v
 .title-hfade{position:absolute;inset:0;pointer-events:none;background:linear-gradient(to right,var(--bg) 0%,transparent 35%,transparent 65%,var(--bg) 100%)}
 .title-content{position:relative;z-index:2;width:100%}
 .title-logo-wrap{display:flex;justify-content:center;margin-bottom:20px}
-.title-eyebrow{font-size:10px;letter-spacing:.18em;color:var(--subtext);text-transform:uppercase;margin-bottom:6px}
+.title-eyebrow{font-size:10px;letter-spacing:.18em;color:var(--subtext);text-transform:uppercase;margin-bottom:6px;font-weight:700}
 .title-name{font-size:38px;font-weight:700;color:var(--text);letter-spacing:.04em;line-height:1.1;margin-bottom:6px}
 .title-sub{font-size:13px;color:var(--subtext);letter-spacing:.1em;margin-bottom:44px}
 .title-divider{width:48px;height:2.5px;background:var(--border);margin:0 auto 36px}
@@ -47,11 +47,11 @@ html,body{min-height:100%;font-family:'Courier New',monospace;background-color:v
 .back-btn{background:transparent;border:none;color:var(--head-text);font-family:'Courier New',monospace;font-size:22px;cursor:pointer;padding:0;line-height:1}
 .icon-btn{background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);color:var(--head-text);font-family:'Courier New',monospace;font-size:10px;font-weight:700;cursor:pointer;padding:5px 9px;border-radius:3px;letter-spacing:.04em}
 .sh-title{font-size:17px;font-weight:700;color:var(--head-text);letter-spacing:.04em}
-.sh-tag{font-size:10px;color:rgba(255,255,255,.6);letter-spacing:.07em;text-transform:uppercase}
+.sh-tag{font-size:10px;color:rgba(255,255,255,.75);letter-spacing:.07em;text-transform:uppercase;font-weight:700}
 .outs-row{display:flex;align-items:center;gap:5px}
 .out-dot{width:10px;height:10px;border-radius:50%;border:1.5px solid rgba(255,255,255,.5)}
 .out-dot.filled{background:#F7C843;border-color:#F7C843}
-.outs-label{font-size:9px;color:rgba(255,255,255,.5);letter-spacing:.06em;margin-right:2px}
+.outs-label{font-size:9px;color:rgba(255,255,255,.6);letter-spacing:.06em;margin-right:2px;font-weight:700}
 .gsbar{background:rgba(0,0,0,.2);padding:5px 16px;display:flex;justify-content:center;align-items:center;gap:12px;font-size:11px;font-weight:700;color:rgba(255,255,255,.8);letter-spacing:.04em;flex-shrink:0}
 .gsbar span{color:rgba(255,255,255,.5);font-size:10px}
 .screen-body{padding:16px;flex:1;padding-bottom:calc(16px + env(safe-area-inset-bottom))}
@@ -62,29 +62,29 @@ html,body{min-height:100%;font-family:'Courier New',monospace;background-color:v
 .pr.active-player{background:var(--card-active);padding:13px 10px}
 .pname{font-size:14px;font-weight:700;color:var(--text)}
 .pr.active-player .pname{font-size:15px}
-.ppick{font-size:11px;color:var(--subtext);margin-top:2px}
+.ppick{font-size:11px;color:var(--subtext);margin-top:2px;font-weight:600}
 .pscore{font-size:26px;font-weight:700;color:var(--text)}
 .priority-badge{font-size:9px;color:var(--text);border:1px solid var(--border);padding:2px 5px;border-radius:2px;margin-left:5px;vertical-align:middle}
 .p3-badge{font-size:9px;color:var(--subtext);border:1px solid var(--subtext);padding:2px 5px;border-radius:2px;margin-left:5px;vertical-align:middle}
 .streak-badge{font-size:10px;margin-left:4px;vertical-align:middle}
 .section-divider{border:none;border-top:2.5px solid var(--border);margin:12px 0}
-.section-label{font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--subtext);margin-bottom:8px}
+.section-label{font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--subtext);margin-bottom:8px;font-weight:700}
 .outcome-grid{display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-bottom:10px}
 .oc{border:1.5px solid var(--border);border-radius:3px;padding:9px 4px;text-align:center;background:var(--card);cursor:pointer}
 .oc:active{transform:scale(.96)}
 .oc.sel{background:var(--ink);border-color:var(--ink)}
 .oc.locked{opacity:.3;cursor:default;border-style:dashed;pointer-events:none}
 .oc-lbl{font-size:11px;font-weight:700;color:var(--ink2)}
-.oc-pts{font-size:9px;color:var(--subtext);margin-top:1px}
+.oc-pts{font-size:9px;color:var(--subtext);margin-top:1px;font-weight:600}
 .oc.sel .oc-lbl,.oc.sel .oc-pts{color:#fff}
 .p3-slots{display:flex;gap:8px;margin-bottom:14px}
 .p3-slot{flex:1;border:1.5px solid var(--border);border-radius:3px;padding:9px 6px;text-align:center;background:var(--card)}
 .p3-slot.filled{background:var(--pale)}
-.p3-slot .slot-num{font-size:9px;color:var(--subtext);letter-spacing:.06em;text-transform:uppercase;margin-bottom:4px}
+.p3-slot .slot-num{font-size:9px;color:var(--subtext);letter-spacing:.06em;text-transform:uppercase;margin-bottom:4px;font-weight:700}
 .p3-slot .slot-val{font-size:10px;font-weight:700;color:var(--text);min-height:14px}
 .conf-row{display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border:1.5px solid var(--border);border-radius:3px;background:var(--card);margin-bottom:12px}
 .conf-label{font-size:12px;font-weight:700;color:var(--text)}
-.conf-sub{font-size:10px;color:var(--subtext);margin-top:2px}
+.conf-sub{font-size:10px;color:var(--subtext);margin-top:2px;font-weight:600}
 .toggle{width:44px;height:24px;background:var(--pale);border-radius:12px;border:1px solid var(--border);position:relative;cursor:pointer;flex-shrink:0;transition:background .2s}
 .toggle.on{background:var(--ink)}
 .toggle::after{content:'';position:absolute;top:3px;left:3px;width:16px;height:16px;background:#fff;border-radius:50%;transition:transform .2s}
@@ -104,12 +104,12 @@ select.player-input{cursor:pointer}
 .score-left{flex:1}
 .score-name-line{display:flex;align-items:center;flex-wrap:wrap;gap:4px}
 .score-name{font-size:13px;font-weight:700;color:var(--text)}
-.score-sub{font-size:10px;color:var(--subtext);margin-top:2px}
+.score-sub{font-size:10px;color:var(--subtext);margin-top:2px;font-weight:600}
 .score-right{display:flex;align-items:center;gap:8px}
 .score-delta-pos{font-size:11px;font-weight:700;color:var(--positive)}
 .score-delta-neg{font-size:11px;font-weight:700;color:var(--negative)}
 .score-pts{font-size:26px;font-weight:700;color:var(--text)}
-.info-box{background:var(--xpale);border:1px solid var(--border);border-radius:3px;padding:10px 12px;font-size:11px;color:var(--text);margin-bottom:10px;line-height:1.5}
+.info-box{background:var(--xpale);border:1px solid var(--border);border-radius:3px;padding:10px 12px;font-size:11px;color:var(--text);margin-bottom:10px;line-height:1.5;font-weight:600}
 .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:100;display:flex;align-items:flex-end}
 .modal-overlay.hidden{display:none}
 .modal-sheet{background:var(--modal-bg);border-radius:16px 16px 0 0;padding:20px 20px calc(20px + env(safe-area-inset-bottom));max-height:85vh;overflow-y:auto;width:100%}
@@ -117,10 +117,10 @@ select.player-input{cursor:pointer}
 .modal-close{background:none;border:none;color:var(--text);font-size:20px;cursor:pointer;font-family:'Courier New',monospace}
 .rule-section{margin-bottom:14px}
 .rule-heading{font-size:10px;font-weight:700;color:var(--subtext);letter-spacing:.1em;text-transform:uppercase;margin-bottom:6px}
-.rule-row{display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px dashed rgba(128,128,128,.2);font-size:12px;color:var(--text)}
+.rule-row{display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px dashed rgba(128,128,128,.2);font-size:12px;color:var(--text);font-weight:600}
 .rule-row:last-child{border-bottom:none}
 .rule-pts{font-weight:700}
-.hist-row{display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px dashed rgba(128,128,128,.2);font-size:12px;color:var(--text)}
+.hist-row{display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px dashed rgba(128,128,128,.2);font-size:12px;color:var(--text);font-weight:600}
 .hist-row:last-child{border-bottom:none}
 .hist-pts.pos{font-weight:700;color:var(--positive)}
 .hist-pts.neg{font-weight:700;color:var(--negative)}
@@ -137,16 +137,16 @@ select.player-input{cursor:pointer}
 .stats-summary{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px}
 .stat-card{background:var(--card);border:1.5px solid var(--border);border-radius:3px;padding:12px 10px;text-align:center}
 .stat-card.leader{background:var(--leader)}
-.stat-label{font-size:9px;color:var(--subtext);letter-spacing:.08em;text-transform:uppercase;margin-bottom:4px}
+.stat-label{font-size:9px;color:var(--subtext);letter-spacing:.08em;text-transform:uppercase;margin-bottom:4px;font-weight:700}
 .stat-value{font-size:22px;font-weight:700;color:var(--text)}
-.stat-sub{font-size:10px;color:var(--subtext);margin-top:2px}
+.stat-sub{font-size:10px;color:var(--subtext);margin-top:2px;font-weight:600}
 .player-tab-row{display:flex;gap:8px;margin-bottom:14px}
 .player-tab{flex:1;padding:10px;background:var(--card);border:1.5px solid var(--border);border-radius:3px;font-family:'Courier New',monospace;font-size:12px;font-weight:700;color:var(--text);cursor:pointer;text-align:center}
 .player-tab.active{background:var(--ink);color:#fff;border-color:var(--ink)}
 .deep-stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
 .deep-stat{background:var(--card);border:1px solid var(--border);border-radius:3px;padding:10px 8px;text-align:center}
 .deep-stat-val{font-size:18px;font-weight:700;color:var(--text)}
-.deep-stat-lbl{font-size:9px;color:var(--subtext);letter-spacing:.06em;text-transform:uppercase;margin-top:2px}
+.deep-stat-lbl{font-size:9px;color:var(--subtext);letter-spacing:.06em;text-transform:uppercase;margin-top:2px;font-weight:700}
 .trash-talk{background:var(--xpale);border:1px dashed var(--border);border-radius:3px;padding:12px;text-align:center;margin-top:12px}
 .trash-talk-text{font-size:12px;color:var(--text);line-height:1.5;font-style:italic;margin-bottom:8px}
 .trash-reroll{background:none;border:1px solid var(--border);border-radius:3px;padding:6px 12px;font-family:'Courier New',monospace;font-size:10px;font-weight:700;color:var(--text);cursor:pointer}
@@ -157,30 +157,30 @@ select.player-input{cursor:pointer}
 .lb-row{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px dashed var(--border)}
 .lb-row:last-child{border-bottom:none}
 .lb-name{font-size:13px;font-weight:700;color:var(--text)}
-.lb-stat{font-size:10px;color:var(--subtext);margin-top:2px}
+.lb-stat{font-size:10px;color:var(--subtext);margin-top:2px;font-weight:600}
 .lb-pts{font-size:20px;font-weight:700;color:var(--text);cursor:pointer}
 .history-row{padding:10px 0;border-bottom:1px dashed var(--border);cursor:pointer}
-.history-date{font-size:10px;color:var(--subtext);letter-spacing:.06em;margin-bottom:3px}
+.history-date{font-size:10px;color:var(--subtext);letter-spacing:.06em;margin-bottom:3px;font-weight:600}
 .history-result{font-size:13px;font-weight:700;color:var(--text)}
-.history-detail{font-size:10px;color:var(--subtext);margin-top:2px}
-.empty-state{text-align:center;padding:56px 20px;font-size:11px;color:var(--subtext);letter-spacing:.06em;line-height:2.4}
+.history-detail{font-size:10px;color:var(--subtext);margin-top:2px;font-weight:600}
+.empty-state{text-align:center;padding:56px 20px;font-size:11px;color:var(--subtext);letter-spacing:.06em;line-height:2.4;font-weight:600}
 .batter-banner{background:var(--xpale);border:1px solid var(--border);border-radius:3px;padding:8px 12px;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between;gap:8px}
-.batter-label{font-size:9px;color:var(--subtext);letter-spacing:.08em;text-transform:uppercase}
+.batter-label{font-size:9px;color:var(--subtext);letter-spacing:.08em;text-transform:uppercase;font-weight:700}
 .batter-val{font-size:13px;font-weight:700;color:var(--text)}
 .batter-input{background:transparent;border:none;font-family:'Courier New',monospace;font-size:13px;font-weight:700;color:var(--text);flex:1;outline:none;min-width:0}
 .batter-input::placeholder{color:var(--subtext);font-weight:400;opacity:.6}
 .settings-section{margin-bottom:20px}
 .settings-row{display:flex;justify-content:space-between;align-items:center;padding:12px 14px;background:var(--card);border:1.5px solid var(--border);border-radius:3px;margin-bottom:8px}
 .settings-label{font-size:13px;font-weight:700;color:var(--text)}
-.settings-sub{font-size:10px;color:var(--subtext);margin-top:2px}
+.settings-sub{font-size:10px;color:var(--subtext);margin-top:2px;font-weight:600}
 .hof-row{padding:12px 14px;background:var(--card);border:1.5px solid var(--border);border-radius:3px;margin-bottom:8px}
-.hof-record{font-size:10px;color:var(--subtext);letter-spacing:.06em;text-transform:uppercase;margin-bottom:4px}
+.hof-record{font-size:10px;color:var(--subtext);letter-spacing:.06em;text-transform:uppercase;margin-bottom:4px;font-weight:700}
 .hof-value{font-size:20px;font-weight:700;color:var(--text)}
-.hof-holder{font-size:11px;color:var(--subtext);margin-top:2px}
+.hof-holder{font-size:11px;color:var(--subtext);margin-top:2px;font-weight:600}
 .ach-list-row{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px dashed var(--border);cursor:pointer}
 .ach-list-icon{font-size:24px;flex-shrink:0}
 .ach-list-name{font-size:12px;font-weight:700;color:var(--text)}
-.ach-list-desc{font-size:10px;color:var(--subtext);margin-top:2px}
+.ach-list-desc{font-size:10px;color:var(--subtext);margin-top:2px;font-weight:600}
 .ach-list-earned{font-size:9px;color:var(--positive);margin-top:2px}
 .tut-section{margin-bottom:20px}
 .tut-heading{font-size:13px;font-weight:700;color:var(--text);margin-bottom:8px;padding-bottom:4px;border-bottom:2px solid var(--border)}
@@ -188,8 +188,9 @@ select.player-input{cursor:pointer}
 .tut-icon{font-size:16px;flex-shrink:0;margin-top:1px}
 .yr-stat{background:var(--card);border:1.5px solid var(--border);border-radius:3px;padding:14px;margin-bottom:10px;text-align:center}
 .yr-stat-val{font-size:32px;font-weight:700;color:var(--text)}
-.yr-stat-lbl{font-size:10px;color:var(--subtext);letter-spacing:.08em;text-transform:uppercase;margin-top:4px}
+.yr-stat-lbl{font-size:10px;color:var(--subtext);letter-spacing:.08em;text-transform:uppercase;margin-top:4px;font-weight:700}
 .num-inp{width:56px;padding:9px;border:1.5px solid var(--border);border-radius:3px;font-family:'Courier New',monospace;font-size:16px;font-weight:700;color:var(--text);background:var(--card);text-align:center;-webkit-appearance:none}
+.ptr-hint{text-align:center;padding:10px;font-size:10px;color:var(--subtext);letter-spacing:.08em;font-weight:700;display:none}
 </style>
 <!-- Firebase -->
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
@@ -432,6 +433,7 @@ select.player-input{cursor:pointer}
     <div class="section-divider"></div>
     <button class="btn-primary" id="sb-next-btn" onclick="nextAtBat()">NEXT AT-BAT →</button>
     <button class="btn-secondary" id="sb-half-btn" onclick="nextHalfInning()">NEW HALF-INNING</button>
+    <button class="btn-secondary" onclick="addExtraOut()" style="border-color:var(--negative);color:var(--negative)">+ OUT (RUNNER THROWN OUT)</button>
     <button class="btn-secondary" onclick="confirmEndGame()">END GAME</button>
   </div>
 </div>
@@ -466,6 +468,7 @@ select.player-input{cursor:pointer}
     <div class="sh-left"><button class="back-btn" onclick="back()">←</button><div class="sh-title">LEADERBOARDS</div></div>
   </div>
   <div class="screen-body">
+    <div class="ptr-hint" id="lb-ptr">↓ PULL TO REFRESH</div>
     <div class="section-label">All-time — tap to expand</div>
     <div id="lb-rows"></div>
   </div>
@@ -477,6 +480,7 @@ select.player-input{cursor:pointer}
     <div class="sh-left"><button class="back-btn" onclick="back()">←</button><div class="sh-title">GAME HISTORY</div></div>
   </div>
   <div class="screen-body">
+    <div class="ptr-hint" id="hist-ptr">↓ PULL TO REFRESH</div>
     <div class="section-label">Past games — tap to expand</div>
     <div id="history-rows"></div>
   </div>
@@ -544,7 +548,7 @@ select.player-input{cursor:pointer}
       <div class="section-label">Data</div>
       <button class="btn-danger" onclick="clearActiveGame()">CLEAR ACTIVE GAME</button>
     </div>
-    <div style="text-align:center;padding:16px 0;font-size:10px;color:var(--subtext);letter-spacing:.08em">GUESS BALL v1.3.0</div>
+    <div style="text-align:center;padding:16px 0;font-size:10px;color:var(--subtext);letter-spacing:.08em">GUESS BALL v1.6.0</div>
   </div>
 </div>
 
@@ -942,8 +946,8 @@ function render(){
   if(G.screen==='screen-scoreboard')renderScoreboard();
   if(G.screen==='screen-stats')renderStatsPage();
   if(G.screen==='screen-stats-menu')renderStatsMenu();
-  if(G.screen==='screen-leaderboard')renderLeaderboard();
-  if(G.screen==='screen-history')renderHistoryScreen();
+  if(G.screen==='screen-leaderboard'){renderLeaderboard();setTimeout(()=>initPullToRefresh('screen-leaderboard',renderLeaderboard),100);}
+  if(G.screen==='screen-history'){renderHistoryScreen();setTimeout(()=>initPullToRefresh('screen-history',renderHistoryScreen),100);}
   if(G.screen==='screen-hof')renderHOF();
   if(G.screen==='screen-h2h')renderH2H();
   if(G.screen==='screen-yr')renderYearReview();
@@ -1173,8 +1177,22 @@ function submitResult(){
   G.priorityIdx=newPriority;
   G.players.forEach((_,i)=>G.scores[i]=(G.scores[i]||0)+deltas[i]);
   G.lastDeltas=deltas;
-  if(isOut(outcome))G.outs++;
+  if(isOut(outcome)){
+    if(outcome==='double_play')G.outs+=2;
+    else G.outs++;
+  }
   G.inningAtBat++;
+  // walk-off check: were you losing before this at-bat, did you just score, and did opponent not?
+  G.players.forEach((_,i)=>{
+    if(deltas[i]>0&&G.confidence[i]){
+      // check if they were losing before this at-bat
+      const prevScores=clone(lr.scores);
+      const myPrev=prevScores[i]||0;
+      const isLosingBefore=G.players.every((_,j)=>j===i||(prevScores[j]||0)>=myPrev);
+      const nowWinning=G.players.every((_,j)=>j===i||(G.scores[j]||0)<=(G.scores[i]||0));
+      if(isLosingBefore&&nowWinning)awardAchievement('walk_off',true);
+    }
+  });
   checkMidGameAch(outcome,deltas,runs);
   push('screen-scoreboard');
 }
@@ -1226,6 +1244,18 @@ function openHistModal(pIdx){
 }
 
 function nextAtBat(){buildManualQueue(true);}
+function addExtraOut(){
+  if(!confirm('Add an extra out for a runner thrown out on the play?'))return;
+  G.outs++;
+  saveGame();
+  renderScoreboard();
+  setHeaderBars();
+  // check if inning should end
+  const nb=document.getElementById('sb-next-btn');
+  const hb=document.getElementById('sb-half-btn');
+  if(G.outs>=3){if(nb)nb.style.display='none';if(hb)hb.textContent='NEXT HALF-INNING →';}
+  else{if(nb)nb.style.display='block';if(hb)hb.textContent='NEW HALF-INNING';}
+}
 function buildManualQueue(nav){
   const queue=[];
   G.players.forEach((_,i)=>{const sl=G.inningAtBat-1,pk=G.p3picks[i]||[],live=pk.length===3&&G.p3alive[i]&&sl<3;if(!live)queue.push(i);});
@@ -1436,6 +1466,23 @@ function renderStatsMenu(){
   const now=new Date(),showYR=now.getMonth()>=9;
   const w=document.getElementById('yr-stats-wrap');
   if(w)w.innerHTML=showYR?`<button class="menu-btn season" onclick="goTo('screen-yr')" style="margin-top:10px"><span>🌟 YEAR IN REVIEW</span><span>→</span></button>`:'';
+}
+
+function initPullToRefresh(screenId, refreshFn){
+  let startY=0,pulling=false;
+  const el=document.getElementById(screenId);
+  if(!el)return;
+  el.addEventListener('touchstart',e=>{if(window.scrollY===0)startY=e.touches[0].clientY;},{ passive:true });
+  el.addEventListener('touchend',e=>{
+    if(!startY)return;
+    const dy=e.changedTouches[0].clientY-startY;
+    if(dy>60){
+      const hint=el.querySelector('.ptr-hint');
+      if(hint){hint.style.display='block';hint.textContent='SYNCING...';}
+      loadData().then(()=>{refreshFn();if(hint)hint.style.display='none';});
+    }
+    startY=0;
+  },{ passive:true });
 }
 
 function renderLeaderboard(){
@@ -1816,6 +1863,11 @@ function toggleAchDet(id){const el=document.getElementById('ad-'+id);if(el)el.st
 
 function renderTutorial(){
   document.getElementById('tutorial-body').innerHTML=`
+    <div style="background:var(--ink);border-radius:6px;padding:16px;margin-bottom:20px;text-align:center">
+      <div style="font-size:28px;margin-bottom:8px">⚾</div>
+      <div style="font-size:16px;font-weight:700;color:#fff;letter-spacing:.04em;margin-bottom:8px">WHAT IS GUESS BALL?</div>
+      <div style="font-size:12px;color:rgba(255,255,255,.85);line-height:1.7;font-weight:600">Guess Ball is a prediction game you play live at a baseball game. Before each at-bat, you and your opponent predict what's going to happen — strikeout, home run, single, stolen base, whatever you think. Get it right and you earn points. The player with the most points at the end of the game wins. The twist: one player has priority and picks first, locking out that outcome for the other player. Score points and you steal priority. It's competitive, strategic, and makes every at-bat mean something.</div>
+    </div>
     <div class="tut-section"><div class="tut-heading">⚾ The Basics</div>
       <div class="tut-row"><div class="tut-icon">🎯</div><div>Before each at-bat, predict the outcome. <strong>Priority</strong> player picks first. Others can't pick the same outcome.</div></div>
       <div class="tut-row"><div class="tut-icon">✅</div><div>Correct prediction → earn points. Runs scored add +1 each.</div></div>
