@@ -553,7 +553,7 @@ select.player-input{cursor:pointer}
       <button class="btn-secondary" style="margin-top:0" onclick="goTo('screen-data-tools')">DATA TOOLS →</button>
       <button class="btn-danger" onclick="clearActiveGame()">CLEAR ACTIVE GAME</button>
     </div>
-    <div style="text-align:center;padding:16px 0;font-size:10px;color:var(--subtext);letter-spacing:.08em">GUESS BALL v1.3.3</div>
+    <div style="text-align:center;padding:16px 0;font-size:10px;color:var(--subtext);letter-spacing:.08em">GUESS BALL v1.3.4</div>
   </div>
 </div>
 
@@ -859,7 +859,60 @@ function fbGet(path){
 }
 
 
-function seedHistoricalData(){return;}
+function seedHistoricalData(){
+  // only seed if leaderboard and history are both empty (fresh Firebase)
+  if(Object.keys(leaderboard).length>0||gameHistory.length>0)return;
+  if(lsGet('gb_hist_seeded'))return;
+
+  const SD='San Diego Padres',PETCO='Petco Park';
+  const games=[
+    {date:'Apr 29, 2015',players:[{name:'Stu',score:2},{name:'Zach',score:9}],awayTeam:'',homeTeam:'',stadium:'',notes:''},
+    {date:'Jul 5, 2015',players:[{name:'Stu',score:5},{name:'Zach',score:7}],awayTeam:'',homeTeam:'',stadium:'',notes:''},
+    {date:'Apr 15, 2016',players:[{name:'Stu',score:17},{name:'Zach',score:15}],awayTeam:'',homeTeam:'',stadium:'',notes:''},
+    {date:'May 22, 2016',players:[{name:'Stu',score:19},{name:'Zach',score:17}],awayTeam:'',homeTeam:'',stadium:'',notes:''},
+    {date:'Jun 3, 2016',players:[{name:'Stu',score:14},{name:'Zach',score:11}],awayTeam:'',homeTeam:'',stadium:'',notes:''},
+    {date:'Jun 17, 2016',players:[{name:'Stu',score:5},{name:'Zach',score:23}],awayTeam:'',homeTeam:'',stadium:'',notes:''},
+    {date:'Aug 28, 2016',players:[{name:'Stu',score:4},{name:'Zach',score:14}],awayTeam:'Los Angeles Dodgers',homeTeam:SD,stadium:PETCO,notes:'Dodgers'},
+    {date:'Apr 21, 2017',players:[{name:'Stu',score:4},{name:'Zach',score:15}],awayTeam:'Miami Marlins',homeTeam:SD,stadium:PETCO,notes:''},
+    {date:'Jun 2, 2017',players:[{name:'Stu',score:41},{name:'Zach',score:20}],awayTeam:'Colorado Rockies',homeTeam:SD,stadium:PETCO,notes:'17-0 comeback'},
+    {date:'Jun 3, 2017',players:[{name:'Stu',score:36},{name:'Zach',score:40}],awayTeam:'Colorado Rockies',homeTeam:SD,stadium:PETCO,notes:''},
+    {date:'Jun 3, 2018',players:[{name:'Stu',score:31},{name:'Zach',score:32}],awayTeam:'',homeTeam:'',stadium:'',notes:''},
+    {date:'Jul 1, 2018',players:[{name:'Stu',score:24},{name:'Zach',score:14},{name:'Evan',score:11}],awayTeam:'',homeTeam:'',stadium:'',notes:''},
+    {date:'Jul 12, 2018',players:[{name:'Stu',score:7},{name:'Zach',score:31}],awayTeam:'Toronto Blue Jays',homeTeam:'Boston Red Sox',stadium:'Fenway Park',notes:''},
+    {date:'Sep 9, 2019',players:[{name:'Stu',score:20},{name:'Zach',score:36}],awayTeam:'Chicago Cubs',homeTeam:SD,stadium:PETCO,notes:''},
+    {date:'Jun 25, 2021',players:[{name:'Stu',score:29},{name:'Zach',score:5}],awayTeam:'Arizona Diamondbacks',homeTeam:SD,stadium:PETCO,notes:'Stu calls 3 Nandogs'},
+    {date:'May 28, 2022',players:[{name:'Arian',score:30},{name:'Zach',score:23}],awayTeam:'Toronto Blue Jays',homeTeam:'Los Angeles Angels',stadium:'Angel Stadium',notes:'Arian calls Trout HR with confidence'},
+    {date:'Jul 4, 2022',players:[{name:'Zach',score:2},{name:'Stu',score:18}],awayTeam:'Seattle Mariners',homeTeam:SD,stadium:PETCO,notes:''},
+    {date:'Mar 11, 2023',players:[{name:'Zach',score:31},{name:'James',score:5}],awayTeam:'Great Britain',homeTeam:'USA',stadium:'',notes:'WBC'},
+    {date:'Sep 20, 2023',players:[{name:'Zach',score:34},{name:'Stu',score:20}],awayTeam:'Colorado Rockies',homeTeam:SD,stadium:PETCO,notes:''},
+    {date:'Apr 13, 2025',players:[{name:'Zach',score:14},{name:'Stu',score:32}],awayTeam:'Colorado Rockies',homeTeam:SD,stadium:PETCO,notes:''},
+    {date:'May 16, 2025',players:[{name:'Zach',score:25},{name:'Stu',score:12}],awayTeam:'Seattle Mariners',homeTeam:SD,stadium:PETCO,notes:''},
+    {date:'Jun 1, 2025',players:[{name:'Zach',score:42},{name:'Jacob',score:-2}],awayTeam:'Pittsburgh Pirates',homeTeam:SD,stadium:PETCO,notes:''},
+    {date:'Jul 13, 2025',players:[{name:'Zach',score:21},{name:'Stu',score:10}],awayTeam:'',homeTeam:'',stadium:'',notes:''},
+    {date:'Aug 3, 2025',players:[{name:'Zach',score:27},{name:'Stu',score:17}],awayTeam:'St. Louis Cardinals',homeTeam:SD,stadium:PETCO,notes:''},
+    {date:'Aug 8, 2025',players:[{name:'Zach',score:24},{name:'Jacob',score:21}],awayTeam:'',homeTeam:'',stadium:'',notes:''},
+    {date:'Jun 28, 2026',players:[{name:'Zach',score:28},{name:'Stu',score:17}],awayTeam:'Los Angeles Dodgers',homeTeam:SD,stadium:PETCO,notes:''},
+  ];
+
+  games.forEach(g=>{
+    const sorted=[...g.players].sort((a,b)=>b.score-a.score);
+    const winner=sorted[0].name;
+    gameHistory.push({date:g.date,players:g.players,winner,inning:9,stats:null,achievements:[],mvpBadge:null,awayTeam:g.awayTeam,homeTeam:g.homeTeam,stadium:g.stadium,awayScore:0,homeScore:0,notes:g.notes,highlightAtBat:null,historical:true});
+    g.players.forEach(p=>{
+      if(!leaderboard[p.name])leaderboard[p.name]={games:0,wins:0,totalPts:0,totalPicks:0,totalCorrect:0,totalP3:0,totalConfCorrect:0,totalConfWrong:0,achievements:[],longestStreak:0};
+      leaderboard[p.name].games++;
+      leaderboard[p.name].totalPts+=p.score||0;
+      if(p.name===winner)leaderboard[p.name].wins++;
+    });
+  });
+
+  const rosterPlayers=['Zach','Stu','Evan','Arian','James','Jacob'];
+  rosterPlayers.forEach(name=>{if(!roster.includes(name))roster.push(name);});
+
+  lsSet('gb_hist_seeded',true);
+  saveMeta();
+  saveRoster();
+}
 
 function setupRealtimeListeners(){
   if(!db)return;
