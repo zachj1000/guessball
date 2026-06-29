@@ -546,11 +546,10 @@ select.player-input{cursor:pointer}
     </div>
     <div class="settings-section">
       <div class="section-label">Data</div>
-      <button class="btn-secondary" style="margin-top:0" onclick="forceSync()">FORCE SYNC FROM CLOUD</button>
-      <button class="btn-secondary" style="margin-top:8px" onclick="testFirebase()">TEST FIREBASE CONNECTION</button>
+      <button class="btn-secondary" style="margin-top:0" onclick="goTo('screen-data-tools')">DATA TOOLS →</button>
       <button class="btn-danger" onclick="clearActiveGame()">CLEAR ACTIVE GAME</button>
     </div>
-    <div style="text-align:center;padding:16px 0;font-size:10px;color:var(--subtext);letter-spacing:.08em">GUESS BALL v2.1.0</div>
+    <div style="text-align:center;padding:16px 0;font-size:10px;color:var(--subtext);letter-spacing:.08em">GUESS BALL v2.3.0</div>
   </div>
 </div>
 
@@ -627,6 +626,19 @@ select.player-input{cursor:pointer}
 
     <button class="btn-primary" id="hg-save-btn" onclick="saveHistoricalGame()">SAVE GAME →</button>
     <div id="hg-error" style="font-size:11px;color:var(--negative);margin-top:8px;text-align:center"></div>
+  </div>
+</div>
+
+<!-- DATA TOOLS -->
+<div class="screen" id="screen-data-tools">
+  <div class="screen-head">
+    <div class="sh-left"><button class="back-btn" onclick="back()">←</button><div class="sh-title">DATA TOOLS</div></div>
+  </div>
+  <div class="screen-body">
+    <div class="section-label">Firebase</div>
+    <div class="info-box">Use these tools to diagnose or fix sync issues between devices.</div>
+    <button class="btn-secondary" style="margin-top:0" onclick="testFirebase()">TEST FIREBASE CONNECTION</button>
+    <button class="btn-secondary" onclick="forceSync()">FORCE SYNC FROM CLOUD</button>
   </div>
 </div>
 </div><!-- #gb -->
@@ -797,6 +809,34 @@ function lsGet(k){try{const v=localStorage.getItem(k);return v?JSON.parse(v):nul
 function lsSet(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch(e){}}
 function lsDel(k){try{localStorage.removeItem(k);}catch(e){}}
 
+// ── FIREBASE ──
+const firebaseConfig={
+  apiKey:"AIzaSyB3VLeSJyIVS5yn2Jn-u_YNN4sqIdRaWSU",
+  authDomain:"guessball-888cd.firebaseapp.com",
+  databaseURL:"https://guessball-888cd-default-rtdb.firebaseio.com",
+  projectId:"guessball-888cd",
+  storageBucket:"guessball-888cd.firebasestorage.app",
+  messagingSenderId:"485572357359",
+  appId:"1:485572357359:web:f312002c77140c94c5ff1a"
+};
+try{firebase.initializeApp(firebaseConfig);}catch(e){console.warn('Firebase init failed:',e);}
+const db=typeof firebase!=='undefined'?firebase.database():null;
+
+function showFBError(msg){
+  const ex=document.querySelector('.fb-err');if(ex)ex.remove();
+  const b=document.createElement('div');b.className='fb-err';
+  b.style.cssText='position:fixed;bottom:20px;left:16px;right:16px;background:#A32D2D;color:#fff;border-radius:6px;padding:12px 14px;font-family:Courier New,monospace;font-size:11px;font-weight:700;z-index:500;text-align:center';
+  b.textContent=msg;document.body.appendChild(b);setTimeout(()=>b.remove(),8000);
+}
+function fbSet(path,val){
+  if(!db)return Promise.resolve();
+  return db.ref(path).set(val).catch(e=>{console.error('fbSet failed',path,e.message);showFBError('Save failed: '+e.message);});
+}
+function fbGet(path){
+  if(!db)return Promise.resolve(null);
+  return db.ref(path).once('value').then(s=>s.val()).catch(e=>{console.error('fbGet failed',path,e.message);throw e;});
+}
+
 
 function seedHistoricalData(){
   // run if never seeded OR if history is still empty after Firebase load
@@ -872,20 +912,58 @@ function seedHistoricalData(){
   lsSet('gb_hist_seeded',true);
 }
 
-function loadData(){
-  leaderboard=lsGet('gb_lb')||{};
-  gameHistory=lsGet('gb_hist')||[];
-  roster=lsGet('gb_roster')||[];
+async function loadData(){
   settings=lsGet('gb_settings')||{dark:false,haptic:true,sound:true,wake:false,hideHistorical:false};
-  h2h=lsGet('gb_h2h')||{};
-  historicalWins=lsGet('gb_hist_wins')||{};
   allTimeStreak=lsGet('gb_streak')||0;
   const saved=lsGet('gb_game');
   if(saved&&saved.players&&saved.players.length)G=saved;
   if(settings.dark)document.body.classList.add('dark');
+
+  const loadEl=document.createElement('div');
+  loadEl.id='fb-loading';
+  loadEl.style.cssText='position:fixed;inset:0;background:var(--bg);z-index:999;display:flex;align-items:center;justify-content:center;font-family:Courier New,monospace;font-size:13px;color:var(--subtext);letter-spacing:.08em;font-weight:700';
+  loadEl.textContent='LOADING...';
+  document.body.appendChild(loadEl);
+
+  try{
+    if(!db)throw new Error('Firebase not available');
+    const[lb,hist,rst,h2hData]=await Promise.all([fbGet('leaderboard'),fbGet('gameHistory'),fbGet('roster'),fbGet('h2h')]);
+    leaderboard=lb||{};
+    gameHistory=hist?Object.values(hist):[];
+    roster=rst?(Array.isArray(rst)?rst:Object.values(rst)):[];
+    h2h=h2hData||{};
+    // cache locally
+    lsSet('gb_lb',leaderboard);lsSet('gb_hist',gameHistory);lsSet('gb_roster',roster);lsSet('gb_h2h',h2h);
+    // set up live listeners
+    setupRealtimeListeners();
+  }catch(e){
+    console.warn('Firebase failed, using localStorage:',e.message);
+    showFBError('Offline mode — using local data');
+    leaderboard=lsGet('gb_lb')||{};
+    gameHistory=lsGet('gb_hist')||[];
+    roster=lsGet('gb_roster')||[];
+    h2h=lsGet('gb_h2h')||{};
+  }
+
+  const loading=document.getElementById('fb-loading');
+  if(loading)loading.remove();
 }
+
+function setupRealtimeListeners(){
+  if(!db)return;
+  db.ref('leaderboard').on('value',snap=>{const v=snap.val();if(v){leaderboard=v;lsSet('gb_lb',v);if(G.screen==='screen-leaderboard')renderLeaderboard();}});
+  db.ref('gameHistory').on('value',snap=>{const v=snap.val();if(v){gameHistory=Object.values(v);lsSet('gb_hist',gameHistory);if(G.screen==='screen-history')renderHistoryScreen();if(G.screen==='screen-hof')renderHOF();if(G.screen==='screen-yr')renderYearReview();}});
+  db.ref('roster').on('value',snap=>{const v=snap.val();if(v){roster=Array.isArray(v)?v:Object.values(v);lsSet('gb_roster',roster);if(G.screen==='screen-saved-players')renderSavedPlayersPage();if(G.screen==='screen-setup')renderSetup();}});
+  db.ref('h2h').on('value',snap=>{const v=snap.val();if(v){h2h=v;lsSet('gb_h2h',h2h);if(G.screen==='screen-h2h')renderH2H();}});
+}
+
 function saveGame(){lsSet('gb_game',G);}
-function saveMeta(){lsSet('gb_lb',leaderboard);lsSet('gb_hist',gameHistory);}
+function saveMeta(){
+  fbSet('leaderboard',leaderboard);
+  const histObj={};gameHistory.forEach((g,i)=>{histObj[i]=g;});
+  fbSet('gameHistory',histObj);
+  lsSet('gb_lb',leaderboard);lsSet('gb_hist',gameHistory);
+}
 function saveSettings(){lsSet('gb_settings',settings);}
 
 function haptic(t){if(!settings.haptic||!navigator.vibrate)return;if(t==='tap')navigator.vibrate(8);else if(t==='correct')navigator.vibrate([12,30,20]);else if(t==='ach')navigator.vibrate([20,40,20,40,40]);}
@@ -959,6 +1037,7 @@ function render(){
   if(G.screen==='screen-hist-wins')renderHistWinsPage();
   if(G.screen==='screen-add-hist-game')renderAddHistGame();
   if(G.screen==='screen-achievements')renderAchievementsList();
+  if(G.screen==='screen-data-tools'){};
   if(G.screen==='screen-tutorial')renderTutorial();
 }
 
@@ -1776,8 +1855,8 @@ function toggleSound(){settings.sound=!settings.sound;saveSettings();renderSetti
 function toggleWake(){settings.wake=!settings.wake;saveSettings();renderSettings();if(settings.wake)requestWakeLock();else releaseWakeLock();}
 function toggleHideHistorical(){settings.hideHistorical=!settings.hideHistorical;saveSettings();renderSettings();}
 function saveRoster(){
-  try{const rObj={};roster.forEach((r,i)=>{rObj[i]=r;});fbSet('roster',rObj);}catch(e){}
-  lsSet('gb_roster',roster);
+  const rObj={};roster.forEach((r,i)=>{rObj[i]=r;});
+  fbSet('roster',rObj);lsSet('gb_roster',roster);
 }
 function addRosterPlayer(){const inp=document.getElementById('new-player-inp');const name=inp.value.trim();if(!name||roster.includes(name))return;roster.push(name);saveRoster();inp.value='';renderSettings();}
 function deleteRosterPlayer(i){const name=roster[i];const ent=prompt(`Type "${name}" to confirm deletion:`);if(ent===name){roster.splice(i,1);saveRoster();if(G.screen==='screen-saved-players')renderSavedPlayersPage();else renderSettings();}else if(ent!==null)alert('Name did not match.');}
