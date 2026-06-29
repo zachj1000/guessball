@@ -546,9 +546,10 @@ select.player-input{cursor:pointer}
     </div>
     <div class="settings-section">
       <div class="section-label">Data</div>
+      <button class="btn-secondary" style="margin-top:0" onclick="forceSync()">FORCE SYNC FROM CLOUD</button>
       <button class="btn-danger" onclick="clearActiveGame()">CLEAR ACTIVE GAME</button>
     </div>
-    <div style="text-align:center;padding:16px 0;font-size:10px;color:var(--subtext);letter-spacing:.08em">GUESS BALL v1.7.0</div>
+    <div style="text-align:center;padding:16px 0;font-size:10px;color:var(--subtext);letter-spacing:.08em">GUESS BALL v1.9.0</div>
   </div>
 </div>
 
@@ -797,7 +798,8 @@ function lsDel(k){try{localStorage.removeItem(k);}catch(e){}}
 
 
 function seedHistoricalData(){
-  if(lsGet('gb_hist_seeded'))return;
+  // run if never seeded OR if history is still empty after Firebase load
+  if(lsGet('gb_hist_seeded')&&gameHistory.length>0)return;
 
   const SD='San Diego Padres', PETCO='Petco Park';
 
@@ -973,6 +975,16 @@ function renderTitle(){
   if(sb)sb.innerHTML=showYR?`<button class="menu-btn season" onclick="goTo('screen-yr')" style="margin-bottom:10px"><span>🌟 YEAR IN REVIEW</span><span>→</span></button>`:'';
 }
 function resumeGame(){const s=lsGet('gb_game');if(s&&s.players){G=s;NAV=[];requestWakeLock();render();}}
+function forceSync(){
+  if(!confirm('Re-sync all data from Firebase? This will reload the app.'))return;
+  lsDel('gb_hist_seeded');
+  lsDel('gb_lb');
+  lsDel('gb_hist');
+  lsDel('gb_roster');
+  lsDel('gb_h2h');
+  location.reload();
+}
+
 function clearActiveGame(){
   if(!confirm('Are you sure? The active game will be permanently deleted.'))return;
   lsDel('gb_game');
