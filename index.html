@@ -843,6 +843,12 @@ function showFBError(msg){
   b.style.cssText='position:fixed;bottom:20px;left:16px;right:16px;background:#A32D2D;color:#fff;border-radius:6px;padding:12px 14px;font-family:Courier New,monospace;font-size:11px;font-weight:700;z-index:500;text-align:center';
   b.textContent=msg;document.body.appendChild(b);setTimeout(()=>b.remove(),8000);
 }
+function showFBSuccess(msg){
+  const ex=document.querySelector('.fb-err');if(ex)ex.remove();
+  const b=document.createElement('div');b.className='fb-err';
+  b.style.cssText='position:fixed;bottom:20px;left:16px;right:16px;background:var(--positive);color:#fff;border-radius:6px;padding:12px 14px;font-family:Courier New,monospace;font-size:11px;font-weight:700;z-index:500;text-align:center';
+  b.textContent=msg;document.body.appendChild(b);setTimeout(()=>b.remove(),5000);
+}
 function fbSet(path,val){
   if(!db)return Promise.resolve();
   return db.ref(path).set(val).catch(e=>{console.error('fbSet failed',path,e.message);showFBError('Save failed: '+e.message);});
