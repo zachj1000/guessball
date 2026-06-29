@@ -69,13 +69,13 @@ html,body{min-height:100%;font-family:'Courier New',monospace;background-color:v
 .streak-badge{font-size:10px;margin-left:4px;vertical-align:middle}
 .section-divider{border:none;border-top:2.5px solid var(--border);margin:12px 0}
 .section-label{font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--subtext);margin-bottom:8px}
-.outcome-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:14px}
-.oc{border:1.5px solid var(--border);border-radius:3px;padding:14px 8px;text-align:center;background:var(--card);cursor:pointer}
+.outcome-grid{display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-bottom:10px}
+.oc{border:1.5px solid var(--border);border-radius:3px;padding:9px 4px;text-align:center;background:var(--card);cursor:pointer}
 .oc:active{transform:scale(.96)}
 .oc.sel{background:var(--ink);border-color:var(--ink)}
 .oc.locked{opacity:.3;cursor:default;border-style:dashed;pointer-events:none}
-.oc-lbl{font-size:12px;font-weight:700;color:var(--ink2)}
-.oc-pts{font-size:10px;color:var(--subtext);margin-top:2px}
+.oc-lbl{font-size:11px;font-weight:700;color:var(--ink2)}
+.oc-pts{font-size:9px;color:var(--subtext);margin-top:1px}
 .oc.sel .oc-lbl,.oc.sel .oc-pts{color:#fff}
 .p3-slots{display:flex;gap:8px;margin-bottom:14px}
 .p3-slot{flex:1;border:1.5px solid var(--border);border-radius:3px;padding:9px 6px;text-align:center;background:var(--card)}
@@ -408,16 +408,7 @@ select.player-input{cursor:pointer}
         <span style="color:var(--subtext);font-size:12px">tap ▲</span>
       </div>
     </div>
-    <div style="margin-bottom:14px">
-      <div class="section-label">Update MLB score (optional)</div>
-      <div style="display:flex;gap:8px;align-items:center">
-        <div style="flex:1;text-align:center;font-size:11px;color:var(--subtext);font-weight:700" id="away-score-lbl">AWAY</div>
-        <input type="number" id="away-score-inp" min="0" value="0" inputmode="numeric" oninput="G.awayScore=parseInt(this.value)||0" class="num-inp">
-        <span style="color:var(--subtext);font-weight:700">—</span>
-        <input type="number" id="home-score-inp" min="0" value="0" inputmode="numeric" oninput="G.homeScore=parseInt(this.value)||0" class="num-inp">
-        <div style="flex:1;text-align:center;font-size:11px;color:var(--subtext);font-weight:700" id="home-score-lbl">HOME</div>
-      </div>
-    </div>
+
     <button class="btn-primary" id="result-btn" onclick="submitResult()" disabled>SCORE IT →</button>
   </div>
 </div>
@@ -866,7 +857,12 @@ function renderTitle(){
   if(sb)sb.innerHTML=showYR?`<button class="menu-btn season" onclick="goTo('screen-yr')" style="margin-bottom:10px"><span>🌟 YEAR IN REVIEW</span><span>→</span></button>`:'';
 }
 function resumeGame(){const s=lsGet('gb_game');if(s&&s.players){G=s;NAV=[];requestWakeLock();render();}}
-function clearActiveGame(){if(confirm('Clear active game?')){lsDel('gb_game');renderTitle();}}
+function clearActiveGame(){
+  if(!confirm('Are you sure? The active game will be permanently deleted.'))return;
+  lsDel('gb_game');
+  NAV=[];G.screen='screen-title';G.players=[];G.atBatLog=[];G.finalStats=null;G.mvpBadge=null;
+  render();
+}
 function newGameFromTitle(){
   const s=lsGet('gb_game');
   if(s&&s.players&&s.players.length){if(!confirm('Start new game? Current active game will be lost.'))return;lsDel('gb_game');}
@@ -993,10 +989,7 @@ function submitPick(){if(G.currentPickerIdx<G.pendingPickers.length-1){G.current
 function renderResult(){
   const sl=G.inningAtBat-1;
   document.getElementById('result-tag').textContent=inningLabel(G.inning,G.isBottom)+' · AB '+G.inningAtBat;
-  const al=document.getElementById('away-score-lbl'),hl=document.getElementById('home-score-lbl');
-  if(al)al.textContent=G.awayTeam||'AWAY';if(hl)hl.textContent=G.homeTeam||'HOME';
-  const asi=document.getElementById('away-score-inp'),hsi=document.getElementById('home-score-inp');
-  if(asi)asi.value=G.awayScore||0;if(hsi)hsi.value=G.homeScore||0;
+
   document.getElementById('result-player-rows').innerHTML=G.players.map((n,i)=>{
     const pk=G.p3picks[i]||[],live=pk.length===3&&G.p3alive[i]&&sl<3,myPick=live?pk[sl]:G.manualPicks[i];
     const lbl=myPick?(oLabel(myPick)+(G.confidence[i]?' WITH CONFIDENCE':'')):'—';
@@ -1334,9 +1327,14 @@ function renderStatsMenu(){
 }
 
 function renderLeaderboard(){
-  const entries=Object.entries(leaderboard).sort((a,b)=>{
+  // merge leaderboard players with anyone who has historical wins
+  const allPlayers=new Set([...Object.keys(leaderboard),...Object.keys(historicalWins).filter(n=>historicalWins[n]>0)]);
+  const entries=[...allPlayers].map(name=>{
+    const s=leaderboard[name]||{games:0,wins:0,totalPts:0,totalPicks:0,totalCorrect:0,totalP3:0,totalConfCorrect:0,totalConfWrong:0,achievements:[],longestStreak:0};
+    return[name,s];
+  }).sort((a,b)=>{
     const aw=(b[1].wins||0)+(historicalWins[b[0]]||0),bw=(a[1].wins||0)+(historicalWins[a[0]]||0);return aw-bw;
-  }).reverse();
+  });
   if(!entries.length){document.getElementById('lb-rows').innerHTML=`<div class="empty-state">NO GAMES YET</div>`;return;}
   document.getElementById('lb-rows').innerHTML=entries.map(([name,s],i)=>{
     const hw=historicalWins[name]||0,tw=(s.wins||0)+hw;
@@ -1526,7 +1524,7 @@ function renderAchievementsList(){
     const earners=emap[a.id]||[],earned=earners.length>0;
     html+=`<div class="ach-list-row" onclick="toggleAchDet('${a.id}')">
       <div class="ach-list-icon${earned?'':' ach-icon-locked'}">${a.icon}</div>
-      <div style="flex:1"><div class="ach-list-name" style="${earned?'':'opacity:.55'}">${a.name}</div><div class="ach-list-desc" style="${earned?'':'opacity:.4'}">${a.desc}</div>${earned?`<div class="ach-list-earned">✓ Earned</div>`:''}</div>
+      <div style="flex:1"><div class="ach-list-name" style="font-weight:700;${earned?'':'color:var(--subtext)'}">${a.name}</div><div class="ach-list-desc" style="font-weight:600;color:var(--subtext)">${a.desc}</div>${earned?`<div class="ach-list-earned">✓ Earned</div>`:''}</div>
       <div style="font-size:12px;color:var(--subtext)">▼</div>
     </div>
     <div id="ad-${a.id}" style="display:none;padding:6px 12px 10px;background:var(--xpale);border-radius:3px;margin-bottom:6px;font-size:11px;color:var(--subtext)">
