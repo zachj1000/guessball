@@ -527,11 +527,7 @@ select.player-input{cursor:pointer}
     </div>
     <div class="settings-section">
       <div class="section-label">Saved players</div>
-      <div id="roster-list"></div>
-      <div style="display:flex;gap:8px;margin-top:8px">
-        <input class="player-input" id="new-player-inp" placeholder="NEW PLAYER NAME" style="flex:1">
-        <button class="btn-secondary" style="width:auto;margin:0;padding:11px 14px;flex-shrink:0" onclick="addRosterPlayer()">ADD</button>
-      </div>
+      <button class="btn-secondary" style="margin-top:0" onclick="goTo('screen-saved-players')">MANAGE SAVED PLAYERS →</button>
     </div>
     <div class="settings-section">
       <div class="section-label">Historical wins (pre-app)</div>
@@ -581,6 +577,22 @@ select.player-input{cursor:pointer}
   <div class="screen-body">
     <div style="font-size:11px;color:var(--subtext);margin-bottom:16px;line-height:1.6">Wins from before the app. These are added to app-tracked wins on the leaderboard. Tap the combined total on the leaderboard to see the split.</div>
     <div id="hist-wins-page-editor"></div>
+  </div>
+</div>
+
+<!-- SAVED PLAYERS -->
+<div class="screen" id="screen-saved-players">
+  <div class="screen-head">
+    <div class="sh-left"><button class="back-btn" onclick="back()">←</button><div class="sh-title">SAVED PLAYERS</div></div>
+  </div>
+  <div class="screen-body">
+    <div style="font-size:11px;color:var(--subtext);margin-bottom:16px;line-height:1.6">Saved players appear in the dropdown when starting a new game.</div>
+    <div id="saved-players-page-list"></div>
+    <div class="section-divider"></div>
+    <div style="display:flex;gap:8px;margin-top:4px">
+      <input class="player-input" id="new-player-inp2" placeholder="NEW PLAYER NAME" style="flex:1">
+      <button class="btn-secondary" style="width:auto;margin:0;padding:11px 14px;flex-shrink:0" onclick="addRosterPlayer2()">ADD</button>
+    </div>
   </div>
 </div>
 </div><!-- #gb -->
@@ -834,6 +846,7 @@ function render(){
   if(G.screen==='screen-h2h')renderH2H();
   if(G.screen==='screen-yr')renderYearReview();
   if(G.screen==='screen-settings')renderSettings();
+  if(G.screen==='screen-saved-players')renderSavedPlayersPage();
   if(G.screen==='screen-hist-wins')renderHistWinsPage();
   if(G.screen==='screen-achievements')renderAchievementsList();
   if(G.screen==='screen-tutorial')renderTutorial();
@@ -1472,8 +1485,23 @@ function toggleHaptic(){settings.haptic=!settings.haptic;saveSettings();renderSe
 function toggleSound(){settings.sound=!settings.sound;saveSettings();renderSettings();}
 function toggleWake(){settings.wake=!settings.wake;saveSettings();renderSettings();if(settings.wake)requestWakeLock();else releaseWakeLock();}
 function addRosterPlayer(){const inp=document.getElementById('new-player-inp');const name=inp.value.trim();if(!name||roster.includes(name))return;roster.push(name);lsSet('gb_roster',roster);inp.value='';renderSettings();}
-function deleteRosterPlayer(i){const name=roster[i];const ent=prompt(`Type "${name}" to confirm deletion:`);if(ent===name){roster.splice(i,1);lsSet('gb_roster',roster);renderSettings();}else if(ent!==null)alert('Name did not match.');}
+function deleteRosterPlayer(i){const name=roster[i];const ent=prompt(`Type "${name}" to confirm deletion:`);if(ent===name){roster.splice(i,1);lsSet('gb_roster',roster);if(G.screen==='screen-saved-players')renderSavedPlayersPage();else renderSettings();}else if(ent!==null)alert('Name did not match.');}
 function adjHW(name,d){const cur=historicalWins[name]||0,next=cur+d;if(next<0){if(!confirm('Remove a historical win for '+name+'?'))return;}if(next<0)return;historicalWins[name]=next;lsSet('gb_hist_wins',historicalWins);if(G.screen==='screen-settings')renderSettings();else if(G.screen==='screen-hist-wins')renderHistWinsPage();}
+
+function renderSavedPlayersPage(){
+  const el=document.getElementById('saved-players-page-list');
+  if(!el)return;
+  el.innerHTML=roster.length
+    ?roster.map((name,i)=>`<div class="settings-row"><div class="settings-label">${name}</div><button class="btn-danger" style="width:auto;padding:6px 12px;margin:0;font-size:11px" onclick="deleteRosterPlayer(${i})">DELETE</button></div>`).join('')
+    :`<div style="font-size:11px;color:var(--subtext);padding:8px 0">No saved players yet.</div>`;
+}
+function addRosterPlayer2(){
+  const inp=document.getElementById('new-player-inp2');
+  const name=inp.value.trim();
+  if(!name||roster.includes(name))return;
+  roster.push(name);lsSet('gb_roster',roster);inp.value='';
+  renderSavedPlayersPage();
+}
 
 function renderHistWinsPage(){
   const hw=document.getElementById('hist-wins-page-editor');
