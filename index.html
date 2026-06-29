@@ -553,7 +553,7 @@ select.player-input{cursor:pointer}
       <button class="btn-secondary" style="margin-top:0" onclick="goTo('screen-data-tools')">DATA TOOLS →</button>
       <button class="btn-danger" onclick="clearActiveGame()">CLEAR ACTIVE GAME</button>
     </div>
-    <div style="text-align:center;padding:16px 0;font-size:10px;color:var(--subtext);letter-spacing:.08em">GUESS BALL v1.6.0</div>
+    <div style="text-align:center;padding:16px 0;font-size:10px;color:var(--subtext);letter-spacing:.08em">GUESS BALL v1.7.0</div>
   </div>
 </div>
 
@@ -2054,12 +2054,32 @@ Exported: '+(data.exportedAt||'unknown')))return;
   reader.readAsText(file);input.value='';
 }
 
-loadData().then(()=>{
+// Always render within 5 seconds regardless of Firebase
+let rendered=false;
+function safeRender(){
+  if(rendered)return;
+  rendered=true;
   seedHistoricalData();
   render();
-  
+  if(!lsGet('gb_tutdone')){lsSet('gb_tutdone',true);setTimeout(()=>goTo('screen-tutorial'),400);}
+}
+// Fallback: render after 4 seconds even if Firebase hasn't responded
+const renderTimeout=setTimeout(()=>{
+  console.warn('Firebase timeout - rendering with local data');
+  leaderboard=lsGet('gb_lb')||{};
+  gameHistory=lsGet('gb_hist')||[];
+  roster=lsGet('gb_roster')||[];
+  h2h=lsGet('gb_h2h')||{};
+  safeRender();
+},4000);
+
+loadData().then(()=>{
+  clearTimeout(renderTimeout);
+  safeRender();
+}).catch(()=>{
+  clearTimeout(renderTimeout);
+  safeRender();
 });
-if(!lsGet('gb_tutdone')){lsSet('gb_tutdone',true);setTimeout(()=>goTo('screen-tutorial'),400);}
 </script>
 </body>
 </html>
