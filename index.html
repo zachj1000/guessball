@@ -515,6 +515,7 @@ select.player-input{cursor:pointer}
       <div class="settings-row"><div><div class="settings-label">Haptics</div><div class="settings-sub">Vibration on picks</div></div><button class="toggle" id="haptic-toggle" onclick="toggleHaptic()"></button></div>
       <div class="settings-row"><div><div class="settings-label">Sound effects</div><div class="settings-sub">Crowd cheer + achievement jingle</div></div><button class="toggle" id="sound-toggle" onclick="toggleSound()"></button></div>
       <div class="settings-row"><div><div class="settings-label">Keep screen awake</div><div class="settings-sub">Prevent auto-lock during games</div></div><button class="toggle" id="wake-toggle" onclick="toggleWake()"></button></div>
+      <div class="settings-row"><div><div class="settings-label">Hide historical data</div><div class="settings-sub">Show app-tracked games only</div></div><button class="toggle" id="hist-toggle" onclick="toggleHideHistorical()"></button></div>
     </div>
     <div class="settings-section">
       <div class="section-label">Saved players</div>
@@ -786,11 +787,85 @@ function lsGet(k){try{const v=localStorage.getItem(k);return v?JSON.parse(v):nul
 function lsSet(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch(e){}}
 function lsDel(k){try{localStorage.removeItem(k);}catch(e){}}
 
+
+function seedHistoricalData(){
+  if(lsGet('gb_hist_seeded'))return;
+
+  const SD='San Diego Padres', PETCO='Petco Park';
+
+  const games=[
+    {date:'Apr 29, 2015',players:[{name:'Stu',score:2},{name:'Zach',score:9}],awayTeam:'',homeTeam:'',stadium:'',notes:''},
+    {date:'Jul 5, 2015',players:[{name:'Stu',score:5},{name:'Zach',score:7}],awayTeam:'',homeTeam:'',stadium:'',notes:''},
+    {date:'Apr 15, 2016',players:[{name:'Stu',score:17},{name:'Zach',score:15}],awayTeam:'',homeTeam:'',stadium:'',notes:''},
+    {date:'May 22, 2016',players:[{name:'Stu',score:19},{name:'Zach',score:17}],awayTeam:'',homeTeam:'',stadium:'',notes:''},
+    {date:'Jun 3, 2016',players:[{name:'Stu',score:14},{name:'Zach',score:11}],awayTeam:'',homeTeam:'',stadium:'',notes:''},
+    {date:'Jun 17, 2016',players:[{name:'Stu',score:5},{name:'Zach',score:23}],awayTeam:'',homeTeam:'',stadium:'',notes:''},
+    {date:'Aug 28, 2016',players:[{name:'Stu',score:4},{name:'Zach',score:14}],awayTeam:'Los Angeles Dodgers',homeTeam:SD,stadium:PETCO,notes:'Dodgers'},
+    {date:'Apr 21, 2017',players:[{name:'Stu',score:4},{name:'Zach',score:15}],awayTeam:'Miami Marlins',homeTeam:SD,stadium:PETCO,notes:''},
+    {date:'Jun 2, 2017',players:[{name:'Stu',score:41},{name:'Zach',score:20}],awayTeam:'Colorado Rockies',homeTeam:SD,stadium:PETCO,notes:'17-0 comeback'},
+    {date:'Jun 3, 2017',players:[{name:'Stu',score:36},{name:'Zach',score:40}],awayTeam:'Colorado Rockies',homeTeam:SD,stadium:PETCO,notes:''},
+    {date:'Jun 3, 2018',players:[{name:'Stu',score:31},{name:'Zach',score:32}],awayTeam:'',homeTeam:'',stadium:'',notes:''},
+    {date:'Jul 1, 2018',players:[{name:'Stu',score:24},{name:'Zach',score:14},{name:'Evan',score:11}],awayTeam:'',homeTeam:'',stadium:'',notes:''},
+    {date:'Jul 12, 2018',players:[{name:'Stu',score:7},{name:'Zach',score:31}],awayTeam:'Toronto Blue Jays',homeTeam:'Boston Red Sox',stadium:'Fenway Park',notes:''},
+    {date:'Sep 9, 2019',players:[{name:'Stu',score:20},{name:'Zach',score:36}],awayTeam:'Chicago Cubs',homeTeam:SD,stadium:PETCO,notes:''},
+    {date:'Jun 25, 2021',players:[{name:'Stu',score:29},{name:'Zach',score:5}],awayTeam:'Arizona Diamondbacks',homeTeam:SD,stadium:PETCO,notes:'Stu calls 3 Nandogs'},
+    {date:'May 28, 2022',players:[{name:'Arian',score:30},{name:'Zach',score:23}],awayTeam:'Toronto Blue Jays',homeTeam:'Los Angeles Angels',stadium:'Angel Stadium',notes:'Arian calls Trout HR with confidence'},
+    {date:'Jul 4, 2022',players:[{name:'Zach',score:2},{name:'Stu',score:18}],awayTeam:'Seattle Mariners',homeTeam:SD,stadium:PETCO,notes:''},
+    {date:'Mar 11, 2023',players:[{name:'Zach',score:31},{name:'James',score:5}],awayTeam:'Great Britain',homeTeam:'USA',stadium:'',notes:'WBC'},
+    {date:'Sep 20, 2023',players:[{name:'Zach',score:34},{name:'Stu',score:20}],awayTeam:'Colorado Rockies',homeTeam:SD,stadium:PETCO,notes:''},
+    {date:'Apr 13, 2025',players:[{name:'Zach',score:14},{name:'Stu',score:32}],awayTeam:'Colorado Rockies',homeTeam:SD,stadium:PETCO,notes:''},
+    {date:'May 16, 2025',players:[{name:'Zach',score:25},{name:'Stu',score:12}],awayTeam:'Seattle Mariners',homeTeam:SD,stadium:PETCO,notes:''},
+    {date:'Jun 1, 2025',players:[{name:'Zach',score:42},{name:'Jacob',score:-2}],awayTeam:'Pittsburgh Pirates',homeTeam:SD,stadium:PETCO,notes:''},
+    {date:'Jul 13, 2025',players:[{name:'Zach',score:21},{name:'Stu',score:10}],awayTeam:'',homeTeam:'',stadium:'',notes:''},
+    {date:'Aug 3, 2025',players:[{name:'Zach',score:27},{name:'Stu',score:17}],awayTeam:'St. Louis Cardinals',homeTeam:SD,stadium:PETCO,notes:''},
+    {date:'Aug 8, 2025',players:[{name:'Zach',score:24},{name:'Jacob',score:21}],awayTeam:'',homeTeam:'',stadium:'',notes:''},
+    {date:'Jun 28, 2026',players:[{name:'Zach',score:28},{name:'Stu',score:17}],awayTeam:'Los Angeles Dodgers',homeTeam:SD,stadium:PETCO,notes:''},
+  ];
+
+  // Sort oldest to newest so history displays newest first after unshift
+  games.forEach(g=>{
+    const sorted=[...g.players].sort((a,b)=>b.score-a.score);
+    const winner=sorted[0].name;
+    const entry={
+      date:g.date,
+      players:g.players,
+      winner,
+      inning:9,
+      stats:null,
+      achievements:[],
+      mvpBadge:null,
+      awayTeam:g.awayTeam,
+      homeTeam:g.homeTeam,
+      stadium:g.stadium,
+      awayScore:0,homeScore:0,
+      notes:g.notes,
+      highlightAtBat:null,
+      historical:true,
+    };
+    gameHistory.push(entry);
+    // update leaderboard
+    g.players.forEach(p=>{
+      if(!leaderboard[p.name])leaderboard[p.name]={games:0,wins:0,totalPts:0,totalPicks:0,totalCorrect:0,totalP3:0,totalConfCorrect:0,totalConfWrong:0,achievements:[],longestStreak:0};
+      leaderboard[p.name].games++;
+      leaderboard[p.name].totalPts+=p.score||0;
+      if(p.name===winner)leaderboard[p.name].wins++;
+    });
+  });
+
+  // pre-populate roster
+  const rosterPlayers=['Zach','Stu','Evan','Arian','James','Jacob'];
+  rosterPlayers.forEach(name=>{if(!roster.includes(name))roster.push(name);});
+
+  saveMeta();
+  lsSet('gb_roster',roster);
+  lsSet('gb_hist_seeded',true);
+}
+
 function loadData(){
   leaderboard=lsGet('gb_lb')||{};
   gameHistory=lsGet('gb_hist')||[];
   roster=lsGet('gb_roster')||[];
-  settings=lsGet('gb_settings')||{dark:false,haptic:true,sound:true,wake:false};
+  settings=lsGet('gb_settings')||{dark:false,haptic:true,sound:true,wake:false,hideHistorical:false};
   h2h=lsGet('gb_h2h')||{};
   historicalWins=lsGet('gb_hist_wins')||{};
   allTimeStreak=lsGet('gb_streak')||0;
@@ -1361,8 +1436,31 @@ function renderStatsMenu(){
 
 function renderLeaderboard(){
   // merge leaderboard players with anyone who has historical wins
-  const entries=Object.entries(leaderboard).sort((a,b)=>(b[1].wins||0)-(a[1].wins||0));
-  if(!entries.length){document.getElementById('lb-rows').innerHTML=`<div class="empty-state">NO GAMES YET</div>`;return;}
+  // if hiding historical, recompute stats from app games only
+  let lbData=leaderboard;
+  if(settings.hideHistorical){
+    const appOnly={};
+    gameHistory.filter(g=>!g.historical).forEach(g=>{
+      g.players.forEach(p=>{
+        if(!appOnly[p.name])appOnly[p.name]={games:0,wins:0,totalPts:0,totalPicks:0,totalCorrect:0,totalP3:0,totalConfCorrect:0,totalConfWrong:0,achievements:leaderboard[p.name]?leaderboard[p.name].achievements:[],longestStreak:leaderboard[p.name]?leaderboard[p.name].longestStreak:0};
+        appOnly[p.name].games++;
+        appOnly[p.name].totalPts+=p.score||0;
+        if(p.name===g.winner)appOnly[p.name].wins++;
+      });
+    });
+    // merge in pick stats from full leaderboard (pick stats only come from app games anyway)
+    Object.keys(appOnly).forEach(name=>{
+      if(leaderboard[name]){
+        appOnly[name].totalPicks=leaderboard[name].totalPicks||0;
+        appOnly[name].totalCorrect=leaderboard[name].totalCorrect||0;
+        appOnly[name].totalP3=leaderboard[name].totalP3||0;
+        appOnly[name].totalConfCorrect=leaderboard[name].totalConfCorrect||0;
+      }
+    });
+    lbData=appOnly;
+  }
+  const entries=Object.entries(lbData).sort((a,b)=>(b[1].wins||0)-(a[1].wins||0));
+  if(!entries.length){document.getElementById('lb-rows').innerHTML=`<div class="empty-state">${settings.hideHistorical?'NO APP GAMES YET':'NO GAMES YET'}</div>`;return;}
   document.getElementById('lb-rows').innerHTML=entries.map(([name,s],i)=>{
     const tw=s.wins||0,hw=0;
     const winPct=s.games>0?Math.round(tw/s.games*100):0;
@@ -1387,15 +1485,22 @@ function toggleLb(name){lbExpanded[name]=!lbExpanded[name];renderLeaderboard();}
 function toggleSplit(name){winSplitShown[name]=!winSplitShown[name];renderLeaderboard();}
 
 function renderHistoryScreen(){
-  if(!gameHistory.length){document.getElementById('history-rows').innerHTML=`<div class="empty-state">NO GAMES YET</div>`;return;}
-  document.getElementById('history-rows').innerHTML=gameHistory.map((g,idx)=>{
+  // sort newest first, filter if needed
+  const sortedHistory=[...gameHistory].sort((a,b)=>{
+    const da=new Date(a.date),db=new Date(b.date);return db-da;
+  });
+  const filteredHistory=settings.hideHistorical?sortedHistory.filter(g=>!g.historical):sortedHistory;
+  if(!filteredHistory.length){document.getElementById('history-rows').innerHTML=`<div class="empty-state">${settings.hideHistorical?'NO APP GAMES YET':'NO GAMES YET'}</div>`;return;}
+  // map with original indices for delete
+  document.getElementById('history-rows').innerHTML=filteredHistory.map((g)=>{
+    const idx=gameHistory.indexOf(g);
     const exp=histExpanded[idx];
     return`<div style="border-bottom:1px dashed var(--border)">
       <div class="history-row" style="border-bottom:none" onclick="toggleHist(${idx})">
         <div class="history-date">${g.date}${g.stadium?' · '+g.stadium:''}</div>
         ${g.awayTeam?`<div style="font-size:10px;color:var(--subtext);margin-bottom:3px">${g.awayTeam} ${g.awayScore||0} — ${g.homeScore||0} ${g.homeTeam}</div>`:''}
         <div style="display:flex;justify-content:space-between;align-items:center">
-          <div class="history-result">⚾ ${g.winner} wins</div>
+          <div class="history-result">⚾ ${g.winner} wins${g.historical?' <span style="font-size:9px;color:var(--subtext);border:1px solid var(--border);padding:1px 5px;border-radius:2px;margin-left:4px;vertical-align:middle">PRE-APP</span>':''}</div>
           <div style="font-size:14px;color:var(--subtext)">${exp?'▲':'▼'}</div>
         </div>
         <div class="history-detail">${g.players.map(p=>p.name+' '+p.score+'pts').join(' · ')} · ${g.inning} inn</div>
@@ -1406,6 +1511,28 @@ function renderHistoryScreen(){
   }).join('');
 }
 function toggleHist(idx){histExpanded[idx]=!histExpanded[idx];renderHistoryScreen();}
+function deleteHistGame(idx){
+  const g=gameHistory[idx];
+  if(!confirm('Delete this game ('+g.date+', '+g.winner+' wins)? This cannot be undone.'))return;
+  // reverse leaderboard wins/games for historical games only
+  if(g.historical){
+    g.players.forEach(p=>{
+      if(leaderboard[p.name]){
+        leaderboard[p.name].games=Math.max(0,(leaderboard[p.name].games||1)-1);
+        leaderboard[p.name].totalPts=Math.max(0,(leaderboard[p.name].totalPts||0)-p.score);
+        if(p.name===g.winner)leaderboard[p.name].wins=Math.max(0,(leaderboard[p.name].wins||1)-1);
+      }
+    });
+  }
+  // remove players from leaderboard if they have 0 games left
+  Object.keys(leaderboard).forEach(name=>{
+    if((leaderboard[name].games||0)<=0)delete leaderboard[name];
+  });
+  gameHistory.splice(idx,1);
+  histExpanded={};
+  saveMeta();
+  renderHistoryScreen();
+}
 function renderHistExp(g,idx){
   let html=`<div style="padding-bottom:14px">`;
   if(g.stats){
@@ -1416,6 +1543,7 @@ function renderHistExp(g,idx){
     if(g.mvpBadge)html+=`<div class="info-box">${g.mvpBadge.icon} ${g.mvpBadge.name}: ${g.mvpBadge.desc}</div>`;
     html+=`<button class="btn-secondary" style="margin-top:0" onclick="viewHistStats(${idx})">FULL STATS →</button>`;
   } else html+=`<div class="info-box">Stats not available.</div>`;
+  html+=`<button class="btn-danger" style="margin-top:8px" onclick="deleteHistGame(${idx})">DELETE THIS GAME</button>`;
   html+=`</div>`;return html;
 }
 function viewHistStats(idx){
@@ -1496,6 +1624,7 @@ function renderSettings(){
   document.getElementById('haptic-toggle').className='toggle'+(settings.haptic?' on':'');
   document.getElementById('sound-toggle').className='toggle'+(settings.sound?' on':'');
   document.getElementById('wake-toggle').className='toggle'+(settings.wake?' on':'');
+  const ht=document.getElementById('hist-toggle');if(ht)ht.className='toggle'+(settings.hideHistorical?' on':'');
   document.getElementById('roster-list').innerHTML=roster.length
     ?roster.map((name,i)=>`<div class="settings-row"><div class="settings-label">${name}</div><button class="btn-danger" style="width:auto;padding:6px 12px;margin:0;font-size:11px" onclick="deleteRosterPlayer(${i})">DELETE</button></div>`).join('')
     :`<div style="font-size:11px;color:var(--subtext);padding:8px 0">No saved players yet.</div>`;
@@ -1509,6 +1638,7 @@ function toggleDark(){settings.dark=!settings.dark;document.body.classList.toggl
 function toggleHaptic(){settings.haptic=!settings.haptic;saveSettings();renderSettings();}
 function toggleSound(){settings.sound=!settings.sound;saveSettings();renderSettings();}
 function toggleWake(){settings.wake=!settings.wake;saveSettings();renderSettings();if(settings.wake)requestWakeLock();else releaseWakeLock();}
+function toggleHideHistorical(){settings.hideHistorical=!settings.hideHistorical;saveSettings();renderSettings();}
 function addRosterPlayer(){const inp=document.getElementById('new-player-inp');const name=inp.value.trim();if(!name||roster.includes(name))return;roster.push(name);lsSet('gb_roster',roster);inp.value='';renderSettings();}
 function deleteRosterPlayer(i){const name=roster[i];const ent=prompt(`Type "${name}" to confirm deletion:`);if(ent===name){roster.splice(i,1);lsSet('gb_roster',roster);if(G.screen==='screen-saved-players')renderSavedPlayersPage();else renderSettings();}else if(ent!==null)alert('Name did not match.');}
 function adjHW(name,d){const cur=historicalWins[name]||0,next=cur+d;if(next<0){if(!confirm('Remove a historical win for '+name+'?'))return;}if(next<0)return;historicalWins[name]=next;lsSet('gb_hist_wins',historicalWins);if(G.screen==='screen-settings')renderSettings();else if(G.screen==='screen-hist-wins')renderHistWinsPage();}
@@ -1702,6 +1832,7 @@ function renderTutorial(){
 }
 
 loadData();
+seedHistoricalData();
 render();
 if(!lsGet('gb_tutdone')){lsSet('gb_tutdone',true);setTimeout(()=>goTo('screen-tutorial'),400);}
 </script>
