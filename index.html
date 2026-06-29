@@ -191,6 +191,9 @@ select.player-input{cursor:pointer}
 .yr-stat-lbl{font-size:10px;color:var(--subtext);letter-spacing:.08em;text-transform:uppercase;margin-top:4px}
 .num-inp{width:56px;padding:9px;border:1.5px solid var(--border);border-radius:3px;font-family:'Courier New',monospace;font-size:16px;font-weight:700;color:var(--text);background:var(--card);text-align:center;-webkit-appearance:none}
 </style>
+<!-- Firebase -->
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
 </head>
 <body>
 <div id="gb">
@@ -541,6 +544,7 @@ select.player-input{cursor:pointer}
       <div class="section-label">Data</div>
       <button class="btn-danger" onclick="clearActiveGame()">CLEAR ACTIVE GAME</button>
     </div>
+    <div style="text-align:center;padding:16px 0;font-size:10px;color:var(--subtext);letter-spacing:.08em">GUESS BALL v1.3.0</div>
   </div>
 </div>
 
@@ -1639,8 +1643,12 @@ function toggleHaptic(){settings.haptic=!settings.haptic;saveSettings();renderSe
 function toggleSound(){settings.sound=!settings.sound;saveSettings();renderSettings();}
 function toggleWake(){settings.wake=!settings.wake;saveSettings();renderSettings();if(settings.wake)requestWakeLock();else releaseWakeLock();}
 function toggleHideHistorical(){settings.hideHistorical=!settings.hideHistorical;saveSettings();renderSettings();}
-function addRosterPlayer(){const inp=document.getElementById('new-player-inp');const name=inp.value.trim();if(!name||roster.includes(name))return;roster.push(name);lsSet('gb_roster',roster);inp.value='';renderSettings();}
-function deleteRosterPlayer(i){const name=roster[i];const ent=prompt(`Type "${name}" to confirm deletion:`);if(ent===name){roster.splice(i,1);lsSet('gb_roster',roster);if(G.screen==='screen-saved-players')renderSavedPlayersPage();else renderSettings();}else if(ent!==null)alert('Name did not match.');}
+function saveRoster(){
+  try{const rObj={};roster.forEach((r,i)=>{rObj[i]=r;});fbSet('roster',rObj);}catch(e){}
+  lsSet('gb_roster',roster);
+}
+function addRosterPlayer(){const inp=document.getElementById('new-player-inp');const name=inp.value.trim();if(!name||roster.includes(name))return;roster.push(name);saveRoster();inp.value='';renderSettings();}
+function deleteRosterPlayer(i){const name=roster[i];const ent=prompt(`Type "${name}" to confirm deletion:`);if(ent===name){roster.splice(i,1);saveRoster();if(G.screen==='screen-saved-players')renderSavedPlayersPage();else renderSettings();}else if(ent!==null)alert('Name did not match.');}
 function adjHW(name,d){const cur=historicalWins[name]||0,next=cur+d;if(next<0){if(!confirm('Remove a historical win for '+name+'?'))return;}if(next<0)return;historicalWins[name]=next;lsSet('gb_hist_wins',historicalWins);if(G.screen==='screen-settings')renderSettings();else if(G.screen==='screen-hist-wins')renderHistWinsPage();}
 
 function renderSavedPlayersPage(){
@@ -1654,7 +1662,7 @@ function addRosterPlayer2(){
   const inp=document.getElementById('new-player-inp2');
   const name=inp.value.trim();
   if(!name||roster.includes(name))return;
-  roster.push(name);lsSet('gb_roster',roster);inp.value='';
+  roster.push(name);saveRoster();inp.value='';
   renderSavedPlayersPage();
 }
 
@@ -1831,9 +1839,11 @@ function renderTutorial(){
     <button class="btn-primary" style="margin-top:20px" onclick="back()">GOT IT →</button>`;
 }
 
-loadData();
-seedHistoricalData();
-render();
+loadData().then(()=>{
+  seedHistoricalData();
+  render();
+  
+});
 if(!lsGet('gb_tutdone')){lsSet('gb_tutdone',true);setTimeout(()=>goTo('screen-tutorial'),400);}
 </script>
 </body>
