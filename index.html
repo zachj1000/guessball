@@ -7,27 +7,22 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Guess Ball">
 <title>Guess Ball</title>
-
-<!-- Apple Touch Icon — inline SVG converted to data URI -->
 <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 160 160'%3E%3Crect width='160' height='160' rx='36' fill='%23003DA5'/%3E%3Cpolygon points='80,8 152,80 80,152 8,80' fill='none' stroke='%23F7F5EE' stroke-width='2' opacity='0.22'/%3E%3Cline x1='80' y1='8' x2='152' y2='80' stroke='%23F7F5EE' stroke-width='0.7' opacity='0.1'/%3E%3Cline x1='152' y1='80' x2='80' y2='152' stroke='%23F7F5EE' stroke-width='0.7' opacity='0.1'/%3E%3Cline x1='80' y1='152' x2='8' y2='80' stroke='%23F7F5EE' stroke-width='0.7' opacity='0.1'/%3E%3Cline x1='8' y1='80' x2='80' y2='8' stroke='%23F7F5EE' stroke-width='0.7' opacity='0.1'/%3E%3Crect x='73' y='3' width='14' height='11' rx='2' fill='%23F7F5EE' opacity='0.45'/%3E%3Crect x='146' y='73' width='11' height='14' rx='2' fill='%23F7F5EE' opacity='0.45'/%3E%3Crect x='73' y='146' width='14' height='11' rx='2' fill='%23F7F5EE' opacity='0.45'/%3E%3Crect x='3' y='73' width='11' height='14' rx='2' fill='%23F7F5EE' opacity='0.45'/%3E%3Ctext x='80' y='100' font-family='Courier New,monospace' font-size='76' font-weight='700' fill='%23F7F5EE' text-anchor='middle'%3EG%3C/text%3E%3C/svg%3E">
-
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
-html,body{min-height:100%;margin:0;padding:0;font-family:'Courier New',monospace;background-color:#F7F5EE;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='60' height='72'%3E%3Crect width='60' height='72' fill='none' stroke='%23003DA5' stroke-width='0.5' opacity='0.12'/%3E%3Cline x1='0' y1='24' x2='60' y2='24' stroke='%23003DA5' stroke-width='0.3' opacity='0.09'/%3E%3Cline x1='0' y1='48' x2='60' y2='48' stroke='%23003DA5' stroke-width='0.3' opacity='0.09'/%3E%3Cpolygon points='30,5 44,19 30,33 16,19' fill='none' stroke='%23003DA5' stroke-width='0.8' opacity='0.11'/%3E%3Ccircle cx='30' cy='5' r='1.3' fill='%23003DA5' opacity='0.10'/%3E%3Ccircle cx='44' cy='19' r='1.3' fill='%23003DA5' opacity='0.10'/%3E%3Ccircle cx='30' cy='33' r='1.3' fill='%23003DA5' opacity='0.10'/%3E%3Ccircle cx='16' cy='19' r='1.3' fill='%23003DA5' opacity='0.10'/%3E%3Crect x='36' y='36' width='10' height='6' fill='none' stroke='%23003DA5' stroke-width='0.45' opacity='0.13'/%3E%3Crect x='46' y='36' width='10' height='6' fill='none' stroke='%23003DA5' stroke-width='0.45' opacity='0.13'/%3E%3Crect x='33' y='42' width='9' height='6' fill='none' stroke='%23003DA5' stroke-width='0.45' opacity='0.13'/%3E%3Crect x='42' y='42' width='9' height='6' fill='none' stroke='%23003DA5' stroke-width='0.45' opacity='0.13'/%3E%3Crect x='51' y='42' width='9' height='6' fill='none' stroke='%23003DA5' stroke-width='0.45' opacity='0.13'/%3E%3C/svg%3E");background-repeat:repeat;}
-body{min-height:100vh;padding:0}
-
-#gb{width:100%;min-height:100vh;position:relative;overflow:visible;background:transparent}
-
-/* PATTERN */
-
-
-
+html,body{
+  min-height:100%;font-family:'Courier New',monospace;
+  background-color:#F7F5EE;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='60' height='72'%3E%3Crect width='60' height='72' fill='none' stroke='%23003DA5' stroke-width='0.5' opacity='0.12'/%3E%3Cline x1='0' y1='24' x2='60' y2='24' stroke='%23003DA5' stroke-width='0.3' opacity='0.09'/%3E%3Cline x1='0' y1='48' x2='60' y2='48' stroke='%23003DA5' stroke-width='0.3' opacity='0.09'/%3E%3Cpolygon points='30,5 44,19 30,33 16,19' fill='none' stroke='%23003DA5' stroke-width='0.8' opacity='0.11'/%3E%3Ccircle cx='30' cy='5' r='1.3' fill='%23003DA5' opacity='0.10'/%3E%3Ccircle cx='44' cy='19' r='1.3' fill='%23003DA5' opacity='0.10'/%3E%3Ccircle cx='30' cy='33' r='1.3' fill='%23003DA5' opacity='0.10'/%3E%3Ccircle cx='16' cy='19' r='1.3' fill='%23003DA5' opacity='0.10'/%3E%3Crect x='36' y='36' width='10' height='6' fill='none' stroke='%23003DA5' stroke-width='0.45' opacity='0.13'/%3E%3Crect x='46' y='36' width='10' height='6' fill='none' stroke='%23003DA5' stroke-width='0.45' opacity='0.13'/%3E%3Crect x='33' y='42' width='9' height='6' fill='none' stroke='%23003DA5' stroke-width='0.45' opacity='0.13'/%3E%3Crect x='42' y='42' width='9' height='6' fill='none' stroke='%23003DA5' stroke-width='0.45' opacity='0.13'/%3E%3Crect x='51' y='42' width='9' height='6' fill='none' stroke='%23003DA5' stroke-width='0.45' opacity='0.13'/%3E%3C/svg%3E");
+  background-repeat:repeat;
+}
+#gb{width:100%;min-height:100vh;position:relative;background:transparent}
 .screen{display:none;position:relative;z-index:2;min-height:100vh;flex-direction:column;background:transparent}
 .screen.active{display:flex}
 
 /* TITLE */
 .title-wrap{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;padding:48px 28px;text-align:center;position:relative}
-.title-hfade{position:absolute;inset:0;pointer-events:none;z-index:1;background:linear-gradient(to right,rgba(247,245,238,1) 0%,rgba(247,245,238,0) 35%,rgba(247,245,238,0) 65%,rgba(247,245,238,1) 100%)}
+.title-hfade{position:absolute;inset:0;pointer-events:none;background:linear-gradient(to right,rgba(247,245,238,1) 0%,rgba(247,245,238,0) 35%,rgba(247,245,238,0) 65%,rgba(247,245,238,1) 100%)}
 .title-content{position:relative;z-index:2;width:100%}
 .title-logo-wrap{display:flex;justify-content:center;margin-bottom:20px}
 .title-eyebrow{font-size:10px;letter-spacing:.18em;color:#1A56C4;text-transform:uppercase;margin-bottom:6px}
@@ -38,12 +33,14 @@ body{min-height:100vh;padding:0}
 .menu-btn.primary{background:#003DA5;color:#fff}
 
 /* HEADER */
-.screen-head{background:#003DA5;padding:14px 16px 12px;padding-top:calc(14px + env(safe-area-inset-top));display:flex;justify-content:space-between;align-items:center;flex-shrink:0;z-index:2}
+.screen-head{background:#003DA5;padding:14px 16px 12px;padding-top:calc(14px + env(safe-area-inset-top));display:flex;justify-content:space-between;align-items:center;flex-shrink:0}
 .sh-left{display:flex;align-items:center;gap:10px}
+.sh-right{display:flex;align-items:center;gap:8px}
 .back-btn{background:transparent;border:none;color:#fff;font-family:'Courier New',monospace;font-size:22px;cursor:pointer;padding:0;line-height:1}
+.info-btn{background:rgba(255,255,255,.2);border:1px solid rgba(255,255,255,.4);color:#fff;font-family:'Courier New',monospace;font-size:11px;font-weight:700;cursor:pointer;padding:4px 8px;border-radius:3px;letter-spacing:.04em}
 .sh-title{font-size:17px;font-weight:700;color:#fff;letter-spacing:.04em}
 .sh-tag{font-size:10px;color:#D6E4F7;letter-spacing:.07em;text-transform:uppercase}
-.screen-body{padding:16px;flex:1;z-index:2;position:relative;padding-bottom:calc(16px + env(safe-area-inset-bottom))}
+.screen-body{padding:16px;flex:1;padding-bottom:calc(16px + env(safe-area-inset-bottom))}
 
 /* PLAYER ROWS */
 .player-section{position:relative;margin-bottom:4px}
@@ -61,7 +58,7 @@ body{min-height:100vh;padding:0}
 
 /* OUTCOME GRID */
 .outcome-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:14px}
-.oc{border:1.5px solid #003DA5;border-radius:3px;padding:12px 8px;text-align:center;background:#F0EDE3;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.oc{border:1.5px solid #003DA5;border-radius:3px;padding:12px 8px;text-align:center;background:#F0EDE3;cursor:pointer}
 .oc:active{transform:scale(.96)}
 .oc.sel{background:#003DA5}
 .oc.locked{opacity:.3;cursor:default;border-style:dashed;pointer-events:none}
@@ -98,8 +95,9 @@ body{min-height:100vh;padding:0}
 .input-row{display:flex;gap:8px;align-items:center;margin-bottom:10px}
 
 /* SCORE ROWS */
-.score-row{display:flex;justify-content:space-between;align-items:center;padding:12px 14px;border:1.5px solid #003DA5;border-radius:3px;margin-bottom:8px;background:#F0EDE3}
+.score-row{display:flex;justify-content:space-between;align-items:center;padding:12px 14px;border:1.5px solid #003DA5;border-radius:3px;margin-bottom:8px;background:#F0EDE3;cursor:pointer}
 .score-row.leader{background:#D6E4F7;border-width:2px}
+.score-row.no-tap{cursor:default}
 .score-left{flex:1}
 .score-name-line{display:flex;align-items:center;flex-wrap:wrap;gap:4px}
 .score-name{font-size:13px;font-weight:700;color:#003DA5}
@@ -108,6 +106,7 @@ body{min-height:100vh;padding:0}
 .score-delta-pos{font-size:11px;font-weight:700;color:#1A7A4A}
 .score-delta-neg{font-size:11px;font-weight:700;color:#A32D2D}
 .score-pts{font-size:26px;font-weight:700;color:#003DA5}
+.tap-hint{font-size:9px;color:#1A56C4;margin-top:2px;letter-spacing:.04em}
 
 .info-box{background:#EBF1FB;border:1px solid #003DA5;border-radius:3px;padding:10px 12px;font-size:11px;color:#002B7F;margin-bottom:10px;line-height:1.5}
 
@@ -116,6 +115,40 @@ body{min-height:100vh;padding:0}
 .runs-label{font-size:10px;color:#1A56C4;letter-spacing:.08em;text-transform:uppercase;flex-shrink:0}
 .runs-input{width:60px;padding:9px;border:1.5px solid #003DA5;border-radius:3px;font-family:'Courier New',monospace;font-size:16px;font-weight:700;color:#003DA5;background:#F0EDE3;text-align:center;-webkit-appearance:none}
 .runs-input:focus{outline:none}
+
+/* RULES MODAL */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:100;display:flex;align-items:flex-end}
+.modal-overlay.hidden{display:none}
+.modal-sheet{background:#F7F5EE;border-radius:16px 16px 0 0;padding:20px 20px calc(20px + env(safe-area-inset-bottom));max-height:80vh;overflow-y:auto;width:100%}
+.modal-title{font-size:15px;font-weight:700;color:#003DA5;letter-spacing:.06em;margin-bottom:16px;display:flex;justify-content:space-between;align-items:center}
+.modal-close{background:none;border:none;color:#003DA5;font-size:20px;cursor:pointer;font-family:'Courier New',monospace}
+.rule-section{margin-bottom:14px}
+.rule-heading{font-size:10px;font-weight:700;color:#1A56C4;letter-spacing:.1em;text-transform:uppercase;margin-bottom:6px}
+.rule-row{display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px dashed rgba(0,61,165,.15);font-size:12px;color:#002B7F}
+.rule-row:last-child{border-bottom:none}
+.rule-pts{font-weight:700;color:#003DA5}
+
+/* PLAYER HISTORY MODAL */
+.hist-row{display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px dashed rgba(0,61,165,.15);font-size:12px;color:#002B7F}
+.hist-row:last-child{border-bottom:none}
+.hist-pts{font-weight:700}
+.hist-pts.pos{color:#1A7A4A}
+.hist-pts.neg{color:#A32D2D}
+
+/* STATS PAGE */
+.stats-summary{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px}
+.stat-card{background:#F0EDE3;border:1.5px solid #003DA5;border-radius:3px;padding:12px 10px;text-align:center}
+.stat-card.leader{background:#D6E4F7}
+.stat-label{font-size:9px;color:#1A56C4;letter-spacing:.08em;text-transform:uppercase;margin-bottom:4px}
+.stat-value{font-size:22px;font-weight:700;color:#003DA5}
+.stat-sub{font-size:10px;color:#1A56C4;margin-top:2px}
+.player-tab-row{display:flex;gap:8px;margin-bottom:14px}
+.player-tab{flex:1;padding:10px;background:#F0EDE3;border:1.5px solid #003DA5;border-radius:3px;font-family:'Courier New',monospace;font-size:12px;font-weight:700;color:#003DA5;letter-spacing:.04em;cursor:pointer;text-align:center}
+.player-tab.active{background:#003DA5;color:#fff}
+.deep-stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
+.deep-stat{background:#F0EDE3;border:1px solid #003DA5;border-radius:3px;padding:10px 8px;text-align:center}
+.deep-stat-val{font-size:18px;font-weight:700;color:#003DA5}
+.deep-stat-lbl{font-size:9px;color:#1A56C4;letter-spacing:.06em;text-transform:uppercase;margin-top:2px}
 
 /* LB / HISTORY */
 .lb-row{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px dashed #003DA5}
@@ -132,10 +165,67 @@ body{min-height:100vh;padding:0}
 </style>
 </head>
 <body>
-
-
-
 <div id="gb">
+
+  <!-- RULES MODAL -->
+  <div class="modal-overlay hidden" id="rules-modal" onclick="closeRules(event)">
+    <div class="modal-sheet">
+      <div class="modal-title">
+        <span>SCORING RULES</span>
+        <button class="modal-close" onclick="closeRulesBtn()">✕</button>
+      </div>
+      <div class="rule-section">
+        <div class="rule-heading">Outs</div>
+        <div class="rule-row"><span>Strikeout / Out in play</span><span class="rule-pts">1 pt</span></div>
+        <div class="rule-row"><span>Double play</span><span class="rule-pts">2 pts</span></div>
+        <div class="rule-row"><span>Fielder's choice</span><span class="rule-pts">1 pt</span></div>
+      </div>
+      <div class="rule-section">
+        <div class="rule-heading">Hits</div>
+        <div class="rule-row"><span>Single</span><span class="rule-pts">2 pts</span></div>
+        <div class="rule-row"><span>Double</span><span class="rule-pts">5 pts</span></div>
+        <div class="rule-row"><span>Triple</span><span class="rule-pts">8 pts</span></div>
+        <div class="rule-row"><span>Home run</span><span class="rule-pts">6 pts</span></div>
+        <div class="rule-row"><span>Bunt</span><span class="rule-pts">2 pts</span></div>
+      </div>
+      <div class="rule-section">
+        <div class="rule-heading">Other</div>
+        <div class="rule-row"><span>Walk / HBP</span><span class="rule-pts">2 pts</span></div>
+        <div class="rule-row"><span>Stolen base</span><span class="rule-pts">3 pts</span></div>
+        <div class="rule-row"><span>Each run scored</span><span class="rule-pts">+1 pt</span></div>
+      </div>
+      <div class="rule-section">
+        <div class="rule-heading">Bonuses</div>
+        <div class="rule-row"><span>Pick 3 (all 3 correct)</span><span class="rule-pts">+7 pts</span></div>
+        <div class="rule-row"><span>Confidence (correct)</span><span class="rule-pts">+5 pts</span></div>
+        <div class="rule-row"><span>Confidence (wrong)</span><span class="rule-pts">−2 pts</span></div>
+      </div>
+      <div class="rule-section">
+        <div class="rule-heading">Priority</div>
+        <div class="rule-row"><span>Player 1 starts with priority</span><span></span></div>
+        <div class="rule-row"><span>Non-priority player scores → takes priority</span><span></span></div>
+        <div class="rule-row"><span>Priority player picks first; others cannot pick same outcome</span><span></span></div>
+      </div>
+      <div class="rule-section">
+        <div class="rule-heading">Pick 3</div>
+        <div class="rule-row"><span>Predict first 3 outcomes of each half-inning</span><span></span></div>
+        <div class="rule-row"><span>Player 2's 1st pick cannot match Player 1's</span><span></span></div>
+        <div class="rule-row"><span>Miss any pick → Pick 3 busted, pick manually after</span><span></span></div>
+        <div class="rule-row"><span>All 3 correct → +7 bonus</span><span></span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PLAYER HISTORY MODAL -->
+  <div class="modal-overlay hidden" id="hist-modal" onclick="closeHist(event)">
+    <div class="modal-sheet">
+      <div class="modal-title">
+        <span id="hist-modal-title">POINTS BREAKDOWN</span>
+        <button class="modal-close" onclick="closeHistBtn()">✕</button>
+      </div>
+      <div id="hist-modal-body"></div>
+    </div>
+  </div>
 
   <!-- TITLE -->
   <div class="screen active" id="screen-title">
@@ -150,10 +240,10 @@ body{min-height:100vh;padding:0}
             <line x1="152" y1="80" x2="80" y2="152" stroke="#F7F5EE" stroke-width="0.7" opacity="0.1"/>
             <line x1="80" y1="152" x2="8" y2="80" stroke="#F7F5EE" stroke-width="0.7" opacity="0.1"/>
             <line x1="8" y1="80" x2="80" y2="8" stroke="#F7F5EE" stroke-width="0.7" opacity="0.1"/>
-            <rect x="73" y="3"   width="14" height="11" rx="2" fill="#F7F5EE" opacity="0.45"/>
+            <rect x="73" y="3" width="14" height="11" rx="2" fill="#F7F5EE" opacity="0.45"/>
             <rect x="146" y="73" width="11" height="14" rx="2" fill="#F7F5EE" opacity="0.45"/>
             <rect x="73" y="146" width="14" height="11" rx="2" fill="#F7F5EE" opacity="0.45"/>
-            <rect x="3"  y="73"  width="11" height="14" rx="2" fill="#F7F5EE" opacity="0.45"/>
+            <rect x="3" y="73" width="11" height="14" rx="2" fill="#F7F5EE" opacity="0.45"/>
             <text x="80" y="100" font-family="'Courier New',monospace" font-size="76" font-weight="700" fill="#F7F5EE" text-anchor="middle">G</text>
           </svg>
         </div>
@@ -189,6 +279,7 @@ body{min-height:100vh;padding:0}
       <div class="sh-left"><button class="back-btn" onclick="back()">←</button>
         <div><div class="sh-title" id="p3-title"></div><div class="sh-tag" id="p3-tag"></div></div>
       </div>
+      <div class="sh-right"><button class="info-btn" onclick="openRules()">RULES</button></div>
     </div>
     <div class="screen-body">
       <div class="p3-slots" id="p3-slots"></div>
@@ -204,12 +295,13 @@ body{min-height:100vh;padding:0}
       <div class="sh-left"><button class="back-btn" onclick="back()">←</button>
         <div><div class="sh-title">READY</div><div class="sh-tag" id="p3r-tag"></div></div>
       </div>
+      <div class="sh-right"><button class="info-btn" onclick="openRules()">RULES</button></div>
     </div>
     <div class="screen-body">
       <div class="section-label">Pick 3 summary</div>
       <div id="p3-review-rows"></div>
       <div class="section-divider"></div>
-      <button class="btn-primary" onclick="startAtBats()">START INNING →</button>
+      <button class="btn-primary" onclick="startAtBats()">START HALF-INNING →</button>
     </div>
   </div>
 
@@ -219,6 +311,7 @@ body{min-height:100vh;padding:0}
       <div class="sh-left"><button class="back-btn" onclick="back()">←</button>
         <div><div class="sh-title" id="pick-title"></div><div class="sh-tag" id="pick-tag"></div></div>
       </div>
+      <div class="sh-right"><button class="info-btn" onclick="openRules()">RULES</button></div>
     </div>
     <div class="screen-body">
       <div class="player-section"><div class="player-hfade"></div><div id="pick-player-rows"></div></div>
@@ -239,6 +332,7 @@ body{min-height:100vh;padding:0}
       <div class="sh-left"><button class="back-btn" onclick="back()">←</button>
         <div><div class="sh-title">OUTCOME</div><div class="sh-tag" id="result-tag"></div></div>
       </div>
+      <div class="sh-right"><button class="info-btn" onclick="openRules()">RULES</button></div>
     </div>
     <div class="screen-body">
       <div class="player-section"><div class="player-hfade"></div><div id="result-player-rows"></div></div>
@@ -259,16 +353,27 @@ body{min-height:100vh;padding:0}
       <div class="sh-left"><button class="back-btn" onclick="back()">←</button>
         <div><div class="sh-title">SCOREBOARD</div><div class="sh-tag" id="sb-tag"></div></div>
       </div>
+      <div class="sh-right"><button class="info-btn" onclick="openRules()">RULES</button></div>
     </div>
     <div class="screen-body">
-      <div class="section-label">Standings</div>
+      <div class="section-label">Standings <span style="font-size:9px;color:#1A56C4">— tap name for breakdown</span></div>
       <div id="sb-scores"></div>
       <div id="sb-p3-notes"></div>
       <div class="section-divider"></div>
       <button class="btn-primary" onclick="nextAtBat()">NEXT AT-BAT →</button>
-      <button class="btn-secondary" onclick="nextInning()">NEW INNING</button>
+      <button class="btn-secondary" onclick="nextHalfInning()">NEW HALF-INNING</button>
       <button class="btn-secondary" onclick="endGame()">END GAME</button>
     </div>
+  </div>
+
+  <!-- FINAL STATS -->
+  <div class="screen" id="screen-stats">
+    <div class="screen-head">
+      <div class="sh-left"><button class="back-btn" onclick="back()">←</button>
+        <div><div class="sh-title">FINAL</div><div class="sh-tag" id="stats-tag"></div></div>
+      </div>
+    </div>
+    <div class="screen-body" id="stats-body"></div>
   </div>
 
   <!-- LEADERBOARD -->
@@ -296,7 +401,7 @@ body{min-height:100vh;padding:0}
 </div>
 
 <script>
-// OUTCOMES: player-selectable
+// Player-selectable outcomes
 const PLAYER_OUTCOMES=[
   {id:'strikeout',label:'STRIKEOUT',pts:1},
   {id:'out_in_play',label:'OUT IN PLAY',pts:1},
@@ -304,6 +409,7 @@ const PLAYER_OUTCOMES=[
   {id:'fielders_choice',label:"FIELDER'S CHOICE",pts:1},
   {id:'bunt',label:'BUNT',pts:2},
   {id:'walk',label:'WALK',pts:2},
+  {id:'hbp',label:'HBP',pts:2},
   {id:'single',label:'SINGLE',pts:2},
   {id:'double',label:'DOUBLE',pts:5},
   {id:'triple',label:'TRIPLE',pts:8},
@@ -311,7 +417,7 @@ const PLAYER_OUTCOMES=[
   {id:'stolen_base',label:'STOLEN BASE',pts:3},
 ];
 
-// RESULT_OUTCOMES: host-only (adds caught stealing)
+// Host result outcomes (adds caught stealing + other)
 const RESULT_OUTCOMES=[
   {id:'strikeout',label:'STRIKEOUT',pts:1},
   {id:'out_in_play',label:'OUT IN PLAY',pts:1},
@@ -319,35 +425,42 @@ const RESULT_OUTCOMES=[
   {id:'fielders_choice',label:"FIELDER'S CHOICE",pts:1},
   {id:'bunt',label:'BUNT',pts:2},
   {id:'walk',label:'WALK',pts:2},
+  {id:'hbp',label:'HBP',pts:2},
   {id:'single',label:'SINGLE',pts:2},
   {id:'double',label:'DOUBLE',pts:5},
   {id:'triple',label:'TRIPLE',pts:8},
   {id:'home_run',label:'HOME RUN',pts:6},
   {id:'stolen_base',label:'STOLEN BASE',pts:3},
   {id:'caught_stealing',label:'CAUGHT STEALING',pts:0},
+  {id:'other',label:'OTHER',pts:0},
 ];
 
-function oLabel(id){
-  const o=[...PLAYER_OUTCOMES,...RESULT_OUTCOMES].find(x=>x.id===id);
-  return o?o.label:id;
-}
-function oPts(id){
-  const o=RESULT_OUTCOMES.find(x=>x.id===id);
-  return o&&o.pts!=null?o.pts:0;
-}
+function oLabel(id){return([...PLAYER_OUTCOMES,...RESULT_OUTCOMES].find(x=>x.id===id)||{label:id}).label;}
+function oPts(id){const o=RESULT_OUTCOMES.find(x=>x.id===id);return o&&o.pts!=null?o.pts:0;}
 function clone(x){return JSON.parse(JSON.stringify(x));}
+
+// Inning display helper
+function inningLabel(inning,isBottom){
+  const suffix=isBottom?'▼ Bot':'▲ Top';
+  return suffix+' '+inning;
+}
 
 let G={
   screen:'screen-title',players:[],scores:{},
-  inning:1,inningAtBat:1,priorityIdx:0,
+  inning:1,isBottom:false,inningAtBat:1,
+  priorityIdx:0,
   p3picks:{},p3alive:{},p3bonusGiven:{},p3bustedThisPlay:{},
   pendingPickers:[],currentPickerIdx:0,
   manualPicks:{},confidence:{},
-  pendingResult:null,pendingRuns:0,lastDeltas:{}
+  pendingResult:null,pendingRuns:0,lastDeltas:{},
+  // per-player at-bat log for stats
+  atBatLog:[], // [{inning,isBottom,atBat,playerIdx,pick,outcome,pts,conf}]
+  finalStats:null,
 };
 let NAV=[];
 let leaderboard={};
 let gameHistory=[];
+let statsDeepIdx=0;
 
 function lsGet(k){try{const v=localStorage.getItem(k);return v?JSON.parse(v):null;}catch(e){return null;}}
 function lsSet(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch(e){}}
@@ -357,17 +470,80 @@ function loadData(){
   leaderboard=lsGet('gb_lb')||{};
   gameHistory=lsGet('gb_hist')||[];
   const saved=lsGet('gb_game');
-  if(saved&&saved.players&&saved.players.length){G=saved;}
+  if(saved&&saved.players&&saved.players.length)G=saved;
 }
-
 function saveGame(){lsSet('gb_game',G);}
 function clearGame(){lsDel('gb_game');}
-function saveLeaderboard(){lsSet('gb_lb',leaderboard);}
-function saveHistory(){lsSet('gb_hist',gameHistory);}
+function saveMeta(){lsSet('gb_lb',leaderboard);lsSet('gb_hist',gameHistory);}
 
 function push(screen){NAV.push({screen:G.screen,state:clone(G)});G.screen=screen;saveGame();render();}
 function back(){if(!NAV.length)return;const p=NAV.pop();G=p.state;render();}
 function goTo(screen){NAV.push({screen:G.screen,state:clone(G)});G.screen=screen;render();}
+
+function openRules(){document.getElementById('rules-modal').classList.remove('hidden');}
+function closeRules(e){if(e.target===document.getElementById('rules-modal'))document.getElementById('rules-modal').classList.add('hidden');}
+function closeRulesBtn(){document.getElementById('rules-modal').classList.add('hidden');}
+function openHist(pIdx){
+  document.getElementById('hist-modal-title').textContent=G.players[pIdx]+' — BREAKDOWN';
+  const log=G.atBatLog.filter(e=>e.playerIdx===pIdx);
+  if(!log.length){
+    document.getElementById('hist-modal-body').innerHTML='<div class="empty-state" style="padding:24px">No points scored yet.</div>';
+  } else {
+    // separate base outcome pts, confidence, p3 bonus
+    const byOutcome={};
+    let confCorrectPts=0, confWrongPts=0, p3BonusPts=0;
+
+    log.forEach(e=>{
+      // base outcome points (pts from the outcome itself, not bonuses)
+      if(e.pts>0){
+        const basePts=oPts(e.outcome); // just the outcome base
+        const runPts=e.runs||0;
+        const base=basePts+runPts;
+        if(base>0){
+          if(!byOutcome[e.outcome])byOutcome[e.outcome]={count:0,pts:0};
+          byOutcome[e.outcome].count++;
+          byOutcome[e.outcome].pts+=base;
+        }
+        // confidence bonus
+        if(e.conf) confCorrectPts+=5;
+        // p3 bonus — if pts includes 7+ over base, there was a p3 bonus
+        const extra=e.pts-(base+(e.conf?5:0));
+        if(extra>=7) p3BonusPts+=7;
+      } else {
+        // negative pts = confidence wrong
+        if(e.conf) confWrongPts+=2;
+      }
+    });
+
+    const totalPts=log.reduce((s,e)=>s+e.pts,0);
+    let html=`<div class="hist-row" style="font-weight:700;border-bottom:2px solid #003DA5;padding-bottom:8px;margin-bottom:4px"><span>TOTAL</span><span class="hist-pts ${totalPts>=0?'pos':'neg'}">${totalPts>0?'+':''}${totalPts} pts</span></div>`;
+
+    // outcome rows
+    const outcomeEntries=Object.entries(byOutcome).sort((a,b)=>b[1].pts-a[1].pts);
+    if(outcomeEntries.length){
+      html+=`<div style="font-size:9px;letter-spacing:.08em;color:#1A56C4;text-transform:uppercase;padding:8px 0 4px">Outcomes</div>`;
+      html+=outcomeEntries.map(([oc,d])=>`
+        <div class="hist-row">
+          <span>${oLabel(oc)} ×${d.count}</span>
+          <span class="hist-pts pos">+${d.pts} pts</span>
+        </div>`).join('');
+    }
+
+    // bonus rows
+    const hasBonus=confCorrectPts||confWrongPts||p3BonusPts;
+    if(hasBonus){
+      html+=`<div style="font-size:9px;letter-spacing:.08em;color:#1A56C4;text-transform:uppercase;padding:8px 0 4px">Bonuses</div>`;
+      if(p3BonusPts) html+=`<div class="hist-row"><span>Pick 3 bonus</span><span class="hist-pts pos">+${p3BonusPts} pts</span></div>`;
+      if(confCorrectPts) html+=`<div class="hist-row"><span>Confidence correct</span><span class="hist-pts pos">+${confCorrectPts} pts</span></div>`;
+      if(confWrongPts) html+=`<div class="hist-row"><span>Confidence wrong</span><span class="hist-pts neg">−${confWrongPts} pts</span></div>`;
+    }
+
+    document.getElementById('hist-modal-body').innerHTML=html;
+  }
+  document.getElementById('hist-modal').classList.remove('hidden');
+}
+function closeHist(e){if(e.target===document.getElementById('hist-modal'))document.getElementById('hist-modal').classList.add('hidden');}
+function closeHistBtn(){document.getElementById('hist-modal').classList.add('hidden');}
 
 function render(){
   document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
@@ -381,11 +557,13 @@ function render(){
     'screen-pick':renderPick,
     'screen-result':renderResult,
     'screen-scoreboard':renderScoreboard,
+    'screen-stats':renderStats,
     'screen-leaderboard':renderLeaderboard,
     'screen-history':renderHistoryScreen,
   }[G.screen]||function(){})();
 }
 
+/* SETUP */
 function renderSetup(){
   document.getElementById('player-inputs').innerHTML=G.players.map((p,i)=>`
     <div class="input-row">
@@ -395,30 +573,31 @@ function renderSetup(){
   document.getElementById('add-player-wrap').innerHTML=G.players.length<3?`<button class="btn-secondary" onclick="addPlayer()">+ ADD PLAYER</button>`:'';
   checkStart();
 }
-function checkStart(){const btn=document.getElementById('start-btn');if(btn)btn.disabled=G.players.filter(p=>p.trim()).length<2;}
+function checkStart(){const b=document.getElementById('start-btn');if(b)b.disabled=G.players.filter(p=>p.trim()).length<2;}
 function addPlayer(){G.players.push('');render();}
 function removePlayer(i){G.players.splice(i,1);render();}
 function startGame(){
   G.players=G.players.map((p,i)=>p.trim()||'PLAYER '+(i+1));
   G.scores={};G.players.forEach((_,i)=>G.scores[i]=0);
-  G.inning=1;G.inningAtBat=1;G.priorityIdx=0;
+  G.inning=1;G.isBottom=false;G.inningAtBat=1;G.priorityIdx=0;
   G.p3picks={};G.p3alive={};G.p3bonusGiven={};G.p3bustedThisPlay={};
   G.players.forEach((_,i)=>{G.p3picks[i]=[];G.p3alive[i]=true;});
   G.currentPickerIdx=0;G.manualPicks={};G.confidence={};
   G.pendingResult=null;G.pendingRuns=0;G.lastDeltas={};
+  G.atBatLog=[];G.finalStats=null;
   push('screen-pick3');
 }
 
+/* PICK 3 */
 function p3Order(idx){
   const order=[G.priorityIdx,...G.players.map((_,i)=>i).filter(i=>i!==G.priorityIdx)];
   return order[idx];
 }
-
 function renderPick3(){
   const pIdx=p3Order(G.currentPickerIdx);
   const picks=G.p3picks[pIdx]||[];
   document.getElementById('p3-title').textContent=G.players[pIdx];
-  document.getElementById('p3-tag').textContent='Inning '+G.inning+' · Pick 3';
+  document.getElementById('p3-tag').textContent=inningLabel(G.inning,G.isBottom)+' · Pick 3';
   document.getElementById('p3-slots').innerHTML=['AT-BAT 1','AT-BAT 2','AT-BAT 3'].map((s,i)=>`
     <div class="p3-slot${i<picks.length?' filled':''}">
       <div class="slot-num">${s}</div>
@@ -462,11 +641,12 @@ function skipP3(){
   else push('screen-pick3');
 }
 
+/* P3 REVIEW */
 function renderP3Review(){
-  document.getElementById('p3r-tag').textContent='Inning '+G.inning;
+  document.getElementById('p3r-tag').textContent=inningLabel(G.inning,G.isBottom);
   document.getElementById('p3-review-rows').innerHTML=G.players.map((name,i)=>{
     const picks=G.p3picks[i]||[];const has=picks.length===3;
-    return `<div class="score-row${i===G.priorityIdx?' leader':''}">
+    return `<div class="score-row no-tap${i===G.priorityIdx?' leader':''}">
       <div>
         <div class="score-name">${name}${i===G.priorityIdx?' <span class="priority-badge">PRIORITY</span>':''}</div>
         <div style="font-size:10px;color:#1A56C4;margin-top:3px">${has?picks.map(oLabel).join(' · '):'NO PICK 3'}</div>
@@ -475,20 +655,22 @@ function renderP3Review(){
   }).join('');
 }
 
+/* MANUAL PICK */
 function renderPick(){
   const queue=G.pendingPickers;
   const pIdx=queue[G.currentPickerIdx];
   const isLast=G.currentPickerIdx===queue.length-1;
   document.getElementById('pick-title').textContent=G.players[pIdx];
-  document.getElementById('pick-tag').textContent='Inning '+G.inning+' · At-bat '+G.inningAtBat+(queue.length>1?' · '+(G.currentPickerIdx+1)+'/'+queue.length:'');
+  document.getElementById('pick-tag').textContent=inningLabel(G.inning,G.isBottom)+' · At-bat '+G.inningAtBat+(queue.length>1?' · '+(G.currentPickerIdx+1)+'/'+queue.length:'');
   document.getElementById('pick-player-rows').innerHTML=G.players.map((n,i)=>{
     const sl=G.inningAtBat-1;const pk=G.p3picks[i]||[];
     const live=pk.length===3&&G.p3alive[i]&&sl<3;
     const myPick=live?pk[sl]:G.manualPicks[i];
+    const pickLabel=i===pIdx?'choosing...':(myPick?(oLabel(myPick)+(G.confidence[i]?' WITH CONFIDENCE':'')):'—');
     return `<div class="pr${i===G.players.length-1?' last':''}">
       <div>
         <div class="pname">${n}${i===G.priorityIdx?' <span class="priority-badge">PRIORITY</span>':''}${live?' <span class="p3-badge">P3</span>':''}</div>
-        <div class="ppick">${i===pIdx?'choosing...':(myPick?oLabel(myPick):'—')}</div>
+        <div class="ppick">${pickLabel}</div>
       </div>
       <div class="pscore">${G.scores[i]||0}</div>
     </div>`;
@@ -518,26 +700,27 @@ function submitPick(){
   else{G.pendingResult=null;G.pendingRuns=0;push('screen-result');}
 }
 
+/* RESULT */
 function renderResult(){
-  document.getElementById('result-tag').textContent='Inning '+G.inning+' · At-bat '+G.inningAtBat;
+  document.getElementById('result-tag').textContent=inningLabel(G.inning,G.isBottom)+' · At-bat '+G.inningAtBat;
   document.getElementById('result-player-rows').innerHTML=G.players.map((n,i)=>{
     const sl=G.inningAtBat-1;const pk=G.p3picks[i]||[];
     const live=pk.length===3&&G.p3alive[i]&&sl<3;
     const myPick=live?pk[sl]:G.manualPicks[i];
+    const pickDisp=myPick?(oLabel(myPick)+(G.confidence[i]?' WITH CONFIDENCE':'')):'—';
     return `<div class="pr${i===G.players.length-1?' last':''}">
       <div>
         <div class="pname">${n}${i===G.priorityIdx?' <span class="priority-badge">PRIORITY</span>':''}${live?' <span class="p3-badge">P3</span>':''}</div>
-        <div class="ppick">${myPick?oLabel(myPick):'—'}</div>
+        <div class="ppick">${pickDisp}</div>
       </div>
       <div class="pscore">${G.scores[i]||0}</div>
     </div>`;
   }).join('');
   const sel=G.pendingResult;
-  // host sees all outcomes including caught stealing
   document.getElementById('result-grid').innerHTML=RESULT_OUTCOMES.map(o=>`
     <div class="oc${sel===o.id?' sel':''}" onclick="selectResult('${o.id}')">
       <div class="oc-lbl">${o.label}</div>
-      <div class="oc-pts">${o.pts>0?o.pts+' pt'+(o.pts!==1?'s':''):'out'}</div>
+      <div class="oc-pts">${o.pts>0?o.pts+' pt'+(o.pts!==1?'s':''):'—'}</div>
     </div>`).join('');
   document.getElementById('runs-input').value=G.pendingRuns||0;
   document.getElementById('result-btn').disabled=!sel;
@@ -556,19 +739,20 @@ function submitResult(){
     const live=pk.length===3&&G.p3alive[i]&&sl<3;
     const pick=live?pk[sl]:G.manualPicks[i];
     if(!pick)return;
-
-    // stolen_base pick matches stolen_base result; caught_stealing is host-only so no player pick matches it
     const correct=pick===outcome;
-
     if(correct){
       let pts=oPts(outcome)+runs;
       if(G.confidence[i])pts+=5;
       deltas[i]+=pts;
       if(live&&sl===2&&!G.p3bonusGiven[i]){deltas[i]+=7;G.p3bonusGiven[i]=true;}
       if(i!==G.priorityIdx)newPriority=i;
+      // log
+      G.atBatLog.push({inning:G.inning,isBottom:G.isBottom,atBat:G.inningAtBat,playerIdx:i,pick,outcome,pts:deltas[i],conf:!!G.confidence[i],runs});
     } else {
-      if(G.confidence[i])deltas[i]-=2;
+      let pts=0;
+      if(G.confidence[i]){pts=-2;deltas[i]-=2;}
       if(live){G.p3alive[i]=false;G.p3bustedThisPlay[i]=true;}
+      if(pts!==0)G.atBatLog.push({inning:G.inning,isBottom:G.isBottom,atBat:G.inningAtBat,playerIdx:i,pick,outcome,pts,conf:!!G.confidence[i]});
     }
   });
 
@@ -579,8 +763,9 @@ function submitResult(){
   push('screen-scoreboard');
 }
 
+/* SCOREBOARD */
 function renderScoreboard(){
-  document.getElementById('sb-tag').textContent='Inning '+G.inning+' · After at-bat '+(G.inningAtBat-1);
+  document.getElementById('sb-tag').textContent=inningLabel(G.inning,G.isBottom)+' · After at-bat '+(G.inningAtBat-1);
   const d=G.lastDeltas||{};
   const sorted=[...G.players.map((n,i)=>({n,i,s:G.scores[i]||0}))].sort((a,b)=>b.s-a.s);
   document.getElementById('sb-scores').innerHTML=sorted.map((p,rank)=>{
@@ -588,7 +773,7 @@ function renderScoreboard(){
     const deltaHtml=pts!==0?`<div class="${pts>0?'score-delta-pos':'score-delta-neg'}">${pts>0?'+':''}${pts}</div>`:'';
     const busted=G.p3bustedThisPlay&&G.p3bustedThisPlay[p.i];
     const bonusHtml=G.p3bonusGiven[p.i]&&pts>0?'<span class="p3-badge" style="margin-left:4px">+7 P3</span>':'';
-    return `<div class="score-row${rank===0?' leader':''}">
+    return `<div class="score-row${rank===0?' leader':''}" onclick="openHist(${p.i})">
       <div class="score-left">
         <div class="score-name-line">
           <span class="score-name">${rank===0?'⚾ ':''}${p.n}</span>
@@ -603,10 +788,8 @@ function renderScoreboard(){
       </div>
     </div>`;
   }).join('');
-
   const notes=G.players.map((name,i)=>{
-    const pk=G.p3picks[i]||[];if(pk.length<3)return '';
-    if(!G.p3alive[i])return '';
+    const pk=G.p3picks[i]||[];if(pk.length<3||!G.p3alive[i])return '';
     const next=G.inningAtBat-1;
     if(next<3&&pk[next])return `<div class="info-box">${name}: Pick 3 alive — next: ${oLabel(pk[next])}</div>`;
     return '';
@@ -615,6 +798,7 @@ function renderScoreboard(){
 }
 
 function nextAtBat(){buildManualQueue(true);}
+
 function buildManualQueue(nav){
   const queue=[];
   G.players.forEach((_,i)=>{
@@ -629,53 +813,254 @@ function buildManualQueue(nav){
     else push('screen-pick');
   }
 }
+
 function startAtBats(){G.inningAtBat=1;buildManualQueue(true);}
-function nextInning(){
-  G.inning++;G.inningAtBat=1;
+
+function nextHalfInning(){
+  // advance inning/half
+  if(!G.isBottom){
+    G.isBottom=true;
+  } else {
+    G.inning++;
+    G.isBottom=false;
+  }
+  G.inningAtBat=1;
   G.p3picks={};G.p3alive={};G.p3bonusGiven={};G.p3bustedThisPlay={};
   G.players.forEach((_,i)=>{G.p3picks[i]=[];G.p3alive[i]=true;});
   G.currentPickerIdx=0;G.manualPicks={};G.confidence={};
   G.pendingResult=null;G.pendingRuns=0;
   push('screen-pick3');
 }
+
+/* END GAME → STATS */
 function endGame(){
+  // compute final stats
+  const stats=G.players.map((name,i)=>{
+    const log=G.atBatLog.filter(e=>e.playerIdx===i);
+    const totalPicks=log.length;
+    const correct=log.filter(e=>e.pts>0).length;
+    const pct=totalPicks>0?Math.round(correct/totalPicks*100):0;
+    // most common pick
+    const pickCount={};
+    log.forEach(e=>{pickCount[e.pick]=(pickCount[e.pick]||0)+1;});
+    const mostCommonPick=Object.entries(pickCount).sort((a,b)=>b[1]-a[1])[0];
+    // most common correct
+    const correctLog=log.filter(e=>e.pts>0);
+    const correctCount={};
+    correctLog.forEach(e=>{correctCount[e.outcome]=(correctCount[e.outcome]||0)+1;});
+    const mostCommonCorrect=Object.entries(correctCount).sort((a,b)=>b[1]-a[1])[0];
+    // best at-bat (most pts)
+    const best=log.reduce((b,e)=>e.pts>b.pts?e:b,{pts:-999});
+    // p3 bonuses
+    const p3bonuses=log.filter(e=>e.pts>=7).length;
+    return {
+      name,score:G.scores[i]||0,totalPicks,correct,pct,
+      mostCommonPick:mostCommonPick?mostCommonPick[0]:null,
+      mostCommonCorrect:mostCommonCorrect?mostCommonCorrect[0]:null,
+      best:best.pts>0?best:null,
+      confCorrect:log.filter(e=>e.conf&&e.pts>0).length,
+      confWrong:log.filter(e=>e.conf&&e.pts<0).length,
+    };
+  });
+  G.finalStats=stats;
+
+  // save to lb/history
   const sorted=[...G.players.map((n,i)=>({n,s:G.scores[i]||0}))].sort((a,b)=>b.s-a.s);
   const winner=sorted[0];
   const date=new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
   G.players.forEach((name,i)=>{
-    if(!leaderboard[name])leaderboard[name]={games:0,wins:0,totalPts:0};
-    leaderboard[name].games++;leaderboard[name].totalPts+=G.scores[i]||0;
+    if(!leaderboard[name])leaderboard[name]={games:0,wins:0,totalPts:0,totalPicks:0,totalCorrect:0,totalP3Bonuses:0,totalConfCorrect:0,totalConfWrong:0};
+    leaderboard[name].games++;
+    leaderboard[name].totalPts+=G.scores[i]||0;
     if(name===winner.n)leaderboard[name].wins++;
+    // aggregate from atBatLog
+    const plog=G.atBatLog.filter(e=>e.playerIdx===i);
+    leaderboard[name].totalPicks+=(plog.length||0);
+    leaderboard[name].totalCorrect+=plog.filter(e=>e.pts>0).length;
+    leaderboard[name].totalP3Bonuses+=plog.filter(e=>{
+      const base=oPts(e.outcome)+(e.runs||0);
+      const extra=e.pts-(base+(e.conf?5:0));
+      return extra>=7;
+    }).length;
+    leaderboard[name].totalConfCorrect+=plog.filter(e=>e.conf&&e.pts>0).length;
+    leaderboard[name].totalConfWrong+=plog.filter(e=>e.conf&&e.pts<0).length;
   });
-  gameHistory.unshift({
-    date,
-    players:G.players.map((n,i)=>({name:n,score:G.scores[i]||0})),
-    winner:winner.n,
-    inning:G.inning
-  });
+  gameHistory.unshift({date,players:G.players.map((n,i)=>({name:n,score:G.scores[i]||0})),winner:winner.n,inning:G.inning,stats:G.finalStats||null});
   if(gameHistory.length>20)gameHistory=gameHistory.slice(0,20);
-  saveLeaderboard();saveHistory();clearGame();
-  NAV=[];G.screen='screen-title';G.players=[];
+  saveMeta();
+  statsDeepIdx=0;
+  push('screen-stats');
+}
+
+/* STATS PAGE */
+function renderStats(){
+  const stats=G.finalStats;
+  if(!stats)return;
+  const sorted=[...stats].sort((a,b)=>b.score-a.score);
+  const winner=sorted[0];
+  document.getElementById('stats-tag').textContent='Game over · Inning '+G.inning;
+
+  let html=``;
+  // winner banner
+  html+=`<div style="text-align:center;padding:16px 0 20px;border-bottom:2.5px solid #003DA5;margin-bottom:16px">
+    <div style="font-size:10px;letter-spacing:.12em;color:#1A56C4;margin-bottom:6px">WINNER</div>
+    <div style="font-size:32px;font-weight:700;color:#003DA5">⚾ ${winner.name}</div>
+    <div style="font-size:13px;color:#1A56C4;margin-top:4px">${winner.score} pts · ${winner.pct}% accuracy</div>
+  </div>`;
+
+  // side by side summary
+  html+=`<div class="section-label">Summary</div>
+  <div class="stats-summary">`;
+  stats.forEach((p,i)=>{
+    html+=`<div class="stat-card${i===stats.indexOf(winner)?' leader':''}">
+      <div class="stat-label">${p.name}</div>
+      <div class="stat-value">${p.score}</div>
+      <div class="stat-sub">${p.pct}% correct</div>
+    </div>`;
+  });
+  html+=`</div>`;
+
+  // player tabs for deep dive
+  html+=`<div class="section-label">Player breakdown</div>
+  <div class="player-tab-row">
+    ${stats.map((p,i)=>`<button class="player-tab${i===statsDeepIdx?' active':''}" onclick="setStatsTab(${i})">${p.name}</button>`).join('')}
+  </div>
+  <div id="stats-deep"></div>`;
+
+  html+=`<div class="section-divider"></div>
+  <button class="btn-primary" onclick="goHome()">BACK TO HOME →</button>`;
+
+  document.getElementById('stats-body').innerHTML=html;
+  renderStatsDeep();
+}
+
+function setStatsTab(i){statsDeepIdx=i;renderStats();}
+
+function renderStatsDeep(){
+  const p=G.finalStats[statsDeepIdx];
+  let html=`<div class="deep-stat-grid">
+    <div class="deep-stat"><div class="deep-stat-val">${p.totalPicks}</div><div class="deep-stat-lbl">Total picks</div></div>
+    <div class="deep-stat"><div class="deep-stat-val">${p.correct}</div><div class="deep-stat-lbl">Correct</div></div>
+    <div class="deep-stat"><div class="deep-stat-val">${p.pct}%</div><div class="deep-stat-lbl">Accuracy</div></div>
+    <div class="deep-stat"><div class="deep-stat-val">${p.score}</div><div class="deep-stat-lbl">Total pts</div></div>
+    <div class="deep-stat"><div class="deep-stat-val">${p.confCorrect}</div><div class="deep-stat-lbl">Conf. correct</div></div>
+    <div class="deep-stat"><div class="deep-stat-val">${p.confWrong}</div><div class="deep-stat-lbl">Conf. wrong</div></div>
+  </div>`;
+
+  if(p.mostCommonPick){
+    html+=`<div class="info-box">Most picked: <strong>${oLabel(p.mostCommonPick)}</strong></div>`;
+  }
+  if(p.mostCommonCorrect){
+    html+=`<div class="info-box">Best outcome: <strong>${oLabel(p.mostCommonCorrect)}</strong></div>`;
+  }
+  if(p.best){
+    html+=`<div class="info-box">Best at-bat: <strong>${oLabel(p.best.outcome)}</strong> — +${p.best.pts} pts in ${p.best.isBottom?'Bot':'Top'} ${p.best.inning}</div>`;
+  }
+
+  document.getElementById('stats-deep').innerHTML=html;
+}
+
+function goHome(){
+  clearGame();
+  NAV=[];G.screen='screen-title';G.players=[];G.atBatLog=[];G.finalStats=null;
   render();
 }
 
+/* LEADERBOARD */
+let lbExpanded={};
 function renderLeaderboard(){
   const entries=Object.entries(leaderboard).sort((a,b)=>b[1].wins-a[1].wins);
-  document.getElementById('lb-rows').innerHTML=entries.length
-    ?entries.map(([name,s],i)=>`<div class="lb-row">
-        <div><div class="lb-name">${i===0?'⚾ ':''}${name}</div><div class="lb-stat">${s.games} game${s.games!==1?'s':''} · ${s.totalPts} total pts</div></div>
-        <div class="lb-pts">${s.wins}W</div>
-      </div>`).join('')
-    :`<div class="empty-state">NO GAMES PLAYED YET<br>Finish a game to<br>see standings.</div>`;
+  if(!entries.length){
+    document.getElementById('lb-rows').innerHTML=`<div class="empty-state">NO GAMES PLAYED YET<br>Finish a game to<br>see standings.</div>`;
+    return;
+  }
+  document.getElementById('lb-rows').innerHTML=entries.map(([name,s],i)=>{
+    const winPct=s.games>0?Math.round(s.wins/s.games*100):0;
+    const avgScore=s.games>0?Math.round(s.totalPts/s.games):0;
+    const pickPct=s.totalPicks>0?Math.round(s.totalCorrect/s.totalPicks*100):0;
+    const expanded=lbExpanded[name];
+    return `<div style="border-bottom:1px dashed #003DA5">
+      <div class="lb-row" style="border-bottom:none;cursor:pointer" onclick="toggleLbPlayer('${name}')">
+        <div>
+          <div class="lb-name">${i===0?'⚾ ':''}${name}</div>
+          <div class="lb-stat">${s.games} game${s.games!==1?'s':''} · ${s.wins} win${s.wins!==1?'s':''}</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px">
+          <div class="lb-pts">${s.wins}W</div>
+          <div style="font-size:14px;color:#1A56C4">${expanded?'▲':'▼'}</div>
+        </div>
+      </div>
+      ${expanded?`<div style="padding:0 0 14px;display:grid;grid-template-columns:1fr 1fr;gap:7px">
+        <div class="deep-stat"><div class="deep-stat-val">${winPct}%</div><div class="deep-stat-lbl">Win %</div></div>
+        <div class="deep-stat"><div class="deep-stat-val">${avgScore}</div><div class="deep-stat-lbl">Avg score</div></div>
+        <div class="deep-stat"><div class="deep-stat-val">${pickPct}%</div><div class="deep-stat-lbl">Pick %</div></div>
+        <div class="deep-stat"><div class="deep-stat-val">${s.totalP3Bonuses||0}</div><div class="deep-stat-lbl">P3 bonuses</div></div>
+        <div class="deep-stat"><div class="deep-stat-val">${s.totalConfCorrect||0}</div><div class="deep-stat-lbl">Conf. correct</div></div>
+        <div class="deep-stat"><div class="deep-stat-val">${s.totalConfWrong||0}</div><div class="deep-stat-lbl">Conf. wrong</div></div>
+        <div class="deep-stat" style="grid-column:1/-1"><div class="deep-stat-val">${s.totalPts}</div><div class="deep-stat-lbl">All-time pts</div></div>
+      </div>`:''}
+    </div>`;
+  }).join('');
 }
+function toggleLbPlayer(name){
+  lbExpanded[name]=!lbExpanded[name];
+  renderLeaderboard();
+}
+
+/* HISTORY */
+let histExpanded={};
 function renderHistoryScreen(){
-  document.getElementById('history-rows').innerHTML=gameHistory.length
-    ?gameHistory.map(g=>`<div class="history-row">
+  if(!gameHistory.length){
+    document.getElementById('history-rows').innerHTML=`<div class="empty-state">NO GAMES YET<br>Play a game to<br>see history.</div>`;
+    return;
+  }
+  document.getElementById('history-rows').innerHTML=gameHistory.map((g,idx)=>{
+    const expanded=histExpanded[idx];
+    return `<div style="border-bottom:1px dashed #003DA5">
+      <div class="history-row" style="border-bottom:none;cursor:pointer" onclick="toggleHistEntry(${idx})">
         <div class="history-date">${g.date}</div>
-        <div class="history-result">⚾ ${g.winner} wins</div>
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div class="history-result">⚾ ${g.winner} wins</div>
+          <div style="font-size:14px;color:#1A56C4">${expanded?'▲':'▼'}</div>
+        </div>
         <div class="history-detail">${g.players.map(p=>p.name+' '+p.score+'pts').join(' · ')} · ${g.inning} inning${g.inning!==1?'s':''}</div>
-      </div>`).join('')
-    :`<div class="empty-state">NO GAMES YET<br>Play a game to<br>see history.</div>`;
+      </div>
+      ${expanded?renderHistExpanded(g,idx):''}
+    </div>`;
+  }).join('');
+}
+function toggleHistEntry(idx){
+  histExpanded[idx]=!histExpanded[idx];
+  renderHistoryScreen();
+}
+function renderHistExpanded(g,idx){
+  // summary cards for each player
+  let html=`<div style="padding-bottom:14px">`;
+  if(g.stats){
+    html+=`<div style="display:grid;grid-template-columns:${g.stats.length>1?'1fr 1fr':'1fr'};gap:7px;margin-bottom:10px">`;
+    g.stats.forEach(p=>{
+      html+=`<div class="stat-card">
+        <div class="stat-label">${p.name}</div>
+        <div class="stat-value">${p.score}</div>
+        <div class="stat-sub">${p.pct}% correct</div>
+      </div>`;
+    });
+    html+=`</div>`;
+    html+=`<button class="btn-secondary" style="margin-top:0" onclick="viewHistStats(${idx})">FULL STATS →</button>`;
+  } else {
+    html+=`<div class="info-box">Full stats not available for this game.</div>`;
+  }
+  html+=`</div>`;
+  return html;
+}
+function viewHistStats(idx){
+  const g=gameHistory[idx];
+  if(!g.stats)return;
+  // push a read-only stats view
+  G.finalStats=g.stats;
+  G.inning=g.inning;
+  statsDeepIdx=0;
+  goTo('screen-stats');
 }
 
 loadData();
