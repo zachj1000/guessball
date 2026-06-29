@@ -521,8 +521,8 @@ select.player-input{cursor:pointer}
       <button class="btn-secondary" style="margin-top:0" onclick="goTo('screen-saved-players')">MANAGE SAVED PLAYERS →</button>
     </div>
     <div class="settings-section">
-      <div class="section-label">Historical wins (pre-app)</div>
-      <button class="btn-secondary" style="margin-top:0" onclick="goTo('screen-hist-wins')">EDIT HISTORICAL WINS →</button>
+      <div class="section-label">Historical games (pre-app)</div>
+      <button class="btn-secondary" style="margin-top:0" onclick="goTo('screen-add-hist-game')">ADD HISTORICAL GAME →</button>
     </div>
     <div class="settings-section">
       <div class="section-label">Tutorial</div>
@@ -584,6 +584,38 @@ select.player-input{cursor:pointer}
       <input class="player-input" id="new-player-inp2" placeholder="NEW PLAYER NAME" style="flex:1">
       <button class="btn-secondary" style="width:auto;margin:0;padding:11px 14px;flex-shrink:0" onclick="addRosterPlayer2()">ADD</button>
     </div>
+  </div>
+</div>
+
+<!-- ADD HISTORICAL GAME -->
+<div class="screen" id="screen-add-hist-game">
+  <div class="screen-head">
+    <div class="sh-left"><button class="back-btn" onclick="back()">←</button><div class="sh-title">ADD HISTORICAL GAME</div></div>
+  </div>
+  <div class="screen-body">
+    <div style="font-size:11px;color:var(--subtext);margin-bottom:16px;line-height:1.6">Enter a past game. Winners are inferred from scores and count toward leaderboard standings.</div>
+
+    <div class="section-label">Date</div>
+    <input class="player-input" type="date" id="hg-date" style="margin-bottom:12px">
+
+    <div class="section-label">Players & scores</div>
+    <div id="hg-player-rows"></div>
+    <div id="hg-add-player-wrap"></div>
+
+    <div class="section-divider"></div>
+    <div class="section-label">Teams</div>
+    <div class="input-row"><select class="player-input" id="hg-away-sel" onchange="onHGTeamSelect('away',this.value)"><option value="">Away team...</option></select></div>
+    <div id="hg-away-custom" style="display:none;margin-bottom:10px"><input class="player-input" id="hg-away-custom-inp" placeholder="AWAY TEAM NAME"></div>
+    <div class="input-row"><select class="player-input" id="hg-home-sel" onchange="onHGTeamSelect('home',this.value)"><option value="">Home team...</option></select></div>
+    <div id="hg-home-custom" style="display:none;margin-bottom:10px"><input class="player-input" id="hg-home-custom-inp" placeholder="HOME TEAM NAME"></div>
+    <div id="hg-stadium-display" style="font-size:11px;color:var(--subtext);padding:4px 0;margin-bottom:10px"></div>
+
+    <div class="section-divider"></div>
+    <div class="section-label">Game note (optional)</div>
+    <input class="player-input" id="hg-notes" placeholder="e.g. Kershaw pitched 7 innings..." style="margin-bottom:16px">
+
+    <button class="btn-primary" id="hg-save-btn" onclick="saveHistoricalGame()">SAVE GAME →</button>
+    <div id="hg-error" style="font-size:11px;color:var(--negative);margin-top:8px;text-align:center"></div>
   </div>
 </div>
 </div><!-- #gb -->
@@ -839,6 +871,7 @@ function render(){
   if(G.screen==='screen-settings')renderSettings();
   if(G.screen==='screen-saved-players')renderSavedPlayersPage();
   if(G.screen==='screen-hist-wins')renderHistWinsPage();
+  if(G.screen==='screen-add-hist-game')renderAddHistGame();
   if(G.screen==='screen-achievements')renderAchievementsList();
   if(G.screen==='screen-tutorial')renderTutorial();
 }
@@ -1328,16 +1361,10 @@ function renderStatsMenu(){
 
 function renderLeaderboard(){
   // merge leaderboard players with anyone who has historical wins
-  const allPlayers=new Set([...Object.keys(leaderboard),...Object.keys(historicalWins).filter(n=>historicalWins[n]>0)]);
-  const entries=[...allPlayers].map(name=>{
-    const s=leaderboard[name]||{games:0,wins:0,totalPts:0,totalPicks:0,totalCorrect:0,totalP3:0,totalConfCorrect:0,totalConfWrong:0,achievements:[],longestStreak:0};
-    return[name,s];
-  }).sort((a,b)=>{
-    const aw=(b[1].wins||0)+(historicalWins[b[0]]||0),bw=(a[1].wins||0)+(historicalWins[a[0]]||0);return aw-bw;
-  });
+  const entries=Object.entries(leaderboard).sort((a,b)=>(b[1].wins||0)-(a[1].wins||0));
   if(!entries.length){document.getElementById('lb-rows').innerHTML=`<div class="empty-state">NO GAMES YET</div>`;return;}
   document.getElementById('lb-rows').innerHTML=entries.map(([name,s],i)=>{
-    const hw=historicalWins[name]||0,tw=(s.wins||0)+hw;
+    const tw=s.wins||0,hw=0;
     const winPct=s.games>0?Math.round(tw/s.games*100):0;
     const avgScore=s.games>0?Math.round(s.totalPts/s.games):0;
     const pickPct=s.totalPicks>0?Math.round(s.totalCorrect/s.totalPicks*100):0;
@@ -1514,6 +1541,120 @@ function renderHistWinsPage(){
         <button onclick="adjHW('${name}',1)" style="width:36px;height:36px;border:1.5px solid var(--border);border-radius:3px;background:var(--card);color:var(--text);font-size:20px;cursor:pointer;font-family:'Courier New',monospace">+</button>
       </div></div>`;
   }).join('');
+}
+
+function renderAddHistGame(){
+  // populate team dropdowns
+  const opts=`<option value="">Select team...</option>`+MLB_NAMES.map(t=>`<option value="${t}">${t}</option>`).join('')+`<option value="__other__">Other (type name...)</option>`;
+  ['hg-away-sel','hg-home-sel'].forEach(id=>{const el=document.getElementById(id);if(el)el.innerHTML=opts;});
+  // set today as default date
+  const di=document.getElementById('hg-date');
+  if(di&&!di.value)di.value=new Date().toISOString().split('T')[0];
+  // player rows
+  if(!window.hgPlayers)window.hgPlayers=[{name:'',score:''},{name:'',score:''}];
+  renderHGPlayerRows();
+}
+function renderHGPlayerRows(){
+  const rows=document.getElementById('hg-player-rows');
+  if(!rows)return;
+  rows.innerHTML=window.hgPlayers.map((p,i)=>`
+    <div class="input-row" style="margin-bottom:8px">
+      <select class="player-input" style="flex:2" onchange="onHGPlayerSelect(${i},this.value)">
+        <option value="">Player ${i+1}</option>
+        ${roster.map(r=>`<option value="${r}" ${p.name===r?'selected':''}>${r}</option>`).join('')}
+        <option value="__custom__">Type name...</option>
+      </select>
+      <input class="player-input" type="number" placeholder="Score" min="0" value="${p.score}" oninput="window.hgPlayers[${i}].score=this.value" style="flex:1;min-width:0">
+      ${window.hgPlayers.length>2?`<button class="btn-secondary" style="width:auto;padding:10px 10px;margin:0;flex-shrink:0" onclick="removeHGPlayer(${i})">✕</button>`:''}
+    </div>
+    <div id="hg-ci-${i}" style="display:${p.name&&!roster.includes(p.name)?'block':'none'};margin-bottom:8px">
+      <input class="player-input" placeholder="TYPE NAME" value="${p.name&&!roster.includes(p.name)?p.name:''}" oninput="window.hgPlayers[${i}].name=this.value">
+    </div>`).join('');
+  const wrap=document.getElementById('hg-add-player-wrap');
+  if(wrap)wrap.innerHTML=window.hgPlayers.length<3?`<button class="btn-secondary" onclick="addHGPlayer()">+ ADD PLAYER</button>`:'';
+}
+function onHGPlayerSelect(i,v){
+  if(v==='__custom__'){window.hgPlayers[i].name='';document.getElementById('hg-ci-'+i).style.display='block';}
+  else{window.hgPlayers[i].name=v;const el=document.getElementById('hg-ci-'+i);if(el)el.style.display='none';}
+}
+function addHGPlayer(){window.hgPlayers.push({name:'',score:''});renderHGPlayerRows();}
+function removeHGPlayer(i){window.hgPlayers.splice(i,1);renderHGPlayerRows();}
+function onHGTeamSelect(side,v){
+  const customId='hg-'+side+'-custom';
+  if(v==='__other__'){document.getElementById(customId).style.display='block';}
+  else{document.getElementById(customId).style.display='none';}
+  if(side==='home'){
+    const sd=document.getElementById('hg-stadium-display');
+    if(sd)sd.textContent=v&&MLB_TEAMS[v]?'📍 '+MLB_TEAMS[v]:'';
+  }
+}
+function saveHistoricalGame(){
+  const err=document.getElementById('hg-error');
+  // validate
+  const players=window.hgPlayers.filter(p=>p.name.trim()&&p.score!=='');
+  if(players.length<2){if(err)err.textContent='Enter at least 2 players with scores.';return;}
+  const dateVal=document.getElementById('hg-date').value;
+  if(!dateVal){if(err)err.textContent='Please enter a date.';return;}
+  if(err)err.textContent='';
+
+  // format date
+  const d=new Date(dateVal+'T12:00:00');
+  const date=d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+
+  // get teams
+  const awaySel=document.getElementById('hg-away-sel');
+  const homeSel=document.getElementById('hg-home-sel');
+  let awayTeam=awaySel&&awaySel.value!=='__other__'?awaySel.value:(document.getElementById('hg-away-custom-inp')||{}).value||'';
+  let homeTeam=homeSel&&homeSel.value!=='__other__'?homeSel.value:(document.getElementById('hg-home-custom-inp')||{}).value||'';
+  let stadium=homeTeam&&MLB_TEAMS[homeTeam]?MLB_TEAMS[homeTeam]:'';
+  const notes=(document.getElementById('hg-notes')||{}).value||'';
+
+  // determine winner by highest score
+  const sorted=[...players].sort((a,b)=>parseInt(b.score)-parseInt(a.score));
+  const winner=sorted[0].name;
+
+  // build history entry (no stats since no pick data)
+  const entry={
+    date,
+    players:players.map(p=>({name:p.name.trim(),score:parseInt(p.score)||0})),
+    winner,
+    inning:9,
+    stats:null,
+    achievements:[],
+    mvpBadge:null,
+    awayTeam,homeTeam,stadium,
+    awayScore:0,homeScore:0,
+    notes,
+    highlightAtBat:null,
+    historical:true,
+  };
+
+  // update leaderboard wins/games only
+  players.forEach(p=>{
+    const name=p.name.trim();
+    if(!leaderboard[name])leaderboard[name]={games:0,wins:0,totalPts:0,totalPicks:0,totalCorrect:0,totalP3:0,totalConfCorrect:0,totalConfWrong:0,achievements:[],longestStreak:0};
+    leaderboard[name].games++;
+    leaderboard[name].totalPts+=parseInt(p.score)||0;
+    if(name===winner)leaderboard[name].wins++;
+  });
+
+  // add to history (insert by date)
+  gameHistory.unshift(entry);
+  if(gameHistory.length>50)gameHistory=gameHistory.slice(0,50);
+  saveMeta();
+
+  // reset form
+  window.hgPlayers=[{name:'',score:''},{name:'',score:''}];
+  const di=document.getElementById('hg-date');if(di)di.value='';
+  const ni=document.getElementById('hg-notes');if(ni)ni.value='';
+  if(awaySel)awaySel.value='';if(homeSel)homeSel.value='';
+  document.getElementById('hg-away-custom').style.display='none';
+  document.getElementById('hg-home-custom').style.display='none';
+  const sd=document.getElementById('hg-stadium-display');if(sd)sd.textContent='';
+  renderHGPlayerRows();
+
+  // show success
+  if(err){err.style.color='var(--positive)';err.textContent='Game saved! ✓';setTimeout(()=>{if(err)err.textContent='';err.style.color='var(--negative)';},2500);}
 }
 
 function renderAchievementsList(){
