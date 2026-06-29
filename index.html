@@ -7,461 +7,735 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Guess Ball">
 <title>Guess Ball</title>
-<link rel="apple-touch-icon" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAgAAAAIACAYAAAD0eNT6AAAp+klEQVR4nO3deXSddYH/8c9t0rRJuqX7Ak1LC3ZhqS1bKSAiaKuCKO7oLP5m/CE/RQUZRh1BB4/LeJCOC6Lo4KC4I6IDrSjgoHahpUUKtLR0Sfe9TdI0e/L7o02am9wkd3me57u9X+fMOc7hSL7e5N7PO8+9uTcl2O+yh9pNHwEAcvLnG1Kmj4C+8Q2yAQMPIDQEgnF8A5LG2ANAZkRBorix48TYA0BhiILYcMNGjdEHgHgQA5HixiwUgw8AZhAEBeHGywejDwB2IQZyxg2WC4YfAOxGCGSNG6o/jD4AuIkY6BM3Tm8YflisfumiW02fobvShUvuNn0GICNCICNulK4YfTjAxvHvQATAesRAJ24IieGHM2we/w5EAJxACAQeAAw/HOLC+HcgAuCMgEMgzP/hDD8c49L4dyAC4JQAQ2CA6QMkjvEHAHQX4DYUmz5AYgL85gIActCxE4FcDfA/ABh+AEAuAgkBv58CYPwBAPnyfEP8vALg+TcNAJAQj68G+BUADD8AIA4ehoA/TwEw/gCAuHm0NX4EgEffEACA5TzZHLefAvDkmwAAcIwHTwm4ewWA8QcAmObwFrkZAA7f4AAAzzi6SW49BeDojQwA8JyDTwm4cwWA8QcA2M6hrXIjABy6QQEAgXNks+wPAEduSAAAOjmwXXYHgAM3IAAAGVm+YXa+CNDyGw0AgKxY/OJA+64AMP4AAN9YuG12BYCFNxAAAJGwbOPsCQDLbhgAACJn0dbZEQAW3SAAAMTKks0zHwCW3BAAACTGgu0zGwAW3AAAABhheAPNBQDjDwAIncEtNP8UAAAASJyZAOC3fwAATjC0ickHAOMP5Kx04ZK7TZ8hF66dFzDOwDYmGwCMP5A3V0bVlXMC1kl4I5MLAMYfiMIy0wfoh+3nA+yW4FYmEwCMP1Cw+qWL5p/8jz81epDe/VRKOyeAfCS0mcl8OhEBABSky6hWZfjHlZJUunDJ8lDPA3gngU8PjP8KAOMPFMTGse3y9Soz/OMqiSsBQEES2M54A4DxBwpi4/h3IAKAmMW8ofEFAOMPFMTm8e9ABAAxi3FLeSdAwEIujH8HIgBwUzwBwG//QN5cGv8ORAAQo5g2NfoAYPyBvLk4/h2IACBGMWxrtAHA+AN5c3n8OxABQIwi3lheAwBYwIfx70AEAG6ILgD47R/Ii0/j34EIAGIS4dZyBQAwyMfx70AEAHaLJgD47R/Imc/j34EIAGIQ0eYWHgCMP5CzEMa/AxEAxCCC7eUpACBhIY1/ByIAsE9hAcBv/0BOQhz/DkQAELECN5grAEBCQh7/DkQAYI/8A4Df/oGsMf6nEAFAhArY4vwCgPEHssb490QEABHKc5N5CgCIEePfOyIAMCv3AOC3fyArjH//iAAgInlsM1cAgBgw/tkjAgAzcgsAfvsH+sX4544IACKQ40ZzBQCIEOOfPyIASFb2AcBv/0CfGP/CEQFAgXLYaq4AABFg/KNDBADJIACAAjH+0SMCgPhlFwBc/gcyYvzjQwQAecpys7kCAOSJ8Y8fEQDEp/8A4Ld/oAfGPzlEAJCHLLabKwBAjhj/5BEBQPQIACAHjL85RAAQrb4DgMv/QCfG3zwiAMhBPxvOFQAgC4y/PYgAIBq9BwC//QOSGH8bEQFAlvrYcq4AAH1g/O1FBACFIQCAXjD+9iMCgPxlDgAu/yNwjL87iACgH71sOlcAgG4Yf/cQAUDuCACgC8bfXUQAkBsCADiJ8XcfEQBkr2cA8Pw/AsT4+4MIADLIsO1cAUDwGH//EAFA/wgABI3x9xcRAPQtPQC4/I+AMP7+IwKALrptPFcAECTGPxxEAJAZAYDgMP7hIQKAnggABIXxDxcRAKQjABAMxh9EAHDKqQDgBYDwGOOPDkQAgtZl67kCAO8x/uiOCAAIAHiO8UdviACEjgCAtxh/9IcIQMgIAHiJ8Ue2iACE6kQA8AJAeITxR66IAATl5OZzBQBeYfyRLyIAoSEA4A3GH4UiAhASAgBeYPwRFSIAoSAA4DzGH1EjAhACAgBOY/wRFyIAviMA4CzGH3EjAuAzAgBOYvyRFCIAvkrxHgBwDeMPE/i5g2+4AgCn8CAMU7gSAN8QAHAG4w/TiAD4hACAExh/2IIIgC8IAFiP8YdtiAD4gACA1Rh/2IoIgOsIAFiL8YftiAC4jACAlRh/uIIIgKsIAFiH8YdriAC4iACAVRh/uIoIgGsIAFiD8YfriAC4hACAFRh/+IIIgCsIABjH+MM3RABcQADAKMYfviICYDsCAMYw/vAdEQCbEQAwgvFHKIgA2IoAQOIYf4SGCICNCAAkivFHqIgA2IYAQGIYf4SOCIBNCAAkgvEHTiACYAsCALFj/IF0RABsQAAgVow/kBkRANMIAMSG8Qf6RgTAJAIAsWD8gewQATCFAEDkGH8gN0QATCAAECnGH8gPEYCkEQCIDOMPFIYIQJIIAESC8QeiQQQgKQQACsb4A9EiApAEAgAFYfyBeBABiBsBgLwx/kC8iADEiQBAXhh/IBlEAOJCACBnjD+QLCIAcSAAkBPGHzCDCEDUCABkjfEHzCICECUCAFlh/AE7EAGICgGAfjH+gF2IAESBAECfGH/ATkQACkUAoFeMP2A3IgCFIACQEeMPuIEIQL4IAPTA+ANuIQKQDwIAaRh/wE1EAHJFAKAT4w+4jQhALggASGL8AV8QAcgWAQDGH/AMEYBsEACBY/wBPxEB6A8BEDDGH/AbEYC+EACBYvyBMBAB6A0BECDGHwgLEYBMCIDAMP5AmIgAdEcABITxB8JGBKArAiAQjD8AiQjAKQRAABh/AF0RAZAIAO8x/gAyIQJAAHiM8QfQFyIgbASApxh/ANkgAsJFAHiI8QeQCyIgTASAZxh/APkgAsJDAHiE8QdQCCIgLASAJxh/AFEgAsJBAHiA8QcQJSIgDASA4xh/AHEgAvxHADiM8QcQJyLAbwSAoxh/AEkgAvxFADiI8QeQJCLATwSAYxh/ACYQAf4hABzC+AMwiQjwCwHgCMYfgA2IAH8QAA5g/AHYhAjwAwFgOcYfgI2IAPcRABZj/AHYjAhwGwFgKcYfgAuIAHcRABZi/AG4hAhwEwFgGcYfgIuIAPcQABZh/AG4jAhwCwFgCcYfgA+IAHcQABZg/AH4hAhwAwFgGOMPwEdEgP1SuuyhdtOHCBXjjziUlhRp+qQyTZlQpkmjBmvi6EGaOGqwRg8v0fDyYg0rH6gRQ4pVWlKk4uKUBhYN0MDilNrbpfqmVjU2tam+sVUNzW2qrWvR7sON2nOoQXsONWr3oQZV7avXui21OlTTZPp/KhzA45y9CABDuFMgCpXjSjX3rOGaO3245kwfptecXq7TxpQqlYr/a+851KgXttRo3ZZarVx/RM+8cFg1x1vi/8JwDo93diIADODOgHydMaFMV8wZpdedN0qvO2+kxlUMMn2kTi2t7Vq14aieWntIT6w+oGc3HDV9JFiExz37EAAJ406AXM07a7iuvWScrrlknGZOHmL6OFnbuue4fvLkbv3kyV3asue46ePAAjz+2YUASBA//MjWpNGDdcNVk/TBqydp+qRy08cp2LKXjugbv96q3y7bp3YecYLG46A9CICE8EOPbFx+7kjd/I6pWnTRGA1I4on8hG3Yfkx3/3KLfv70bjW38NATKh4P7UAAJIAfdvQllZKuu3S8bn/vNJ03bZjp4yRi+/56feb7r+jhZ/aYPgoM4XHRPAIgZvyQoy+LLhyjz//9WTo3kOHv7unnD+mWe1/Whu3HTB8FBvD4aBYBECN+uNGbGZOH6J6bZumKOaNMH8W45pZ2LX54i+760SaeFggQj5PmEAAx4YcamZSWFOnfPjhdH3v7VA0s9u85/kKsfqVaH/zyWm3bW2/6KEgYj5dmEAAx4IcZmcw9a7j+67bz9JrT3X9Vf1xqjrfopsUv8tqAAPG4mTw+CyBi/BCju1RKuv190/S/98xn/PsxrKxYP/7MHN31j68xfRQkjM8OSB5XACLE+KO74eXF+q9/OU9vvmis6aM458d/2KWPLF6nllYeokLC42hyuAIQEX5o0d1Zp5Xrr99cwPjn6QNXT9LDX5in8sFFpo+CBHElIDkEQAQYf3R34YwRevrr8zVtYpnpozjtjeeP0SN3na/BJTxUhYQISAb3qgIx/uhu4QVjtOSrF2rksIGmj+KFy84ZqR9/5rUqLuKvJkJCBMSPACgA44/u3nTBGP38zrkqG8Rl6yi95eKx+u4t5yTyMcewBxEQLwIgT4w/urtq3mj9/I65KinmbhWH979hEn8dECAiID48UuWB8Ud3c88arp/fMVeDBnKXitOt7z5D114yzvQxkDAiIB48WuWI8Ud3k8eW6tdfmMdl/4Tc/6lzvfiIZOSGCIgeAZADxh/dDSkt0iN3na9xFYNMHyUYw8qK9dPPvZbgChAREC0CIEuMPzK59xPnaFblENPHCM7ZU4bqi/+H1wOEiAiIDgGQBcYfmdx4TaXe9boJpo8RrBuvqdQlsytMHwMGEAHRIAD6wfgjk9lThuorH55h+hhBS6Wk+245hzcJChQRUDjuOX1g/JFJcVFK9996Dq/4t8CZk8r1bx840/QxYAgRUBgewXrB+KM3t71nml575nDTx8BJH79+qs7krwKCRQTkjwDIgPFHb6ZNLNPt75tm+hjoorgopbs+xAsCQ0YE5IePA+6G8UdfHrnrfC28YIzpYxSspbVdVfvqVX2sWTXHW1Rb36KGpjaVDSrSyKEDdeZp5Ro9vMT0MXNyxSeXa+X6o6aPAYN4/M4NAdAFPzzoy1suHqtffX6e6WPkZdOuOi1ZuV/PbqjWhu3HtGlnnZpa2vr874wfOUivO2+U3n7peC26aIz1b3G8/KUjuvLWFaaPAcN4HM8eAXASPzToy4BUSs9991LNmOzO3/zv2F+v+363Xb9dtk+v7qor6N81aliJPvnOqbrx2kqVD7b3DXiuv/M5Pb5yv+ljwDAez7NDAIgfFvTvhqsm6fufOtf0MbLywuYaff1XW/XwM3vU0hrt3fu0MYP1zZvPtvZpkL++eERXfYqrAOBxPRt2X9NLAD8k6M/A4pQ+e8N008foV219i26592XN/+gy/fzp3ZGPvyTtPNCgt39utT79/Q1qbbPvd4cFZ1fowhkjTB8DFuCFgf0LOgAYf2TjPa+fqKkTykwfo09/fO6g5n74z/rOb6vU1h7/MC/+1Va959/XqLG579cRmHDLu84wfQRYggjoW7ABwPgjW5+4fqrpI/TpO7+t0nWfW62dBxoS/bqPrdivd39hjZpb7LoScM0lY/m0QHQiAnoXZAAw/sjWmy4Yo9lThpo+Rkbt7dJt963XLfe+bOxy/BOrD+ij33jRyNfuzYBUSv/3msmmjwGLEAGZBRcAjD9y8dHrppg+Qq/+9f4N+tZvtpk+hh58Yqfu+12mu5M577tyovV/tohkEQE9BXUPYfyRi8pxpXrD3NGmj5HRvY9W6Ru/3mr6GJ0+ff8Grdtaa/oYnUYNK9Fb5o81fQxYhghIF0wAMP7I1YcWna5UyvQpevr9qgO67b71po+RpqGpTR+5Z10iL0DM1t+/8TTTR4CFiIBTgggAxh+5KhqQ0t9ZOCBHapt1o2VD2+G5jdX63v9sN32MTlfNG62JowabPgYsRASc4H0AMP7IxxVzRmn8yEGmj9HDJ779kvYebjR9jF598UevquZ4i+ljSDoRce+6YoLpY8BSRIDnAcD4I1/vep19w/H4yv36xZ/2mD5Gnw7VNOk/H7bntQlvu2Sc6SPAYqFHgLcBwPgjXwOLU3rbAruGo71duvOBjaaPkZVvP1ql2no7rgJcNGuExlbYdyUH9gg5ArwMAMYfhXj9nNEaMWSg6WOkefiZPXpxmz2vsu9L9bFmPbBkh+ljSDrxngDX8tcA6EeoEeBdADD+KNSii+z6oJvWtnbd9aNNpo+Rk3sfrZItr1O8dsF400eAA0KMAK8CgPFHFBZdaNdvjE+sPqiNOwv7ON+kVe2r11NrD5o+hnYdbNCx4y1W/jkn7BNaBBSbPkBUGH9EYVblEFWOKzV9jDQPLLXjcnquHli6M9E3UqraV6+1m6q19tUaPf9qjdZsqtbB6qbEvj78ULpwyfKTe1KpnntSJamyfumi+T7siRcBwPgjKlda9s5/+440asnK/aaPkZfHV+zXsfpWDSktivTf294ubd5dp+dfrdHaV2s6R//oseZIvw7CFUoEOB8AjD+idPm5I00fIc2P/7BLLa2WPJmeo/qmVj2+cr/eXcDf4re1t2vjjhNjv+bVaj2/qUZ/21xjzXsNwF8hRIDTAcD4I0qplHTp2XYFwCN/2Wv6CAV55C97sw6AltZ2bdhxTGs31ej5V0/8Vv/C5hrVNbTGfEogM98jwNkAYPwRtXOmDlXFUHv+/G//kUat2VRt+hgFeWrNQTW3tGtgcfqr8Jpa2rS+6pjWbKruvJS/bkuNGpraDJ0UyMznCHAyABh/xOHiWRWmj5Dm96sPWvOndPmqOd6iP645qDHDS7T21erOF+e9vO2YmloYe7jB1wjIGAD1SxfdmvRB+lO6cMndEuOP+Mw7a7jpI6R53NEX/3X3jjtWmz4CULAoI8CWje3xPgC2HKy7+qWLbmX8ESebAqC9XXr6+UOmjwGgiyjeJ8CmjU0LAJsO1otLxPgjBuWDizRj8hDTx+j0yo5jqubP2gDrFBIBtm1sZwDYdrA+vK/b/8/4o2CzpwxV0QB73i5u1Stuv/gP8Fk+EWDjxg6Q7DxYPzoigPFHJGZV2vPbvySt2nDU9BEA9CGXCLB1Y13+LADGH5GZPWWo6SOkWUkAANZz/bMDXA4Axh+RmWnRFYDmlna97MhH/wKhyyYCbOVsADD+iNJrTrcnALbsOe7s2/8CIXI1ApwNACAqJcUDNHH0INPH6LRx5zHTRwCQo34iwEoEAII3ZXypBlj0gfGbdtaZPgKAPLgWAQQAgjd1QpnpI6TZSAAAznIpAggABG/KuFLTR0jDFQDAba5EAAGA4E0aM9j0EdLsOthg+ggACuRCBBAACN74kXYFwN7DjaaPACACtv+1GgGA4E0Yac9fABypbVZjMx+TC/jC5gggABC88aPsCYDdh7j8DyAZBACCN3Z4iekjdOLyP4CkEAAIXsVQAgBAeAgABG1IaZEGFtvzJkDVdS2mjwAgEAQAgmbTb/+SVHucAACQDAIAQasYUmz6CGlqCAAACSEAELShZZYFQF2z6SMACAQBgKCVDSoyfYQ0XAEAkBS7fv0BElZqWQDE/RqAj1xbqa/fNCvWr2G7mxa/qAeW7jB9DMA4rgAgaOWD7QqAhibeBRBAMggABM22KwDNre2mjwAgEAQAgjawyJ73AJCkFgIAQEIIAASt2LoA4CkAAMkgABC0AZYFQHMLVwAAJIMAQNCKBtgVAK08BQAgIQQAgmZbALS0EQAAkjFAkkoXLrnb9EFy4dp5Ya92y/bWsh4BUKD6pYvmS1pm+hyZdF4BcGVUXTkn3GDbq+5te1EigPydHH9JqpL0U5NnySTtKQDbx9X288E9bZZdci8u5lk5wAfdxr+DVRHQ49HG4pG18hIK3GbbFQDb3pcAQO56Gf8O1mxZxs8CMBUB/dxolfVLF80vXbhkeZJngt9s+7v7gVwBAJzW345J9vyibdWjTZdxr8zwj6uktBsXKFi9Ze+9zxUAwF1Zjr81v8RaFQASEYBk1TW0mj5CmsEl1t0lAWTBtfGXLAwAiQhAco5bFgDDhww0fQQAOXJx/CVLA0AiApCMY/Utpo+QZkQ5AQC4xNXxlywOAIkIQPyOWXcFIOPrcgFYyOXxlywPAIkIQLyO1DabPkIargAAbnB9/CUHAkAiAhCfwzVNpo+QhisAgP18GH/JkQCQiADEo66hVY3N9vwp4KhhJaaPAKAPvoy/5FAASEQA4nG4xp6nASaNHmz6CAB64dP4S44FgEQEIHr7jzaaPkInAgCwk2/jLzkYABIRgGjtOthg+gidxlaUaGAx7wYI2MTH8ZccDQCJCEB0bAqAAamUJozkKgBgC1/HX3I4ACQiANHYbVEASNKkMfEFQEtruxqb24z+X7tdH8AI9Mrn8Zd6+TRAl5QuXLL85DepUj2/SVXiUwTRjx0H7AqA6RPLtPylI7H8u+9/bLvuf2x7LP/ubD2zeL4umDHC6BmA/vg+/pLjVwA6cCUAhdi657jpI6SZWTnU9BGAoIUw/pInASARAcjf5t12BcCMyUNMHwEIVijjL3kUABIRgPzsO9KoWos+FGhWJQEAmBDS+EueBYBEBCA/Wyy6CjB5bKnKBxeZPgYQlNDGX/IwACQiALlbX3XM9BE6pVLS2VN5HQCQlBDHX/I0ACQiALlZt7XW9BHSXDyrwvQRgCCEOv6SxwEgEQHI3ouWBcAlswkAIG4hj7/keQBIRACys25rjekjpLl45gjTRwC8Fvr4SwEEgEQEoH97DjVq72F7PhRobMUgnTGhzPQxAC8x/icEEQASEYD+rdpw1PQR0lwxZ5TpIwDeYfxPCSYAJCIAfVux/qjpI6R580VjTR8B8Arjny6oAJCIAPTuWcuuAFw5d5RKS3g/ACAKjH9PwQWARAQgs9WvHFVDU5vpY3QqLSnSlXN5GgAoFOOfWZABIBEB6KmhqU0rXo7nU/jy9db540wfAXAa49+7YANAIgLQ09PPHzJ9hDTvuGy8ygbxNACQD8a/b0EHgEQEIN1Taw+aPkKaYWXFuv7y8aaPATiH8e9f8AEgEQE4Zc3GGh2sbjJ9jDT/uPB000cAnML4Z4cAOIkIgCS1tbdrybMHTB8jzfzZFZoxmY8IBrLB+GePAOiCCIAk/W75PtNH6OHWd51h+giA9Rj/3BAA3RABePK5g6pvajV9jDTvvXIibw0M9IHxzx0BkAERELbjja16fMV+08dIU1yU0u3vm2b6GICVGP/8EAC9IALC9tOndps+Qg/vf8MkTZ9UbvoYgFUY//wRAH0gAsL1xOoDOlzTbPoYaYqLUvrmx2abPgZgDca/MARAP4iAMDW3tOtnT9t3FeCKOaP0wasnmT4GYBzjXzgCIAtEQJi+/9h200fI6Cv/PFOjh5eYPgZgDOMfDQIgS0RAeNZvP6a/rDts+hg9jBw2UA9+eo6Ki1KmjwIkjvGPDgGQAyIgPN/9HzuvArx+zih99cMzTR8DSBTjHy0CIEdEQFh+85e92r6/3vQxMrrpbZX60CK33ib4o9dN0XnTh5k+BhzE+EePAMgDERCOltZ2Lf7VVtPH6NU3b57tRARUDB2oX35+nr5240yVFPOwg9ww/vHgnpgnIiAcP1y607oPCOowIJXStz9+tj75zqmmj9Kr979hkp7/3mV668VjTR8FDmL840MAFIAICEN9U6vusfgqgCR96Z9m6D8/OlulJUWmj9Lp3GnD9IevXaQf3HauxlYMMn0cOIjxjxcBUCAiIAzfebRKew41mj5Gnz781slace8CzTtruNFznDttmH5xx1yt+NYCXXrOSKNngbsY//gRABEgAvxX39SqLz20yfQx+nXWaeX60z3z9bUbZ2r8yOR+6y4uSunaS8bp0S+er5XfXqBrLhmnFH+liDwx/slI6bKH2k0fwhf80PqtuCilVd+5VDMmDzF9lKw0NLXpB0t2aPGvtmjngYbI//2plDT3zOG6bsF4feDqSYkGRyFuWvyiHli6w/Qx0AseR5NDAESMH16/vX7OKD3+lQtNHyMn7e3SipeP6JG/7tVv/rJPOwr4s8ZxFYN08awRumLOKF0zf5wmjR4c4UmTQQDYi8fPZBEAMeCH2G8//swcXX/5BNPHyNvuQw16YUut1m2p0fqqYzpS26zq4y2qrWvR8cZWlQ4qUvngIg0rL9bksaU6Y0KZpk0s05zpwzVlfKnp4xeMALATj5vJIwBiwg+zvyaOGqy191+mYWXFpo+CPBAA9uHx0gxeBBgTXhjor92HGnTbfetNHwPwAuNvDgEQIyLAXw8+sVNLnj1g+hiA0xh/swiAmBEB/rpp8Tpr3yEQmbW1t2vHATs/2yE0jL95BEACiAA/7T3cqH/46t/U1s7LaFxQXdeid9zxnP743EHTRwke428HAiAhRICfnlxzUF9+aLPpY6Afm3bV6fKPL9PvV/G0jWmMvz0IgAQRAX760kOv8noAiy159oAu+/hybdxZZ/oowWP87UIAJIwI8E9be7v+7strtW5rremjoIvWtnbd+cONuv7O1ao+1mz6OMFj/O1DABhABPjnWH2r3nHHau09bPcHBoVi/5FGveXTq/QfP9ssXqJhHuNvJwLAECLAPzsPNOiaz6zSkVp+2zTpyTUHdeFNf9X//u2Q6aNAjL/NCACDiAD/vLitVm/97CrVHG8xfZTgNDa36fbvbdA1n12lfUe4EmMDxt9uBIBhRIB/1mys1nWfW63qOiIgKS9tq9VlNy/TN369lUv+lmD87UcAWIAI8M/yl47oTf+ykjcKillLa7v+42ebteBjy3gRpkUYfzcQAJYgAvzzt801esOtK7S9gI/fRe9e2FyjBTcv050/3KjG5jbTx8FJjL87CACLEAH+2bizTpfevEzLXzpi+ijeqGto1Wd/8IoW3LxML2yuMX0cdMH4u4UAsAwR4J8DR5u08PZn9eATO00fxXmP/HmvzvunZ/T1X25RSytP9tuE8XdPSpc9xL3IQtyZ/PTBqyfpnv83W+WDi0wfxSkvbavV7d/boCfX8D7+NuLxyk0EgMW4U/nprNPK9d//Okdzpg8zfRTr7T7UoLse3KQHn9jFhy5ZiscpdxEAluPO5afiopQ+8c6p+uwNZ2pwCc/EdXe4plmLH96qb/9mm443tpo+DnrB45PbCAAHcCfz1/RJ5brnplm6at5o00exwqGaJi1+eKvu+22VjtUz/Dbjccl9BIAjuLP57U0XjNGX/3mGZk4eYvooRlTtq9e3frNNDyzZoboGht92PB75gQBwCHc6vxUNSOm9V07Ube+ZptecXm76OIlY/tIRfeORbfrdsn1qbeOhyAU8DvmDAHAMdz7/DUildN2l4/SJ66fqghkjTB8ncodrmvWTp3bph0t36qVtvHufS3j88QsB4CDuhOE4b9ow3Xhtpd55+QQNKXX3Twcbmtr0+1UH9Is/7dZjK/bzzn0O4nHHPwSAo7gzhqW0pEhvvnis3n3FBL3x/DFO/OVAdV2LnlpzUI8u26fHVuzjRX0O4/HGTwSAw7hThqlsUJGumDNKV58/WlfPG6NpE8tMH0mS1NTSprWbavTMC4f0+1UHtHL9Ud6tzwM8zviLAHAcd06MrRiki2aO0MUzR+i1Zw7XrMohGlcxKNav2dLark276vTi1lr9bXONVrx8RM9trFZDE5f2fcLji98IAA9wJ0V3FUMHasbkIaocV6rTx5Rq8rhSjaso0cihJaoYOlAVQwaqbNAAFRcPUEnxABUXpdTa1q7G5jY1t7TpeGOrDtc263BNsw5VN2n34UZt23tcVXvrtXXPcW3aVcfz+J7jccV/BIAnuLMCiAqPJ2Gw/5VEyAqfIgggCox/OAgAjxABAArB+IeFAPAMEQAgH4x/eAgADxEBAHLB+IeJAPAUEQAgG4x/uAgAjxEBAPrC+IeNAPAcEQAgE8YfBEAAiAAAXTH+kAiAYBABACTGH6cQAAEhAoCwMf7oigAIDBEAhInxR3cEQICIACAsjD8yIQACRQQAYWD80RsCIGBEAOA3xh99IQACRwQAfmL80R8CAEQA4BnGH9kgACCJCAB8wfgjWwQAOhEBgNsYf+SCAEAaIgBwE+OPXBEA6IEIANzC+CMfBAAyIgIANzD+yBcBgF4RAYDdGH8UggBAn4gAwE6MPwpFAKBfRABgF8YfUSAAkBUiALAD44+oEADIGhEAmMX4I0oEAHJCBABmMP6IGgGAnBEBQLIYf8SBAEBeiAAgGYw/4kIAIG9EABAvxh9xIgBQECIAiAfjj7gRACgYEQBEi/FHEggARIIIAKLB+CMpBAAiQwQAhWH8kSQCAJEiAoD8MP5IGgGAyBEBQG4Yf5hAACAWRACQHcYfphAAiA0RAPSN8YdJBABiRQQAmTH+MI0AQOyIACAd4w8bEABIBBEAnMD4wxYEABJDBCB0jD9sQgAgUUQAQsX4wzYEABJHBCA0jD9sRADACCIAoWD8YSsCAMYQAfAd4w+bEQAwigiArxh/2I4AgHFEAHzD+MMFBACsQATAF4w/XEEAwBpEAFzH+MMlBACsQgTAVYw/XEMAwDpEAFzD+MNFBACsRATAFYw/XEUAwFpEAGzH+MNlBACsRgTAVow/XEcAwHpEAGzD+MMHBACcQATAFow/fEEAwBlEAExj/OGTAfrzDSnThwCyRQTAFMYfXvnzDSmuAMA5RACSxvjDRwQAnEQEICmMP3xFAMBZRADixvjDZwQAnEYEIC6MP3xHAMB5RACixvgjBAQAvEAEICqMP0JBAMAbRAAKxfgjJCcCgPcCgCeIAOSL8UcwTm4+VwDgHSIAuWL8ESICAF4iApAtxh+hIgDgLSIA/WH8ETICAF4jAtAbxh+hOxUAvBAQniIC0B3jj2B12XquACAIRAA6MP7ACQQAgkEEgPEHTiEAEBQiIFyMP5COAEBwiIDwMP5AT+kBwAsBEQgiIByMP3BSt43nCgCCRQT4j/EHekcAIGhEgL8Yf6BvPQOApwEQGCLAP4w/0E2GbecKACAiwCeMP5AdAgA4iQhwH+MPZI8AALogAtzF+AO5yRwAvA4AASMC3MP4A33oZdO5AgBkQAS4g/EH8kMAAL0gAuzH+AP56z0AeBoAIAIsxvgDWehjy7kCAPSDCLAP4w8Uru8A4CoAIIkIsAnjD2Spnw3nCgCQJSLAPMYfiA4BAOSACDCH8Qei1X8A8DQAkIYISB7jD+Qoi+3mCgCQByIgOYw/EI/sAoCrAEAPRED8GH8gD1luNlcAgAIQAfFh/IF4EQBAgYiA6DH+QPyyDwCeBgB6RQREh/EHCpDDVnMFAIgIEVA4xh9ITm4BwFUAoE9EQP4Yf6BAOW40VwCAiBEBuWP8geTlHgBcBQD6RQRkj/EHIpDHNnMFAIgJEdA/xh8wJ78A4CoAkBUioHeMPxCRPDc5/ysARACQFSKgJ8YfiEgBW8xTAEACiIBTGH/ADoUFAFcBgKwRAYw/EKkCN5grAECCQo4Axh+wS+EBwFUAICchRgDjD0Qsgu2N5goAEQDkJKQIYPyBiEW0uTwFABgSQgQw/oC9ogsArgIAOfM5Ahh/IAYRbi1XAADDfIwAxh+wX7QBwFUAIC8+RQDjD8Qk4o2N/goAEQDkxYcIYPyBmMSwrfE8BUAEAHlxOQIYfyAmMW0qrwEALONiBDD+gHviCwCuAgB5cykCGH8gRjFuabxXAIgAIG8uRADjD8Qo5g2N/ykAIgDIm80RwPgDMUpgO3kNAGA5GyOA8Qfcl0wAcBUAKIhNEcD4AzFLaDOTuwJABAAFsSECGH8gZgluZbJPARABQEFMRgDjD8Qs4Y1M/jUARABQEBMRwPgDMTOwjWZeBEgEAAVJMgIYfyBmhjbR3BBf9lC7sa8NOK5+6aJbTZ+hu9KFS+42fQbASYYCwNyfAXIVAMiLjeMv2XsuwGoGt9Ds+wAQAUBObB9Z288HWMXwBpp/IyAiAMiKK+PqyjkBoyzYPvMBIFlxQwA2c21UXTsvkChLNs+OAJCsuUEAAIiNRVtnTwBIVt0wAABEyrKNsysAJOtuIAAACmbhthWbPkBGHTcU7xUAAHCZhcPfwb4rAF1ZfMMBANAnyzfM7gCQrL8BAQDowYHtsj8AJCduSAAAJDmzWW4EgOTMDQoACJhDW2XniwB7w4sDAQA2cmj4O7hzBaArB29oAICnHN0kNwNAcvYGBwB4xOEtcuspgO54SgAAYILDw9/B3SsAXXnwjQAAOMKTzfEjACRvviEAAIt5tDVuPwXQHU8JAADi4NHwd/ArADoQAgCAKHg4/B38eQogE4+/cQCAmHm+IX5eAeiKqwEAgFx4Pvwd/A+ADoQAAKAvgQx/B7+fAsgksG8wACALAW5DOFcAuuJqAABACnL4O4QZAB0IAQAIU8DD3yHsAOhACABAGBj+TgRAV11/MIgBAPADo58RAdAbrgoAgNsY/j4RAP3hqgAAuIPRzxo3VD4IARhQv3TRrabPkK3ShUvuNn0GBIbhzxk3WKGIASTIhQhg/JEYRr8g3HhRIwgQM5sjgPFHrBj8SHFjxokYQExsjADGH7Fg9GPDDZs0ogAAMmPsE8WNbQOiAEBoGHvj+Aa4gEAA4BoG3nr/H/ybfJwVaabCAAAAAElFTkSuQmCC">
+<link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 160 160'%3E%3Crect width='160' height='160' rx='36' fill='%23003DA5'/%3E%3Cpolygon points='80,8 152,80 80,152 8,80' fill='none' stroke='%23F7F5EE' stroke-width='2' opacity='0.22'/%3E%3Ctext x='80' y='100' font-family='Courier New,monospace' font-size='76' font-weight='700' fill='%23F7F5EE' text-anchor='middle'%3EG%3C/text%3E%3C/svg%3E">
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
-html,body{
-  min-height:100%;font-family:'Courier New',monospace;
-  background-color:#F7F5EE;
-  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='60' height='72'%3E%3Crect width='60' height='72' fill='none' stroke='%23003DA5' stroke-width='0.5' opacity='0.12'/%3E%3Cline x1='0' y1='24' x2='60' y2='24' stroke='%23003DA5' stroke-width='0.3' opacity='0.09'/%3E%3Cline x1='0' y1='48' x2='60' y2='48' stroke='%23003DA5' stroke-width='0.3' opacity='0.09'/%3E%3Cpolygon points='30,5 44,19 30,33 16,19' fill='none' stroke='%23003DA5' stroke-width='0.8' opacity='0.11'/%3E%3Ccircle cx='30' cy='5' r='1.3' fill='%23003DA5' opacity='0.10'/%3E%3Ccircle cx='44' cy='19' r='1.3' fill='%23003DA5' opacity='0.10'/%3E%3Ccircle cx='30' cy='33' r='1.3' fill='%23003DA5' opacity='0.10'/%3E%3Ccircle cx='16' cy='19' r='1.3' fill='%23003DA5' opacity='0.10'/%3E%3Crect x='36' y='36' width='10' height='6' fill='none' stroke='%23003DA5' stroke-width='0.45' opacity='0.13'/%3E%3Crect x='46' y='36' width='10' height='6' fill='none' stroke='%23003DA5' stroke-width='0.45' opacity='0.13'/%3E%3Crect x='33' y='42' width='9' height='6' fill='none' stroke='%23003DA5' stroke-width='0.45' opacity='0.13'/%3E%3Crect x='42' y='42' width='9' height='6' fill='none' stroke='%23003DA5' stroke-width='0.45' opacity='0.13'/%3E%3Crect x='51' y='42' width='9' height='6' fill='none' stroke='%23003DA5' stroke-width='0.45' opacity='0.13'/%3E%3C/svg%3E");
-  background-repeat:repeat;
+:root{
+  --bg:#F7F5EE;--bg2:#F0EDE3;--ink:#003DA5;--ink2:#002B7F;--ink3:#1A56C4;
+  --pale:#D6E4F7;--xpale:#EBF1FB;--border:#003DA5;--text:#003DA5;--subtext:#1A56C4;
+  --card:#F0EDE3;--card-active:#E2DDD0;--leader:#D6E4F7;
+  --positive:#1A7A4A;--negative:#A32D2D;
+  --modal-bg:#F7F5EE;--head-bg:#003DA5;--head-text:#fff;
 }
+body.dark{
+  --bg:#0A1628;--bg2:#111E35;--ink:#7EB3F7;--ink2:#A8CFFB;--ink3:#5A9EF0;
+  --pale:#1A3666;--xpale:#162D55;--border:#3A6AB5;--text:#E8E6E0;--subtext:#7EB3F7;
+  --card:#111E35;--card-active:#1E2F4A;--leader:#1A3666;
+  --positive:#4CAF82;--negative:#E07070;
+  --modal-bg:#111E35;--head-bg:#061020;--head-text:#E8E6E0;
+}
+html,body{min-height:100%;font-family:'Courier New',monospace;background-color:var(--bg);background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='60' height='72'%3E%3Crect width='60' height='72' fill='none' stroke='%23003DA5' stroke-width='0.5' opacity='0.12'/%3E%3Cline x1='0' y1='24' x2='60' y2='24' stroke='%23003DA5' stroke-width='0.3' opacity='0.09'/%3E%3Cline x1='0' y1='48' x2='60' y2='48' stroke='%23003DA5' stroke-width='0.3' opacity='0.09'/%3E%3Cpolygon points='30,5 44,19 30,33 16,19' fill='none' stroke='%23003DA5' stroke-width='0.8' opacity='0.11'/%3E%3Ccircle cx='30' cy='5' r='1.3' fill='%23003DA5' opacity='0.10'/%3E%3Ccircle cx='44' cy='19' r='1.3' fill='%23003DA5' opacity='0.10'/%3E%3Ccircle cx='30' cy='33' r='1.3' fill='%23003DA5' opacity='0.10'/%3E%3Ccircle cx='16' cy='19' r='1.3' fill='%23003DA5' opacity='0.10'/%3E%3Crect x='36' y='36' width='10' height='6' fill='none' stroke='%23003DA5' stroke-width='0.45' opacity='0.13'/%3E%3Crect x='46' y='36' width='10' height='6' fill='none' stroke='%23003DA5' stroke-width='0.45' opacity='0.13'/%3E%3Crect x='33' y='42' width='9' height='6' fill='none' stroke='%23003DA5' stroke-width='0.45' opacity='0.13'/%3E%3Crect x='42' y='42' width='9' height='6' fill='none' stroke='%23003DA5' stroke-width='0.45' opacity='0.13'/%3E%3Crect x='51' y='42' width='9' height='6' fill='none' stroke='%23003DA5' stroke-width='0.45' opacity='0.13'/%3E%3C/svg%3E");background-repeat:repeat;}
 #gb{width:100%;min-height:100vh;position:relative;background:transparent}
 .screen{display:none;position:relative;z-index:2;min-height:100vh;flex-direction:column;background:transparent}
 .screen.active{display:flex}
-
-/* TITLE */
 .title-wrap{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;padding:48px 28px;text-align:center;position:relative}
-.title-hfade{position:absolute;inset:0;pointer-events:none;background:linear-gradient(to right,rgba(247,245,238,1) 0%,rgba(247,245,238,0) 35%,rgba(247,245,238,0) 65%,rgba(247,245,238,1) 100%)}
+.title-hfade{position:absolute;inset:0;pointer-events:none;background:linear-gradient(to right,var(--bg) 0%,transparent 35%,transparent 65%,var(--bg) 100%)}
 .title-content{position:relative;z-index:2;width:100%}
 .title-logo-wrap{display:flex;justify-content:center;margin-bottom:20px}
-.title-eyebrow{font-size:10px;letter-spacing:.18em;color:#1A56C4;text-transform:uppercase;margin-bottom:6px}
-.title-name{font-size:38px;font-weight:700;color:#003DA5;letter-spacing:.04em;line-height:1.1;margin-bottom:6px}
-.title-sub{font-size:13px;color:#1A56C4;letter-spacing:.1em;margin-bottom:44px}
-.title-divider{width:48px;height:2.5px;background:#003DA5;margin:0 auto 36px}
-.menu-btn{display:flex;align-items:center;justify-content:space-between;width:100%;padding:16px 18px;margin-bottom:10px;background:#F0EDE3;border:1.5px solid #003DA5;border-radius:3px;font-family:'Courier New',monospace;font-size:13px;font-weight:700;color:#003DA5;letter-spacing:.08em;cursor:pointer}
-.menu-btn.primary{background:#003DA5;color:#fff}
-
-/* HEADER */
-.screen-head{background:#003DA5;padding:14px 16px 12px;padding-top:calc(14px + env(safe-area-inset-top));display:flex;justify-content:space-between;align-items:center;flex-shrink:0}
+.title-eyebrow{font-size:10px;letter-spacing:.18em;color:var(--subtext);text-transform:uppercase;margin-bottom:6px}
+.title-name{font-size:38px;font-weight:700;color:var(--text);letter-spacing:.04em;line-height:1.1;margin-bottom:6px}
+.title-sub{font-size:13px;color:var(--subtext);letter-spacing:.1em;margin-bottom:44px}
+.title-divider{width:48px;height:2.5px;background:var(--border);margin:0 auto 36px}
+.menu-btn{display:flex;align-items:center;justify-content:space-between;width:100%;padding:16px 18px;margin-bottom:10px;background:var(--card);border:1.5px solid var(--border);border-radius:3px;font-family:'Courier New',monospace;font-size:13px;font-weight:700;color:var(--text);letter-spacing:.08em;cursor:pointer}
+.menu-btn.primary{background:var(--ink);color:#fff;border-color:var(--ink)}
+.menu-btn.resume{background:var(--pale)}
+.menu-btn.danger{border-color:var(--negative);color:var(--negative)}
+.menu-btn.season{background:linear-gradient(135deg,#1A3666,#003DA5);color:#fff;border-color:var(--ink)}
+.screen-head{background:var(--head-bg);padding:14px 16px 12px;padding-top:calc(14px + env(safe-area-inset-top));display:flex;justify-content:space-between;align-items:center;flex-shrink:0}
 .sh-left{display:flex;align-items:center;gap:10px}
-.sh-right{display:flex;align-items:center;gap:8px}
-.back-btn{background:transparent;border:none;color:#fff;font-family:'Courier New',monospace;font-size:22px;cursor:pointer;padding:0;line-height:1}
-.info-btn{background:rgba(255,255,255,.2);border:1px solid rgba(255,255,255,.4);color:#fff;font-family:'Courier New',monospace;font-size:11px;font-weight:700;cursor:pointer;padding:4px 8px;border-radius:3px;letter-spacing:.04em}
-.sh-title{font-size:17px;font-weight:700;color:#fff;letter-spacing:.04em}
-.sh-tag{font-size:10px;color:#D6E4F7;letter-spacing:.07em;text-transform:uppercase}
+.sh-right{display:flex;align-items:center;gap:6px}
+.back-btn{background:transparent;border:none;color:var(--head-text);font-family:'Courier New',monospace;font-size:22px;cursor:pointer;padding:0;line-height:1}
+.icon-btn{background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);color:var(--head-text);font-family:'Courier New',monospace;font-size:10px;font-weight:700;cursor:pointer;padding:5px 9px;border-radius:3px;letter-spacing:.04em}
+.sh-title{font-size:17px;font-weight:700;color:var(--head-text);letter-spacing:.04em}
+.sh-tag{font-size:10px;color:rgba(255,255,255,.6);letter-spacing:.07em;text-transform:uppercase}
+.outs-row{display:flex;align-items:center;gap:5px}
+.out-dot{width:10px;height:10px;border-radius:50%;border:1.5px solid rgba(255,255,255,.5)}
+.out-dot.filled{background:#F7C843;border-color:#F7C843}
+.outs-label{font-size:9px;color:rgba(255,255,255,.5);letter-spacing:.06em;margin-right:2px}
+.gsbar{background:rgba(0,0,0,.2);padding:5px 16px;display:flex;justify-content:center;align-items:center;gap:12px;font-size:11px;font-weight:700;color:rgba(255,255,255,.8);letter-spacing:.04em;flex-shrink:0}
+.gsbar span{color:rgba(255,255,255,.5);font-size:10px}
 .screen-body{padding:16px;flex:1;padding-bottom:calc(16px + env(safe-area-inset-bottom))}
-
-/* PLAYER ROWS */
 .player-section{position:relative;margin-bottom:4px}
-.player-hfade{position:absolute;inset:0;pointer-events:none;z-index:1;background:linear-gradient(to right,rgba(247,245,238,1) 0%,rgba(247,245,238,0) 30%,rgba(247,245,238,0) 70%,rgba(247,245,238,1) 100%)}
-.pr{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px dashed #003DA5;position:relative;z-index:2}
+.player-hfade{position:absolute;inset:0;pointer-events:none;z-index:1;background:linear-gradient(to right,var(--bg) 0%,transparent 30%,transparent 70%,var(--bg) 100%)}
+.pr{display:flex;justify-content:space-between;align-items:center;padding:10px;border-bottom:1px dashed var(--border);position:relative;z-index:2;border-radius:3px;transition:background .15s}
 .pr.last{border-bottom:none}
-.pname{font-size:14px;font-weight:700;color:#003DA5}
-.ppick{font-size:11px;color:#1A56C4;margin-top:2px}
-.pscore{font-size:26px;font-weight:700;color:#003DA5}
-.priority-badge{font-size:9px;color:#003DA5;border:1px solid #003DA5;padding:2px 5px;border-radius:2px;margin-left:5px;vertical-align:middle}
-.p3-badge{font-size:9px;color:#1A56C4;border:1px solid #1A56C4;padding:2px 5px;border-radius:2px;margin-left:5px;vertical-align:middle}
-
-.section-divider{border:none;border-top:2.5px solid #003DA5;margin:12px 0}
-.section-label{font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:#1A56C4;margin-bottom:8px}
-
-/* OUTCOME GRID */
+.pr.active-player{background:var(--card-active);padding:13px 10px}
+.pname{font-size:14px;font-weight:700;color:var(--text)}
+.pr.active-player .pname{font-size:15px}
+.ppick{font-size:11px;color:var(--subtext);margin-top:2px}
+.pscore{font-size:26px;font-weight:700;color:var(--text)}
+.priority-badge{font-size:9px;color:var(--text);border:1px solid var(--border);padding:2px 5px;border-radius:2px;margin-left:5px;vertical-align:middle}
+.p3-badge{font-size:9px;color:var(--subtext);border:1px solid var(--subtext);padding:2px 5px;border-radius:2px;margin-left:5px;vertical-align:middle}
+.streak-badge{font-size:10px;margin-left:4px;vertical-align:middle}
+.section-divider{border:none;border-top:2.5px solid var(--border);margin:12px 0}
+.section-label{font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--subtext);margin-bottom:8px}
 .outcome-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:14px}
-.oc{border:1.5px solid #003DA5;border-radius:3px;padding:12px 8px;text-align:center;background:#F0EDE3;cursor:pointer}
+.oc{border:1.5px solid var(--border);border-radius:3px;padding:14px 8px;text-align:center;background:var(--card);cursor:pointer}
 .oc:active{transform:scale(.96)}
-.oc.sel{background:#003DA5}
+.oc.sel{background:var(--ink);border-color:var(--ink)}
 .oc.locked{opacity:.3;cursor:default;border-style:dashed;pointer-events:none}
-.oc-lbl{font-size:12px;font-weight:700;color:#002B7F;letter-spacing:.01em}
-.oc-pts{font-size:10px;color:#1A56C4;margin-top:2px}
-.oc.sel .oc-lbl{color:#fff}
-.oc.sel .oc-pts{color:#D6E4F7}
-
-/* P3 SLOTS */
+.oc-lbl{font-size:12px;font-weight:700;color:var(--ink2)}
+.oc-pts{font-size:10px;color:var(--subtext);margin-top:2px}
+.oc.sel .oc-lbl,.oc.sel .oc-pts{color:#fff}
 .p3-slots{display:flex;gap:8px;margin-bottom:14px}
-.p3-slot{flex:1;border:1.5px solid #003DA5;border-radius:3px;padding:9px 6px;text-align:center;background:#F0EDE3}
-.p3-slot.filled{background:#D6E4F7}
-.p3-slot .slot-num{font-size:9px;color:#1A56C4;letter-spacing:.06em;text-transform:uppercase;margin-bottom:4px}
-.p3-slot .slot-val{font-size:10px;font-weight:700;color:#003DA5;min-height:14px}
-
-/* CONFIDENCE */
-.conf-row{display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border:1.5px solid #003DA5;border-radius:3px;background:#F0EDE3;margin-bottom:12px}
-.conf-label{font-size:12px;font-weight:700;color:#003DA5;letter-spacing:.02em}
-.conf-sub{font-size:10px;color:#1A56C4;margin-top:2px}
-.toggle{width:44px;height:24px;background:#D6E4F7;border-radius:12px;border:1px solid #003DA5;position:relative;cursor:pointer;flex-shrink:0;transition:background .2s}
-.toggle.on{background:#003DA5}
+.p3-slot{flex:1;border:1.5px solid var(--border);border-radius:3px;padding:9px 6px;text-align:center;background:var(--card)}
+.p3-slot.filled{background:var(--pale)}
+.p3-slot .slot-num{font-size:9px;color:var(--subtext);letter-spacing:.06em;text-transform:uppercase;margin-bottom:4px}
+.p3-slot .slot-val{font-size:10px;font-weight:700;color:var(--text);min-height:14px}
+.conf-row{display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border:1.5px solid var(--border);border-radius:3px;background:var(--card);margin-bottom:12px}
+.conf-label{font-size:12px;font-weight:700;color:var(--text)}
+.conf-sub{font-size:10px;color:var(--subtext);margin-top:2px}
+.toggle{width:44px;height:24px;background:var(--pale);border-radius:12px;border:1px solid var(--border);position:relative;cursor:pointer;flex-shrink:0;transition:background .2s}
+.toggle.on{background:var(--ink)}
 .toggle::after{content:'';position:absolute;top:3px;left:3px;width:16px;height:16px;background:#fff;border-radius:50%;transition:transform .2s}
 .toggle.on::after{transform:translateX(20px)}
-
-/* BUTTONS */
-.btn-primary{width:100%;padding:14px;background:#003DA5;color:#fff;border:none;border-radius:3px;font-family:'Courier New',monospace;font-size:13px;font-weight:700;letter-spacing:.08em;cursor:pointer;margin-top:4px;display:block;text-align:center}
+.btn-primary{width:100%;padding:14px;background:var(--ink);color:#fff;border:none;border-radius:3px;font-family:'Courier New',monospace;font-size:13px;font-weight:700;letter-spacing:.08em;cursor:pointer;margin-top:4px;display:block;text-align:center}
 .btn-primary:disabled{opacity:.4;cursor:not-allowed}
-.btn-secondary{width:100%;padding:12px;background:#F0EDE3;color:#003DA5;border:1.5px solid #003DA5;border-radius:3px;font-family:'Courier New',monospace;font-size:12px;font-weight:700;letter-spacing:.06em;cursor:pointer;margin-top:8px;display:block;text-align:center}
-
-/* INPUTS */
-.player-input{width:100%;padding:11px 12px;border:1.5px solid #003DA5;border-radius:3px;font-family:'Courier New',monospace;font-size:14px;font-weight:700;color:#003DA5;background:#F0EDE3;letter-spacing:.02em;-webkit-appearance:none}
-.player-input::placeholder{color:#B5D4F4;font-weight:400}
-.player-input:focus{outline:none;background:#F7F5EE}
+.btn-secondary{width:100%;padding:12px;background:var(--card);color:var(--text);border:1.5px solid var(--border);border-radius:3px;font-family:'Courier New',monospace;font-size:12px;font-weight:700;letter-spacing:.06em;cursor:pointer;margin-top:8px;display:block;text-align:center}
+.btn-danger{width:100%;padding:12px;background:var(--card);color:var(--negative);border:1.5px solid var(--negative);border-radius:3px;font-family:'Courier New',monospace;font-size:12px;font-weight:700;letter-spacing:.06em;cursor:pointer;margin-top:8px;display:block;text-align:center}
+.player-input{width:100%;padding:11px 12px;border:1.5px solid var(--border);border-radius:3px;font-family:'Courier New',monospace;font-size:14px;font-weight:700;color:var(--text);background:var(--card);letter-spacing:.02em;-webkit-appearance:none}
+.player-input::placeholder{color:var(--pale);font-weight:400}
+.player-input:focus{outline:none;background:var(--bg)}
 .input-row{display:flex;gap:8px;align-items:center;margin-bottom:10px}
-
-/* SCORE ROWS */
-.score-row{display:flex;justify-content:space-between;align-items:center;padding:12px 14px;border:1.5px solid #003DA5;border-radius:3px;margin-bottom:8px;background:#F0EDE3;cursor:pointer}
-.score-row.leader{background:#D6E4F7;border-width:2px}
+select.player-input{cursor:pointer}
+.score-row{display:flex;justify-content:space-between;align-items:center;padding:12px 14px;border:1.5px solid var(--border);border-radius:3px;margin-bottom:8px;background:var(--card);cursor:pointer}
+.score-row.leader{background:var(--leader);border-width:2px}
 .score-row.no-tap{cursor:default}
 .score-left{flex:1}
 .score-name-line{display:flex;align-items:center;flex-wrap:wrap;gap:4px}
-.score-name{font-size:13px;font-weight:700;color:#003DA5}
-.score-sub{font-size:10px;color:#1A56C4;margin-top:2px}
+.score-name{font-size:13px;font-weight:700;color:var(--text)}
+.score-sub{font-size:10px;color:var(--subtext);margin-top:2px}
 .score-right{display:flex;align-items:center;gap:8px}
-.score-delta-pos{font-size:11px;font-weight:700;color:#1A7A4A}
-.score-delta-neg{font-size:11px;font-weight:700;color:#A32D2D}
-.score-pts{font-size:26px;font-weight:700;color:#003DA5}
-.tap-hint{font-size:9px;color:#1A56C4;margin-top:2px;letter-spacing:.04em}
-
-.info-box{background:#EBF1FB;border:1px solid #003DA5;border-radius:3px;padding:10px 12px;font-size:11px;color:#002B7F;margin-bottom:10px;line-height:1.5}
-
-/* RUNS */
-.runs-row{display:flex;align-items:center;gap:12px;margin-bottom:14px}
-.runs-label{font-size:10px;color:#1A56C4;letter-spacing:.08em;text-transform:uppercase;flex-shrink:0}
-.runs-input{width:60px;padding:9px;border:1.5px solid #003DA5;border-radius:3px;font-family:'Courier New',monospace;font-size:16px;font-weight:700;color:#003DA5;background:#F0EDE3;text-align:center;-webkit-appearance:none}
-.runs-input:focus{outline:none}
-
-/* RULES MODAL */
-.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:100;display:flex;align-items:flex-end}
+.score-delta-pos{font-size:11px;font-weight:700;color:var(--positive)}
+.score-delta-neg{font-size:11px;font-weight:700;color:var(--negative)}
+.score-pts{font-size:26px;font-weight:700;color:var(--text)}
+.info-box{background:var(--xpale);border:1px solid var(--border);border-radius:3px;padding:10px 12px;font-size:11px;color:var(--text);margin-bottom:10px;line-height:1.5}
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:100;display:flex;align-items:flex-end}
 .modal-overlay.hidden{display:none}
-.modal-sheet{background:#F7F5EE;border-radius:16px 16px 0 0;padding:20px 20px calc(20px + env(safe-area-inset-bottom));max-height:80vh;overflow-y:auto;width:100%}
-.modal-title{font-size:15px;font-weight:700;color:#003DA5;letter-spacing:.06em;margin-bottom:16px;display:flex;justify-content:space-between;align-items:center}
-.modal-close{background:none;border:none;color:#003DA5;font-size:20px;cursor:pointer;font-family:'Courier New',monospace}
+.modal-sheet{background:var(--modal-bg);border-radius:16px 16px 0 0;padding:20px 20px calc(20px + env(safe-area-inset-bottom));max-height:85vh;overflow-y:auto;width:100%}
+.modal-title{font-size:15px;font-weight:700;color:var(--text);letter-spacing:.06em;margin-bottom:16px;display:flex;justify-content:space-between;align-items:center}
+.modal-close{background:none;border:none;color:var(--text);font-size:20px;cursor:pointer;font-family:'Courier New',monospace}
 .rule-section{margin-bottom:14px}
-.rule-heading{font-size:10px;font-weight:700;color:#1A56C4;letter-spacing:.1em;text-transform:uppercase;margin-bottom:6px}
-.rule-row{display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px dashed rgba(0,61,165,.15);font-size:12px;color:#002B7F}
+.rule-heading{font-size:10px;font-weight:700;color:var(--subtext);letter-spacing:.1em;text-transform:uppercase;margin-bottom:6px}
+.rule-row{display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px dashed rgba(128,128,128,.2);font-size:12px;color:var(--text)}
 .rule-row:last-child{border-bottom:none}
-.rule-pts{font-weight:700;color:#003DA5}
-
-/* PLAYER HISTORY MODAL */
-.hist-row{display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px dashed rgba(0,61,165,.15);font-size:12px;color:#002B7F}
+.rule-pts{font-weight:700}
+.hist-row{display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px dashed rgba(128,128,128,.2);font-size:12px;color:var(--text)}
 .hist-row:last-child{border-bottom:none}
-.hist-pts{font-weight:700}
-.hist-pts.pos{color:#1A7A4A}
-.hist-pts.neg{color:#A32D2D}
-
-/* STATS PAGE */
+.hist-pts.pos{font-weight:700;color:var(--positive)}
+.hist-pts.neg{font-weight:700;color:var(--negative)}
+.ach-popup{position:fixed;top:calc(env(safe-area-inset-top) + 70px);left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;border-radius:8px;padding:12px 18px;z-index:200;font-family:'Courier New',monospace;text-align:center;min-width:260px;max-width:320px;box-shadow:0 4px 20px rgba(0,0,0,.3);animation:slideDown .4s ease}
+@keyframes slideDown{from{opacity:0;transform:translateX(-50%) translateY(-20px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
+.ach-popup-icon{font-size:28px;margin-bottom:4px}
+.ach-popup-title{font-size:11px;letter-spacing:.1em;opacity:.7;margin-bottom:2px}
+.ach-popup-name{font-size:15px;font-weight:700}
+.ach-popup-desc{font-size:10px;opacity:.7;margin-top:3px}
+.ach-icon-bar{display:flex;gap:10px;overflow-x:auto;padding:8px 0;-webkit-overflow-scrolling:touch}
+.ach-icon-bar::-webkit-scrollbar{display:none}
+.ach-icon{font-size:26px;cursor:pointer;flex-shrink:0}
+.ach-icon-locked{opacity:.2;filter:grayscale(1)}
 .stats-summary{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px}
-.stat-card{background:#F0EDE3;border:1.5px solid #003DA5;border-radius:3px;padding:12px 10px;text-align:center}
-.stat-card.leader{background:#D6E4F7}
-.stat-label{font-size:9px;color:#1A56C4;letter-spacing:.08em;text-transform:uppercase;margin-bottom:4px}
-.stat-value{font-size:22px;font-weight:700;color:#003DA5}
-.stat-sub{font-size:10px;color:#1A56C4;margin-top:2px}
+.stat-card{background:var(--card);border:1.5px solid var(--border);border-radius:3px;padding:12px 10px;text-align:center}
+.stat-card.leader{background:var(--leader)}
+.stat-label{font-size:9px;color:var(--subtext);letter-spacing:.08em;text-transform:uppercase;margin-bottom:4px}
+.stat-value{font-size:22px;font-weight:700;color:var(--text)}
+.stat-sub{font-size:10px;color:var(--subtext);margin-top:2px}
 .player-tab-row{display:flex;gap:8px;margin-bottom:14px}
-.player-tab{flex:1;padding:10px;background:#F0EDE3;border:1.5px solid #003DA5;border-radius:3px;font-family:'Courier New',monospace;font-size:12px;font-weight:700;color:#003DA5;letter-spacing:.04em;cursor:pointer;text-align:center}
-.player-tab.active{background:#003DA5;color:#fff}
+.player-tab{flex:1;padding:10px;background:var(--card);border:1.5px solid var(--border);border-radius:3px;font-family:'Courier New',monospace;font-size:12px;font-weight:700;color:var(--text);cursor:pointer;text-align:center}
+.player-tab.active{background:var(--ink);color:#fff;border-color:var(--ink)}
 .deep-stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
-.deep-stat{background:#F0EDE3;border:1px solid #003DA5;border-radius:3px;padding:10px 8px;text-align:center}
-.deep-stat-val{font-size:18px;font-weight:700;color:#003DA5}
-.deep-stat-lbl{font-size:9px;color:#1A56C4;letter-spacing:.06em;text-transform:uppercase;margin-top:2px}
-
-/* LB / HISTORY */
-.lb-row{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px dashed #003DA5}
+.deep-stat{background:var(--card);border:1px solid var(--border);border-radius:3px;padding:10px 8px;text-align:center}
+.deep-stat-val{font-size:18px;font-weight:700;color:var(--text)}
+.deep-stat-lbl{font-size:9px;color:var(--subtext);letter-spacing:.06em;text-transform:uppercase;margin-top:2px}
+.trash-talk{background:var(--xpale);border:1px dashed var(--border);border-radius:3px;padding:12px;text-align:center;margin-top:12px}
+.trash-talk-text{font-size:12px;color:var(--text);line-height:1.5;font-style:italic;margin-bottom:8px}
+.trash-reroll{background:none;border:1px solid var(--border);border-radius:3px;padding:6px 12px;font-family:'Courier New',monospace;font-size:10px;font-weight:700;color:var(--text);cursor:pointer}
+.mvp-badge{background:linear-gradient(135deg,#F7C843,#E8A500);color:#002060;border-radius:6px;padding:10px 16px;text-align:center;margin-bottom:14px}
+.mvp-icon{font-size:24px;margin-bottom:4px}
+.mvp-name{font-size:14px;font-weight:700}
+.mvp-desc{font-size:10px;opacity:.8;margin-top:2px}
+.lb-row{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px dashed var(--border)}
 .lb-row:last-child{border-bottom:none}
-.lb-name{font-size:13px;font-weight:700;color:#003DA5}
-.lb-stat{font-size:10px;color:#1A56C4;margin-top:2px}
-.lb-pts{font-size:20px;font-weight:700;color:#003DA5}
-.history-row{padding:10px 0;border-bottom:1px dashed #003DA5}
-.history-row:last-child{border-bottom:none}
-.history-date{font-size:10px;color:#1A56C4;letter-spacing:.06em;margin-bottom:3px}
-.history-result{font-size:13px;font-weight:700;color:#003DA5}
-.history-detail{font-size:10px;color:#1A56C4;margin-top:2px}
-.empty-state{text-align:center;padding:56px 20px;font-size:11px;color:#1A56C4;letter-spacing:.06em;line-height:2.4}
+.lb-name{font-size:13px;font-weight:700;color:var(--text)}
+.lb-stat{font-size:10px;color:var(--subtext);margin-top:2px}
+.lb-pts{font-size:20px;font-weight:700;color:var(--text);cursor:pointer}
+.history-row{padding:10px 0;border-bottom:1px dashed var(--border);cursor:pointer}
+.history-date{font-size:10px;color:var(--subtext);letter-spacing:.06em;margin-bottom:3px}
+.history-result{font-size:13px;font-weight:700;color:var(--text)}
+.history-detail{font-size:10px;color:var(--subtext);margin-top:2px}
+.empty-state{text-align:center;padding:56px 20px;font-size:11px;color:var(--subtext);letter-spacing:.06em;line-height:2.4}
+.batter-banner{background:var(--xpale);border:1px solid var(--border);border-radius:3px;padding:8px 12px;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between;gap:8px}
+.batter-label{font-size:9px;color:var(--subtext);letter-spacing:.08em;text-transform:uppercase}
+.batter-val{font-size:13px;font-weight:700;color:var(--text)}
+.batter-input{background:transparent;border:none;font-family:'Courier New',monospace;font-size:13px;font-weight:700;color:var(--text);flex:1;outline:none;min-width:0}
+.batter-input::placeholder{color:var(--subtext);font-weight:400;opacity:.6}
+.settings-section{margin-bottom:20px}
+.settings-row{display:flex;justify-content:space-between;align-items:center;padding:12px 14px;background:var(--card);border:1.5px solid var(--border);border-radius:3px;margin-bottom:8px}
+.settings-label{font-size:13px;font-weight:700;color:var(--text)}
+.settings-sub{font-size:10px;color:var(--subtext);margin-top:2px}
+.hof-row{padding:12px 14px;background:var(--card);border:1.5px solid var(--border);border-radius:3px;margin-bottom:8px}
+.hof-record{font-size:10px;color:var(--subtext);letter-spacing:.06em;text-transform:uppercase;margin-bottom:4px}
+.hof-value{font-size:20px;font-weight:700;color:var(--text)}
+.hof-holder{font-size:11px;color:var(--subtext);margin-top:2px}
+.ach-list-row{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px dashed var(--border);cursor:pointer}
+.ach-list-icon{font-size:24px;flex-shrink:0}
+.ach-list-name{font-size:12px;font-weight:700;color:var(--text)}
+.ach-list-desc{font-size:10px;color:var(--subtext);margin-top:2px}
+.ach-list-earned{font-size:9px;color:var(--positive);margin-top:2px}
+.tut-section{margin-bottom:20px}
+.tut-heading{font-size:13px;font-weight:700;color:var(--text);margin-bottom:8px;padding-bottom:4px;border-bottom:2px solid var(--border)}
+.tut-row{display:flex;gap:10px;align-items:flex-start;padding:6px 0;font-size:12px;color:var(--text);line-height:1.5}
+.tut-icon{font-size:16px;flex-shrink:0;margin-top:1px}
+.yr-stat{background:var(--card);border:1.5px solid var(--border);border-radius:3px;padding:14px;margin-bottom:10px;text-align:center}
+.yr-stat-val{font-size:32px;font-weight:700;color:var(--text)}
+.yr-stat-lbl{font-size:10px;color:var(--subtext);letter-spacing:.08em;text-transform:uppercase;margin-top:4px}
+.num-inp{width:56px;padding:9px;border:1.5px solid var(--border);border-radius:3px;font-family:'Courier New',monospace;font-size:16px;font-weight:700;color:var(--text);background:var(--card);text-align:center;-webkit-appearance:none}
 </style>
 </head>
 <body>
 <div id="gb">
-
-  <!-- RULES MODAL -->
-  <div class="modal-overlay hidden" id="rules-modal" onclick="closeRules(event)">
-    <div class="modal-sheet">
-      <div class="modal-title">
-        <span>SCORING RULES</span>
-        <button class="modal-close" onclick="closeRulesBtn()">✕</button>
-      </div>
-      <div class="rule-section">
-        <div class="rule-heading">Outs</div>
-        <div class="rule-row"><span>Strikeout / Out in play</span><span class="rule-pts">1 pt</span></div>
-        <div class="rule-row"><span>Double play</span><span class="rule-pts">2 pts</span></div>
-        <div class="rule-row"><span>Fielder's choice</span><span class="rule-pts">1 pt</span></div>
-      </div>
-      <div class="rule-section">
-        <div class="rule-heading">Hits</div>
-        <div class="rule-row"><span>Single</span><span class="rule-pts">2 pts</span></div>
-        <div class="rule-row"><span>Double</span><span class="rule-pts">5 pts</span></div>
-        <div class="rule-row"><span>Triple</span><span class="rule-pts">8 pts</span></div>
-        <div class="rule-row"><span>Home run</span><span class="rule-pts">6 pts</span></div>
-        <div class="rule-row"><span>Bunt</span><span class="rule-pts">2 pts</span></div>
-      </div>
-      <div class="rule-section">
-        <div class="rule-heading">Other</div>
-        <div class="rule-row"><span>Walk / HBP</span><span class="rule-pts">2 pts</span></div>
-        <div class="rule-row"><span>Stolen base</span><span class="rule-pts">3 pts</span></div>
-        <div class="rule-row"><span>Each run scored</span><span class="rule-pts">+1 pt</span></div>
-      </div>
-      <div class="rule-section">
-        <div class="rule-heading">Bonuses</div>
-        <div class="rule-row"><span>Pick 3 (all 3 correct)</span><span class="rule-pts">+7 pts</span></div>
-        <div class="rule-row"><span>Confidence (correct)</span><span class="rule-pts">+5 pts</span></div>
-        <div class="rule-row"><span>Confidence (wrong)</span><span class="rule-pts">−2 pts</span></div>
-      </div>
-      <div class="rule-section">
-        <div class="rule-heading">Priority</div>
-        <div class="rule-row"><span>Player 1 starts with priority</span><span></span></div>
-        <div class="rule-row"><span>Non-priority player scores → takes priority</span><span></span></div>
-        <div class="rule-row"><span>Priority player picks first; others cannot pick same outcome</span><span></span></div>
-      </div>
-      <div class="rule-section">
-        <div class="rule-heading">Pick 3</div>
-        <div class="rule-row"><span>Predict first 3 outcomes of each half-inning</span><span></span></div>
-        <div class="rule-row"><span>Player 2's 1st pick cannot match Player 1's</span><span></span></div>
-        <div class="rule-row"><span>Miss any pick → Pick 3 busted, pick manually after</span><span></span></div>
-        <div class="rule-row"><span>All 3 correct → +7 bonus</span><span></span></div>
-      </div>
+<!-- RULES MODAL -->
+<div class="modal-overlay hidden" id="rules-modal" onclick="closeModal('rules-modal',event)">
+  <div class="modal-sheet">
+    <div class="modal-title"><span>SCORING RULES</span><button class="modal-close" onclick="closeModalBtn('rules-modal')">✕</button></div>
+    <div class="rule-section"><div class="rule-heading">Outs</div>
+      <div class="rule-row"><span>Strikeout / In Play Out</span><span class="rule-pts">1 pt</span></div>
+      <div class="rule-row"><span>Double play</span><span class="rule-pts">2 pts</span></div>
+      <div class="rule-row"><span>Fielder's choice</span><span class="rule-pts">1 pt</span></div>
+    </div>
+    <div class="rule-section"><div class="rule-heading">Hits</div>
+      <div class="rule-row"><span>Single</span><span class="rule-pts">2 pts</span></div>
+      <div class="rule-row"><span>Double</span><span class="rule-pts">5 pts</span></div>
+      <div class="rule-row"><span>Triple</span><span class="rule-pts">8 pts</span></div>
+      <div class="rule-row"><span>Home run</span><span class="rule-pts">6 pts</span></div>
+      <div class="rule-row"><span>Bunt</span><span class="rule-pts">2 pts</span></div>
+    </div>
+    <div class="rule-section"><div class="rule-heading">Other</div>
+      <div class="rule-row"><span>Walk / HBP</span><span class="rule-pts">2 pts</span></div>
+      <div class="rule-row"><span>Stolen base</span><span class="rule-pts">3 pts</span></div>
+      <div class="rule-row"><span>Each run scored</span><span class="rule-pts">+1 pt</span></div>
+      <div class="rule-row"><span>Intentional walk → use OTHER card</span><span></span></div>
+    </div>
+    <div class="rule-section"><div class="rule-heading">Bonuses</div>
+      <div class="rule-row"><span>Pick 3 (all 3 correct)</span><span class="rule-pts">+7 pts</span></div>
+      <div class="rule-row"><span>Confidence correct</span><span class="rule-pts">+5 pts</span></div>
+      <div class="rule-row"><span>Confidence wrong</span><span class="rule-pts">−2 pts</span></div>
+    </div>
+    <div class="rule-section"><div class="rule-heading">Priority</div>
+      <div class="rule-row"><span>Default: winner of last matchup (P1 if no data)</span><span></span></div>
+      <div class="rule-row"><span>Non-priority scores → takes priority</span><span></span></div>
+      <div class="rule-row"><span>Priority picks first; others can't pick same</span><span></span></div>
+    </div>
+    <div class="rule-section"><div class="rule-heading">Pick 3</div>
+      <div class="rule-row"><span>Predict first 3 of each half-inning</span><span></span></div>
+      <div class="rule-row"><span>P2's 1st pick can't match P1's</span><span></span></div>
+      <div class="rule-row"><span>Miss any → busted, pick manually after</span><span></span></div>
+      <div class="rule-row"><span>All 3 correct → +7 bonus</span><span></span></div>
     </div>
   </div>
-
-  <!-- PLAYER HISTORY MODAL -->
-  <div class="modal-overlay hidden" id="hist-modal" onclick="closeHist(event)">
-    <div class="modal-sheet">
-      <div class="modal-title">
-        <span id="hist-modal-title">POINTS BREAKDOWN</span>
-        <button class="modal-close" onclick="closeHistBtn()">✕</button>
-      </div>
-      <div id="hist-modal-body"></div>
-    </div>
-  </div>
-
-  <!-- TITLE -->
-  <div class="screen active" id="screen-title">
-    <div class="title-wrap">
-      <div class="title-hfade"></div>
-      <div class="title-content">
-        <div class="title-logo-wrap">
-          <svg width="90" height="90" viewBox="0 0 160 160" xmlns="http://www.w3.org/2000/svg">
-            <rect width="160" height="160" rx="36" fill="#003DA5"/>
-            <polygon points="80,8 152,80 80,152 8,80" fill="none" stroke="#F7F5EE" stroke-width="2" opacity="0.22"/>
-            <line x1="80" y1="8" x2="152" y2="80" stroke="#F7F5EE" stroke-width="0.7" opacity="0.1"/>
-            <line x1="152" y1="80" x2="80" y2="152" stroke="#F7F5EE" stroke-width="0.7" opacity="0.1"/>
-            <line x1="80" y1="152" x2="8" y2="80" stroke="#F7F5EE" stroke-width="0.7" opacity="0.1"/>
-            <line x1="8" y1="80" x2="80" y2="8" stroke="#F7F5EE" stroke-width="0.7" opacity="0.1"/>
-            <rect x="73" y="3" width="14" height="11" rx="2" fill="#F7F5EE" opacity="0.45"/>
-            <rect x="146" y="73" width="11" height="14" rx="2" fill="#F7F5EE" opacity="0.45"/>
-            <rect x="73" y="146" width="14" height="11" rx="2" fill="#F7F5EE" opacity="0.45"/>
-            <rect x="3" y="73" width="11" height="14" rx="2" fill="#F7F5EE" opacity="0.45"/>
-            <text x="80" y="100" font-family="'Courier New',monospace" font-size="76" font-weight="700" fill="#F7F5EE" text-anchor="middle">G</text>
-          </svg>
-        </div>
-        <div class="title-eyebrow">The Baseball Prediction Game</div>
-        <div class="title-name">GUESS BALL</div>
-        <div class="title-sub">⚾ &nbsp; ⚾ &nbsp; ⚾</div>
-        <div class="title-divider"></div>
-        <div id="resume-btn-wrap"></div>
-        <button class="menu-btn primary" onclick="newGameFromTitle()"><span>NEW GAME</span><span>→</span></button>
-        <button class="menu-btn" onclick="goTo('screen-leaderboard')"><span>LEADERBOARDS</span><span>→</span></button>
-        <button class="menu-btn" onclick="goTo('screen-history')"><span>GAME HISTORY</span><span>→</span></button>
-      </div>
-    </div>
-  </div>
-
-  <!-- SETUP -->
-  <div class="screen" id="screen-setup">
-    <div class="screen-head">
-      <div class="sh-left"><button class="back-btn" onclick="back()">←</button><div class="sh-title">NEW GAME</div></div>
-      <div class="sh-tag">Player setup</div>
-    </div>
-    <div class="screen-body">
-      <div class="section-label">Player names</div>
-      <div id="player-inputs"></div>
-      <div id="add-player-wrap"></div>
-      <div class="section-divider"></div>
-      <button class="btn-primary" id="start-btn" onclick="startGame()" disabled>START GAME →</button>
-    </div>
-  </div>
-
-  <!-- PICK 3 -->
-  <div class="screen" id="screen-pick3">
-    <div class="screen-head">
-      <div class="sh-left"><button class="back-btn" onclick="back()">←</button>
-        <div><div class="sh-title" id="p3-title"></div><div class="sh-tag" id="p3-tag"></div></div>
-      </div>
-      <div class="sh-right"><button class="info-btn" onclick="openRules()">RULES</button></div>
-    </div>
-    <div class="screen-body">
-      <div class="p3-slots" id="p3-slots"></div>
-      <div class="section-label" id="p3-pick-label"></div>
-      <div class="outcome-grid" id="p3-grid"></div>
-      <div id="p3-actions"></div>
-    </div>
-  </div>
-
-  <!-- P3 REVIEW -->
-  <div class="screen" id="screen-p3review">
-    <div class="screen-head">
-      <div class="sh-left"><button class="back-btn" onclick="back()">←</button>
-        <div><div class="sh-title">READY</div><div class="sh-tag" id="p3r-tag"></div></div>
-      </div>
-      <div class="sh-right"><button class="info-btn" onclick="openRules()">RULES</button></div>
-    </div>
-    <div class="screen-body">
-      <div class="section-label">Pick 3 summary</div>
-      <div id="p3-review-rows"></div>
-      <div class="section-divider"></div>
-      <button class="btn-primary" onclick="startAtBats()">START HALF-INNING →</button>
-    </div>
-  </div>
-
-  <!-- MANUAL PICK -->
-  <div class="screen" id="screen-pick">
-    <div class="screen-head">
-      <div class="sh-left"><button class="back-btn" onclick="back()">←</button>
-        <div><div class="sh-title" id="pick-title"></div><div class="sh-tag" id="pick-tag"></div></div>
-      </div>
-      <div class="sh-right"><button class="info-btn" onclick="openRules()">RULES</button></div>
-    </div>
-    <div class="screen-body">
-      <div class="player-section"><div class="player-hfade"></div><div id="pick-player-rows"></div></div>
-      <div class="section-divider"></div>
-      <div class="section-label">Choose outcome</div>
-      <div class="outcome-grid" id="pick-grid"></div>
-      <div class="conf-row">
-        <div><div class="conf-label">CONFIDENCE</div><div class="conf-sub">+5 correct · −2 wrong</div></div>
-        <button class="toggle" id="conf-toggle" onclick="toggleConf()"></button>
-      </div>
-      <button class="btn-primary" id="pick-next-btn" onclick="submitPick()" disabled>NEXT →</button>
-    </div>
-  </div>
-
-  <!-- RESULT -->
-  <div class="screen" id="screen-result">
-    <div class="screen-head">
-      <div class="sh-left"><button class="back-btn" onclick="back()">←</button>
-        <div><div class="sh-title">OUTCOME</div><div class="sh-tag" id="result-tag"></div></div>
-      </div>
-      <div class="sh-right"><button class="info-btn" onclick="openRules()">RULES</button></div>
-    </div>
-    <div class="screen-body">
-      <div class="player-section"><div class="player-hfade"></div><div id="result-player-rows"></div></div>
-      <div class="section-divider"></div>
-      <div class="section-label">What happened?</div>
-      <div class="outcome-grid" id="result-grid"></div>
-      <div class="runs-row">
-        <div class="runs-label">Runs scored</div>
-        <input class="runs-input" type="number" id="runs-input" min="0" max="9" value="0" inputmode="numeric" oninput="G.pendingRuns=parseInt(this.value)||0">
-      </div>
-      <button class="btn-primary" id="result-btn" onclick="submitResult()" disabled>SCORE IT →</button>
-    </div>
-  </div>
-
-  <!-- SCOREBOARD -->
-  <div class="screen" id="screen-scoreboard">
-    <div class="screen-head">
-      <div class="sh-left"><button class="back-btn" onclick="back()">←</button>
-        <div><div class="sh-title">SCOREBOARD</div><div class="sh-tag" id="sb-tag"></div></div>
-      </div>
-      <div class="sh-right"><button class="info-btn" onclick="openRules()">RULES</button></div>
-    </div>
-    <div class="screen-body">
-      <div class="section-label">Standings <span style="font-size:9px;color:#1A56C4">— tap name for breakdown</span></div>
-      <div id="sb-scores"></div>
-      <div id="sb-p3-notes"></div>
-      <div class="section-divider"></div>
-      <button class="btn-primary" onclick="nextAtBat()">NEXT AT-BAT →</button>
-      <button class="btn-secondary" onclick="nextHalfInning()">NEW HALF-INNING</button>
-      <button class="btn-secondary" onclick="endGame()">END GAME</button>
-    </div>
-  </div>
-
-  <!-- FINAL STATS -->
-  <div class="screen" id="screen-stats">
-    <div class="screen-head">
-      <div class="sh-left"><button class="back-btn" onclick="back()">←</button>
-        <div><div class="sh-title">FINAL</div><div class="sh-tag" id="stats-tag"></div></div>
-      </div>
-    </div>
-    <div class="screen-body" id="stats-body"></div>
-  </div>
-
-  <!-- LEADERBOARD -->
-  <div class="screen" id="screen-leaderboard">
-    <div class="screen-head">
-      <div class="sh-left"><button class="back-btn" onclick="back()">←</button><div class="sh-title">LEADERBOARDS</div></div>
-    </div>
-    <div class="screen-body">
-      <div class="section-label">All-time wins</div>
-      <div id="lb-rows"></div>
-    </div>
-  </div>
-
-  <!-- HISTORY -->
-  <div class="screen" id="screen-history">
-    <div class="screen-head">
-      <div class="sh-left"><button class="back-btn" onclick="back()">←</button><div class="sh-title">GAME HISTORY</div></div>
-    </div>
-    <div class="screen-body">
-      <div class="section-label">Past games</div>
-      <div id="history-rows"></div>
-    </div>
-  </div>
-
 </div>
 
-<script>
-// Player-selectable outcomes
-const PLAYER_OUTCOMES=[
-  {id:'strikeout',label:'STRIKEOUT',pts:1},
-  {id:'out_in_play',label:'OUT IN PLAY',pts:1},
-  {id:'double_play',label:'DOUBLE PLAY',pts:2},
-  {id:'fielders_choice',label:"FIELDER'S CHOICE",pts:1},
-  {id:'bunt',label:'BUNT',pts:2},
-  {id:'walk',label:'WALK',pts:2},
-  {id:'hbp',label:'HBP',pts:2},
-  {id:'single',label:'SINGLE',pts:2},
-  {id:'double',label:'DOUBLE',pts:5},
-  {id:'triple',label:'TRIPLE',pts:8},
-  {id:'home_run',label:'HOME RUN',pts:6},
-  {id:'stolen_base',label:'STOLEN BASE',pts:3},
-];
+<!-- BREAKDOWN MODAL -->
+<div class="modal-overlay hidden" id="hist-modal" onclick="closeModal('hist-modal',event)">
+  <div class="modal-sheet">
+    <div class="modal-title"><span id="hist-modal-title">BREAKDOWN</span><button class="modal-close" onclick="closeModalBtn('hist-modal')">✕</button></div>
+    <div id="hist-modal-body"></div>
+  </div>
+</div>
 
-// Host result outcomes (adds caught stealing + other)
-const RESULT_OUTCOMES=[
-  {id:'strikeout',label:'STRIKEOUT',pts:1},
-  {id:'out_in_play',label:'OUT IN PLAY',pts:1},
-  {id:'double_play',label:'DOUBLE PLAY',pts:2},
-  {id:'fielders_choice',label:"FIELDER'S CHOICE",pts:1},
-  {id:'bunt',label:'BUNT',pts:2},
-  {id:'walk',label:'WALK',pts:2},
-  {id:'hbp',label:'HBP',pts:2},
-  {id:'single',label:'SINGLE',pts:2},
-  {id:'double',label:'DOUBLE',pts:5},
-  {id:'triple',label:'TRIPLE',pts:8},
-  {id:'home_run',label:'HOME RUN',pts:6},
+<!-- RUNS MODAL -->
+<div class="modal-overlay hidden" id="runs-modal" onclick="closeModal('runs-modal',event)">
+  <div class="modal-sheet" style="padding-bottom:calc(28px + env(safe-area-inset-bottom))">
+    <div class="modal-title"><span>RUNS SCORED</span><button class="modal-close" onclick="closeModalBtn('runs-modal')">✕</button></div>
+    <div style="display:flex;gap:10px" id="run-cards"></div>
+  </div>
+</div>
+
+<!-- STADIUM MODAL -->
+<div class="modal-overlay hidden" id="stadium-modal" onclick="closeModal('stadium-modal',event)">
+  <div class="modal-sheet">
+    <div class="modal-title"><span>ENTER STADIUM</span><button class="modal-close" onclick="closeModalBtn('stadium-modal')">✕</button></div>
+    <div class="info-box">Unknown team. What's the stadium name?</div>
+    <input class="player-input" id="stadium-input" placeholder="STADIUM NAME" style="margin-bottom:12px">
+    <button class="btn-primary" onclick="confirmStadium()">CONFIRM →</button>
+  </div>
+</div>
+
+<!-- NOTES MODAL -->
+<div class="modal-overlay hidden" id="notes-modal" onclick="closeModal('notes-modal',event)">
+  <div class="modal-sheet">
+    <div class="modal-title"><span>GAME NOTES</span><button class="modal-close" onclick="closeModalBtn('notes-modal')">✕</button></div>
+    <div class="info-box">Add an optional note for this game.</div>
+    <input class="player-input" id="notes-input" placeholder="e.g. Kershaw pitched 7 innings..." style="margin-bottom:12px">
+    <button class="btn-primary" onclick="confirmNotes()">SAVE →</button>
+    <button class="btn-secondary" onclick="closeModalBtn('notes-modal');finishEndGame()">SKIP</button>
+  </div>
+</div>
+
+<!-- TITLE -->
+<div class="screen active" id="screen-title">
+  <div class="title-wrap">
+    <div class="title-hfade"></div>
+    <div class="title-content">
+      <div class="title-logo-wrap">
+        <svg width="90" height="90" viewBox="0 0 160 160" xmlns="http://www.w3.org/2000/svg">
+          <rect width="160" height="160" rx="36" fill="#003DA5"/>
+          <polygon points="80,8 152,80 80,152 8,80" fill="none" stroke="#F7F5EE" stroke-width="2" opacity="0.22"/>
+          <line x1="80" y1="8" x2="152" y2="80" stroke="#F7F5EE" stroke-width="0.7" opacity="0.1"/>
+          <line x1="152" y1="80" x2="80" y2="152" stroke="#F7F5EE" stroke-width="0.7" opacity="0.1"/>
+          <line x1="80" y1="152" x2="8" y2="80" stroke="#F7F5EE" stroke-width="0.7" opacity="0.1"/>
+          <line x1="8" y1="80" x2="80" y2="8" stroke="#F7F5EE" stroke-width="0.7" opacity="0.1"/>
+          <rect x="73" y="3" width="14" height="11" rx="2" fill="#F7F5EE" opacity="0.45"/>
+          <rect x="146" y="73" width="11" height="14" rx="2" fill="#F7F5EE" opacity="0.45"/>
+          <rect x="73" y="146" width="14" height="11" rx="2" fill="#F7F5EE" opacity="0.45"/>
+          <rect x="3" y="73" width="11" height="14" rx="2" fill="#F7F5EE" opacity="0.45"/>
+          <text x="80" y="100" font-family="'Courier New',monospace" font-size="76" font-weight="700" fill="#F7F5EE" text-anchor="middle">G</text>
+        </svg>
+      </div>
+      <div class="title-eyebrow">The Baseball Prediction Game</div>
+      <div class="title-name">GUESS BALL</div>
+      <div class="title-sub">⚾ &nbsp; ⚾ &nbsp; ⚾</div>
+      <div class="title-divider"></div>
+      <div id="resume-btn-wrap"></div>
+      <div id="season-btn-wrap"></div>
+      <button class="menu-btn primary" onclick="newGameFromTitle()"><span>NEW GAME</span><span>→</span></button>
+      <button class="menu-btn" onclick="goTo('screen-stats-menu')"><span>STATS</span><span>→</span></button>
+      <button class="menu-btn" onclick="goTo('screen-settings')"><span>SETTINGS</span><span>→</span></button>
+    </div>
+  </div>
+</div>
+
+<!-- SETUP -->
+<div class="screen" id="screen-setup">
+  <div class="screen-head">
+    <div class="sh-left"><button class="back-btn" onclick="back()">←</button><div class="sh-title">NEW GAME</div></div>
+    <div class="sh-tag">Setup</div>
+  </div>
+  <div class="screen-body">
+    <div class="section-label">Players</div>
+    <div id="player-inputs"></div>
+    <div id="add-player-wrap"></div>
+    <div class="section-divider"></div>
+    <div class="section-label">Teams</div>
+    <div class="input-row"><select class="player-input" id="away-sel" onchange="onTeamSelect('away',this.value)"><option value="">Away team...</option></select></div>
+    <div id="away-custom" style="display:none;margin-bottom:10px"><input class="player-input" id="away-custom-inp" placeholder="AWAY TEAM NAME" oninput="G.awayTeam=this.value"></div>
+    <div class="input-row"><select class="player-input" id="home-sel" onchange="onTeamSelect('home',this.value)"><option value="">Home team...</option></select></div>
+    <div id="home-custom" style="display:none;margin-bottom:10px"><input class="player-input" id="home-custom-inp" placeholder="HOME TEAM NAME" oninput="G.homeTeam=this.value"></div>
+    <div id="stadium-display" style="font-size:11px;color:var(--subtext);padding:4px 0;margin-bottom:10px"></div>
+    <div class="section-divider"></div>
+    <button class="btn-primary" id="start-btn" onclick="startGame()" disabled>START GAME →</button>
+  </div>
+</div>
+
+<!-- PICK 3 -->
+<div class="screen" id="screen-pick3">
+  <div class="screen-head">
+    <div class="sh-left"><button class="back-btn" onclick="back()">←</button>
+      <div><div class="sh-title" id="p3-title"></div><div class="sh-tag" id="p3-tag"></div></div>
+    </div>
+    <div class="sh-right"><div class="outs-row" id="p3-outs"></div><button class="icon-btn" onclick="openModal('rules-modal')">RULES</button><button class="icon-btn" onclick="goTo('screen-settings')">⚙</button></div>
+  </div>
+  <div class="gsbar" id="gsbar-p3"></div>
+  <div class="screen-body">
+    <div class="p3-slots" id="p3-slots"></div>
+    <div class="section-label" id="p3-pick-label"></div>
+    <div class="outcome-grid" id="p3-grid"></div>
+    <div id="p3-actions"></div>
+  </div>
+</div>
+
+<!-- P3 REVIEW -->
+<div class="screen" id="screen-p3review">
+  <div class="screen-head">
+    <div class="sh-left"><button class="back-btn" onclick="back()">←</button>
+      <div><div class="sh-title">READY</div><div class="sh-tag" id="p3r-tag"></div></div>
+    </div>
+    <div class="sh-right"><div class="outs-row" id="p3r-outs"></div><button class="icon-btn" onclick="openModal('rules-modal')">RULES</button><button class="icon-btn" onclick="goTo('screen-settings')">⚙</button></div>
+  </div>
+  <div class="gsbar" id="gsbar-p3r"></div>
+  <div class="screen-body">
+    <div class="section-label">Pick 3 summary</div>
+    <div id="p3-review-rows"></div>
+    <div class="section-divider"></div>
+    <button class="btn-primary" onclick="startAtBats()">START HALF-INNING →</button>
+  </div>
+</div>
+
+<!-- PICK -->
+<div class="screen" id="screen-pick">
+  <div class="screen-head">
+    <div class="sh-left"><button class="back-btn" onclick="back()">←</button>
+      <div><div class="sh-title" id="pick-title"></div><div class="sh-tag" id="pick-tag"></div></div>
+    </div>
+    <div class="sh-right"><div class="outs-row" id="pick-outs"></div><button class="icon-btn" onclick="openModal('rules-modal')">RULES</button><button class="icon-btn" onclick="goTo('screen-settings')">⚙</button></div>
+  </div>
+  <div class="gsbar" id="gsbar-pick"></div>
+  <div class="screen-body">
+    <div class="batter-banner">
+      <div><div class="batter-label">At bat</div><div class="batter-val" id="batter-display">—</div></div>
+      <input class="batter-input" id="batter-input" placeholder="type batter name" oninput="G.batterName=this.value;document.getElementById('batter-display').textContent=this.value||'—'">
+    </div>
+    <div class="player-section"><div class="player-hfade"></div><div id="pick-player-rows"></div></div>
+    <div class="section-divider"></div>
+    <div class="section-label">Choose outcome</div>
+    <div class="outcome-grid" id="pick-grid"></div>
+    <div class="conf-row">
+      <div><div class="conf-label">CONFIDENCE</div><div class="conf-sub">+5 correct · −2 wrong</div></div>
+      <button class="toggle" id="conf-toggle" onclick="toggleConf()"></button>
+    </div>
+    <button class="btn-primary" id="pick-next-btn" onclick="submitPick()" disabled>NEXT →</button>
+  </div>
+</div>
+
+<!-- RESULT -->
+<div class="screen" id="screen-result">
+  <div class="screen-head">
+    <div class="sh-left"><button class="back-btn" onclick="back()">←</button>
+      <div><div class="sh-title">OUTCOME</div><div class="sh-tag" id="result-tag"></div></div>
+    </div>
+    <div class="sh-right"><div class="outs-row" id="result-outs"></div><button class="icon-btn" onclick="openModal('rules-modal')">RULES</button><button class="icon-btn" onclick="goTo('screen-settings')">⚙</button></div>
+  </div>
+  <div class="gsbar" id="gsbar-result"></div>
+  <div class="screen-body">
+    <div class="player-section"><div class="player-hfade"></div><div id="result-player-rows"></div></div>
+    <div class="section-divider"></div>
+    <div class="section-label">What happened?</div>
+    <div class="outcome-grid" id="result-grid"></div>
+    <div style="margin-bottom:14px">
+      <div class="section-label">Runs scored</div>
+      <div onclick="openRunsSheet()" style="display:flex;align-items:center;justify-content:space-between;padding:12px 14px;border:1.5px solid var(--border);border-radius:3px;background:var(--card);cursor:pointer">
+        <span style="font-size:13px;font-weight:700;color:var(--text)" id="runs-display-text">0 runs</span>
+        <span style="color:var(--subtext);font-size:12px">tap ▲</span>
+      </div>
+    </div>
+    <div style="margin-bottom:14px">
+      <div class="section-label">Update MLB score (optional)</div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <div style="flex:1;text-align:center;font-size:11px;color:var(--subtext);font-weight:700" id="away-score-lbl">AWAY</div>
+        <input type="number" id="away-score-inp" min="0" value="0" inputmode="numeric" oninput="G.awayScore=parseInt(this.value)||0" class="num-inp">
+        <span style="color:var(--subtext);font-weight:700">—</span>
+        <input type="number" id="home-score-inp" min="0" value="0" inputmode="numeric" oninput="G.homeScore=parseInt(this.value)||0" class="num-inp">
+        <div style="flex:1;text-align:center;font-size:11px;color:var(--subtext);font-weight:700" id="home-score-lbl">HOME</div>
+      </div>
+    </div>
+    <button class="btn-primary" id="result-btn" onclick="submitResult()" disabled>SCORE IT →</button>
+  </div>
+</div>
+
+<!-- SCOREBOARD -->
+<div class="screen" id="screen-scoreboard">
+  <div class="screen-head">
+    <div class="sh-left"><button class="back-btn" onclick="back()">←</button>
+      <div><div class="sh-title">SCOREBOARD</div><div class="sh-tag" id="sb-tag"></div></div>
+    </div>
+    <div class="sh-right"><div class="outs-row" id="sb-outs"></div><button class="icon-btn" onclick="undoLast()">UNDO</button><button class="icon-btn" onclick="openModal('rules-modal')">RULES</button><button class="icon-btn" onclick="goTo('screen-settings')">⚙</button></div>
+  </div>
+  <div class="gsbar" id="gsbar-sb"></div>
+  <div class="screen-body">
+    <div class="section-label">Standings <span style="font-size:9px;color:var(--subtext)">— tap for breakdown</span></div>
+    <div id="sb-scores"></div>
+    <div id="sb-p3-notes"></div>
+    <div class="section-divider"></div>
+    <button class="btn-primary" id="sb-next-btn" onclick="nextAtBat()">NEXT AT-BAT →</button>
+    <button class="btn-secondary" id="sb-half-btn" onclick="nextHalfInning()">NEW HALF-INNING</button>
+    <button class="btn-secondary" onclick="confirmEndGame()">END GAME</button>
+  </div>
+</div>
+
+<!-- FINAL STATS -->
+<div class="screen" id="screen-stats">
+  <div class="screen-head">
+    <div class="sh-left"><button class="back-btn" onclick="back()">←</button>
+      <div><div class="sh-title">FINAL</div><div class="sh-tag" id="stats-tag"></div></div>
+    </div>
+  </div>
+  <div class="screen-body" id="stats-body"></div>
+</div>
+
+<!-- STATS MENU -->
+<div class="screen" id="screen-stats-menu">
+  <div class="screen-head">
+    <div class="sh-left"><button class="back-btn" onclick="back()">←</button><div class="sh-title">STATS</div></div>
+  </div>
+  <div class="screen-body">
+    <button class="menu-btn" onclick="goTo('screen-leaderboard')"><span>LEADERBOARDS</span><span>→</span></button>
+    <button class="menu-btn" onclick="goTo('screen-history')"><span>GAME HISTORY</span><span>→</span></button>
+    <button class="menu-btn" onclick="goTo('screen-hof')"><span>HALL OF FAME</span><span>→</span></button>
+    <button class="menu-btn" onclick="goTo('screen-h2h')"><span>HEAD TO HEAD</span><span>→</span></button>
+    <div id="yr-stats-wrap"></div>
+  </div>
+</div>
+
+<!-- LEADERBOARD -->
+<div class="screen" id="screen-leaderboard">
+  <div class="screen-head">
+    <div class="sh-left"><button class="back-btn" onclick="back()">←</button><div class="sh-title">LEADERBOARDS</div></div>
+  </div>
+  <div class="screen-body">
+    <div class="section-label">All-time — tap to expand</div>
+    <div id="lb-rows"></div>
+  </div>
+</div>
+
+<!-- HISTORY -->
+<div class="screen" id="screen-history">
+  <div class="screen-head">
+    <div class="sh-left"><button class="back-btn" onclick="back()">←</button><div class="sh-title">GAME HISTORY</div></div>
+  </div>
+  <div class="screen-body">
+    <div class="section-label">Past games — tap to expand</div>
+    <div id="history-rows"></div>
+  </div>
+</div>
+
+<!-- HALL OF FAME -->
+<div class="screen" id="screen-hof">
+  <div class="screen-head">
+    <div class="sh-left"><button class="back-btn" onclick="back()">←</button><div class="sh-title">HALL OF FAME</div></div>
+  </div>
+  <div class="screen-body" id="hof-body"></div>
+</div>
+
+<!-- HEAD TO HEAD -->
+<div class="screen" id="screen-h2h">
+  <div class="screen-head">
+    <div class="sh-left"><button class="back-btn" onclick="back()">←</button><div class="sh-title">HEAD TO HEAD</div></div>
+  </div>
+  <div class="screen-body" id="h2h-body"></div>
+</div>
+
+<!-- YEAR IN REVIEW -->
+<div class="screen" id="screen-yr">
+  <div class="screen-head">
+    <div class="sh-left"><button class="back-btn" onclick="back()">←</button><div class="sh-title">YEAR IN REVIEW</div></div>
+  </div>
+  <div class="screen-body" id="yr-body"></div>
+</div>
+
+<!-- SETTINGS -->
+<div class="screen" id="screen-settings">
+  <div class="screen-head">
+    <div class="sh-left"><button class="back-btn" onclick="back()">←</button><div class="sh-title">SETTINGS</div></div>
+  </div>
+  <div class="screen-body">
+    <div class="settings-section">
+      <div class="section-label">Display</div>
+      <div class="settings-row"><div><div class="settings-label">Dark mode</div><div class="settings-sub">Deep navy background</div></div><button class="toggle" id="dark-toggle" onclick="toggleDark()"></button></div>
+      <div class="settings-row"><div><div class="settings-label">Haptics</div><div class="settings-sub">Vibration on picks</div></div><button class="toggle" id="haptic-toggle" onclick="toggleHaptic()"></button></div>
+      <div class="settings-row"><div><div class="settings-label">Sound effects</div><div class="settings-sub">Crowd cheer + achievement jingle</div></div><button class="toggle" id="sound-toggle" onclick="toggleSound()"></button></div>
+      <div class="settings-row"><div><div class="settings-label">Keep screen awake</div><div class="settings-sub">Prevent auto-lock during games</div></div><button class="toggle" id="wake-toggle" onclick="toggleWake()"></button></div>
+    </div>
+    <div class="settings-section">
+      <div class="section-label">Saved players</div>
+      <div id="roster-list"></div>
+      <div style="display:flex;gap:8px;margin-top:8px">
+        <input class="player-input" id="new-player-inp" placeholder="NEW PLAYER NAME" style="flex:1">
+        <button class="btn-secondary" style="width:auto;margin:0;padding:11px 14px;flex-shrink:0" onclick="addRosterPlayer()">ADD</button>
+      </div>
+    </div>
+    <div class="settings-section">
+      <div class="section-label">Historical wins (pre-app)</div>
+      <div style="font-size:10px;color:var(--subtext);margin-bottom:10px;line-height:1.6">Wins from before the app. Combined with app wins on leaderboard. Tap leaderboard total to see split.</div>
+      <div id="hist-wins-editor"></div>
+    </div>
+    <div class="settings-section">
+      <div class="section-label">Tutorial</div>
+      <button class="btn-secondary" style="margin-top:0" onclick="goTo('screen-tutorial')">VIEW TUTORIAL →</button>
+    </div>
+    <div class="settings-section">
+      <div class="section-label">Achievements</div>
+      <button class="btn-secondary" style="margin-top:0" onclick="goTo('screen-achievements')">VIEW ALL ACHIEVEMENTS →</button>
+    </div>
+    <div class="settings-section">
+      <div class="section-label">Year in review</div>
+      <button class="btn-secondary" style="margin-top:0" onclick="goTo('screen-yr')">VIEW YEAR IN REVIEW →</button>
+    </div>
+    <div class="settings-section">
+      <div class="section-label">Data</div>
+      <button class="btn-danger" onclick="clearActiveGame()">CLEAR ACTIVE GAME</button>
+    </div>
+  </div>
+</div>
+
+<!-- ALL ACHIEVEMENTS -->
+<div class="screen" id="screen-achievements">
+  <div class="screen-head">
+    <div class="sh-left"><button class="back-btn" onclick="back()">←</button><div class="sh-title">ACHIEVEMENTS</div></div>
+  </div>
+  <div class="screen-body" id="ach-list-body"></div>
+</div>
+
+<!-- TUTORIAL -->
+<div class="screen" id="screen-tutorial">
+  <div class="screen-head">
+    <div class="sh-left"><button class="back-btn" onclick="back()">←</button><div class="sh-title">HOW TO PLAY</div></div>
+  </div>
+  <div class="screen-body" id="tutorial-body"></div>
+</div>
+
+</div><!-- #gb -->
+<script>
+const MLB_TEAMS={
+  'Arizona Diamondbacks':'Chase Field','Atlanta Braves':'Truist Park',
+  'Baltimore Orioles':'Oriole Park at Camden Yards','Boston Red Sox':'Fenway Park',
+  'Chicago Cubs':'Wrigley Field','Chicago White Sox':'Guaranteed Rate Field',
+  'Cincinnati Reds':'Great American Ball Park','Cleveland Guardians':'Progressive Field',
+  'Colorado Rockies':'Coors Field','Detroit Tigers':'Comerica Park',
+  'Houston Astros':'Minute Maid Park','Kansas City Royals':'Kauffman Stadium',
+  'Los Angeles Angels':'Angel Stadium','Los Angeles Dodgers':'Dodger Stadium',
+  'Miami Marlins':'loanDepot Park','Milwaukee Brewers':'American Family Field',
+  'Minnesota Twins':'Target Field','New York Mets':'Citi Field',
+  'New York Yankees':'Yankee Stadium','Oakland Athletics':'Oakland Coliseum',
+  'Philadelphia Phillies':'Citizens Bank Park','Pittsburgh Pirates':'PNC Park',
+  'San Diego Padres':'Petco Park','San Francisco Giants':'Oracle Park',
+  'Seattle Mariners':'T-Mobile Park','St. Louis Cardinals':'Busch Stadium',
+  'Tampa Bay Rays':'Tropicana Field','Texas Rangers':'Globe Life Field',
+  'Toronto Blue Jays':'Rogers Centre','Washington Nationals':'Nationals Park',
+};
+const MLB_NAMES=Object.keys(MLB_TEAMS).sort();
+
+const PLAYER_OUTCOMES=[
+  {id:'strikeout',label:'STRIKEOUT',pts:1},{id:'in_play_out',label:'IN PLAY OUT',pts:1},
+  {id:'double_play',label:'DOUBLE PLAY',pts:2},{id:'fielders_choice',label:"FIELDER'S CHOICE",pts:1},
+  {id:'bunt',label:'BUNT',pts:2},{id:'walk',label:'WALK',pts:2},{id:'hbp',label:'HBP',pts:2},
+  {id:'single',label:'SINGLE',pts:2},{id:'double',label:'DOUBLE',pts:5},
+  {id:'triple',label:'TRIPLE',pts:8},{id:'home_run',label:'HOME RUN',pts:6},
   {id:'stolen_base',label:'STOLEN BASE',pts:3},
-  {id:'caught_stealing',label:'CAUGHT STEALING',pts:0},
-  {id:'other',label:'OTHER',pts:0},
 ];
+const RESULT_OUTCOMES=[...PLAYER_OUTCOMES,
+  {id:'caught_stealing',label:'CAUGHT STEALING',pts:0},{id:'other',label:'OTHER',pts:0},
+];
+const OUT_IDS=['strikeout','in_play_out','double_play','fielders_choice','caught_stealing'];
 
 function oLabel(id){return([...PLAYER_OUTCOMES,...RESULT_OUTCOMES].find(x=>x.id===id)||{label:id}).label;}
-function oPts(id){const o=RESULT_OUTCOMES.find(x=>x.id===id);return o&&o.pts!=null?o.pts:0;}
+function oPts(id){const o=RESULT_OUTCOMES.find(x=>x.id===id);return o?o.pts:0;}
+function isOut(id){return OUT_IDS.includes(id);}
 function clone(x){return JSON.parse(JSON.stringify(x));}
+function inningLabel(n,bot){return(bot?'▼ Bot':'▲ Top')+' '+n;}
 
-// Inning display helper
-function inningLabel(inning,isBottom){
-  const suffix=isBottom?'▼ Bot':'▲ Top';
-  return suffix+' '+inning;
-}
+const ACHIEVEMENTS=[
+  {id:'dead_eye',icon:'🎯',name:'Dead Eye',desc:'80%+ accuracy in a single game (min 10 picks)'},
+  {id:'on_fire',icon:'🔥',name:'On Fire',desc:'5 correct picks in a row'},
+  {id:'wave',icon:'🌊',name:'Wave',desc:'7 correct picks in a row'},
+  {id:'unstoppable',icon:'💯',name:'Unstoppable',desc:'10 correct picks in a row'},
+  {id:'perfect_half',icon:'⚡',name:'Perfect Half',desc:'All picks correct in a half-inning (min 3 ABs)'},
+  {id:'ice_cold',icon:'🧊',name:'Ice Cold',desc:'Miss 6 picks in a row'},
+  {id:'rough_patch',icon:'📉',name:'Rough Patch',desc:'Lose 3 confidence bets in a row'},
+  {id:'diamond_hands',icon:'💎',name:'Diamond Hands',desc:'Call confidence 5 times in one game, go 5/5'},
+  {id:'bold',icon:'😤',name:'Bold',desc:'First time calling confidence'},
+  {id:'reckless',icon:'💀',name:'Reckless',desc:'Lose confidence 3 times in one game'},
+  {id:'called_shot',icon:'💣',name:'Called Shot',desc:'Correctly pick home run with confidence'},
+  {id:'big_brain',icon:'🧠',name:'Big Brain',desc:'Correctly pick double play with confidence'},
+  {id:'first_to_third',icon:'🏃',name:'First to Third',desc:'Correctly pick triple with confidence'},
+  {id:'assassin',icon:'🗡️',name:'Assassin',desc:'Steal priority with a confidence pick'},
+  {id:'hubris',icon:'🤡',name:'Hubris',desc:'Call confidence on home run and be wrong'},
+  {id:'hat_trick',icon:'🎰',name:'Hat Trick',desc:'Complete Pick 3 bonus 3 times in one game'},
+  {id:'clairvoyant',icon:'🔮',name:'Clairvoyant',desc:'Complete Pick 3 bonus 3 games in a row'},
+  {id:'prophet',icon:'✨',name:'Prophet',desc:'Pick 3 in first half-inning of 5 different games'},
+  {id:'unicorn',icon:'🌈',name:'Unicorn',desc:'Correctly pick a triple'},
+  {id:'take_your_base',icon:'🦶',name:'Take Your Base',desc:'Correctly pick HBP'},
+  {id:'speed_demon',icon:'💨',name:'Speed Demon',desc:'Correctly pick stolen base 3 times in one game'},
+  {id:'small_ball',icon:'⚾',name:'Small Ball',desc:'Correctly pick a bunt'},
+  {id:'patient',icon:'🚶',name:'Patient',desc:'Correctly pick 3 walks in one game'},
+  {id:'king_of_the_hill',icon:'👑',name:'King of the Hill',desc:'Hold priority for 3 full innings'},
+  {id:'oracle',icon:'🔭',name:'Oracle',desc:'Win priority on 5 consecutive at-bats'},
+  {id:'priority_hog',icon:'🐷',name:'Priority Hog',desc:'Hold priority for 10+ consecutive at-bats'},
+  {id:'payday',icon:'💰',name:'Payday',desc:'Score 20+ pts in a single game'},
+  {id:'rocket',icon:'🚀',name:'Rocket',desc:'Score 10+ pts in a single half-inning'},
+  {id:'big_spender',icon:'💸',name:'Big Spender',desc:'Earn 5+ pts on a single at-bat'},
+  {id:'hot_streak',icon:'🌡️',name:'Hot Streak',desc:'Score points in 10 consecutive at-bats'},
+  {id:'rivalry',icon:'🩸',name:'Rivalry',desc:'Play 25 games against the same opponent'},
+  {id:'dominant',icon:'📊',name:'Dominant',desc:'Win 70%+ vs one opponent (min 10 games)'},
+  {id:'blood_feud',icon:'⚔️',name:'Blood Feud',desc:'Play 50 games against the same opponent'},
+  {id:'champion',icon:'🏆',name:'Champion',desc:'Win your first game'},
+  {id:'perfect_game',icon:'🎳',name:'Perfect Game',desc:'Win without ever losing priority'},
+  {id:'comeback_kid',icon:'📈',name:'Comeback Kid',desc:'Win after being down 10+ points'},
+  {id:'good_sport',icon:'🤝',name:'Good Sport',desc:'Lose by 20+ points'},
+  {id:'comfortable',icon:'😎',name:'Comfortable',desc:'Win by 20+ points'},
+  {id:'sweating',icon:'🫣',name:'Sweating',desc:'Win by 1 point'},
+  {id:'walk_off',icon:'🎬',name:'Walk Off',desc:'Correctly pick last at-bat with confidence'},
+  {id:'dynasty',icon:'🔱',name:'Dynasty',desc:'Win 5 games in a row against same opponent'},
+  {id:'season_ticket',icon:'🏟️',name:'Season Ticket',desc:'Play 20+ games total'},
+  {id:'ghost',icon:'👻',name:'Ghost',desc:'Opponent scores 0 in a half-inning you scored 5+'},
+  {id:'win_1',icon:'🥉',name:'First Blood',desc:'Win your first game'},
+  {id:'win_5',icon:'🥈',name:'5 Wins',desc:'Win 5 games all time'},
+  {id:'win_10',icon:'🥇',name:'10 Wins',desc:'Win 10 games all time'},
+  {id:'win_25',icon:'🎖️',name:'25 Wins',desc:'Win 25 games all time'},
+  {id:'games_5',icon:'🎟️',name:'5 Games',desc:'Play 5 games'},
+  {id:'games_10',icon:'📋',name:'10 Games',desc:'Play 10 games'},
+  {id:'games_25',icon:'📅',name:'25 Games',desc:'Play 25 games'},
+  {id:'pts_100',icon:'💫',name:'100 Points',desc:'100 all-time points'},
+  {id:'pts_500',icon:'⭐',name:'500 Points',desc:'500 all-time points'},
+  {id:'pts_1000',icon:'🌟',name:'1000 Points',desc:'1000 all-time points'},
+  {id:'pts_2500',icon:'🌠',name:'2500 Points',desc:'2500 all-time points'},
+  {id:'picks_25',icon:'✅',name:'25 Correct',desc:'25 correct picks all time'},
+  {id:'picks_100',icon:'💚',name:'100 Correct',desc:'100 correct picks all time'},
+  {id:'picks_250',icon:'💎',name:'250 Correct',desc:'250 correct picks all time'},
+  {id:'k_10',icon:'🔴',name:'10 Strikeouts',desc:'10 strikeouts all time'},
+  {id:'k_50',icon:'🔴',name:'50 Strikeouts',desc:'50 strikeouts all time'},
+  {id:'k_100',icon:'🔴',name:'100 Strikeouts',desc:'100 strikeouts all time'},
+  {id:'ipo_10',icon:'🟠',name:'10 In Play Outs',desc:'10 in play outs all time'},
+  {id:'ipo_50',icon:'🟠',name:'50 In Play Outs',desc:'50 in play outs all time'},
+  {id:'ipo_100',icon:'🟠',name:'100 In Play Outs',desc:'100 in play outs all time'},
+  {id:'hr_5',icon:'💥',name:'5 Home Runs',desc:'5 home runs all time'},
+  {id:'hr_25',icon:'💥',name:'25 Home Runs',desc:'25 home runs all time'},
+  {id:'hr_50',icon:'💥',name:'50 Home Runs',desc:'50 home runs all time'},
+  {id:'single_10',icon:'1️⃣',name:'10 Singles',desc:'10 singles all time'},
+  {id:'single_50',icon:'1️⃣',name:'50 Singles',desc:'50 singles all time'},
+  {id:'single_100',icon:'1️⃣',name:'100 Singles',desc:'100 singles all time'},
+  {id:'double_5',icon:'2️⃣',name:'5 Doubles',desc:'5 doubles all time'},
+  {id:'double_25',icon:'2️⃣',name:'25 Doubles',desc:'25 doubles all time'},
+  {id:'double_50',icon:'2️⃣',name:'50 Doubles',desc:'50 doubles all time'},
+  {id:'triple_3',icon:'3️⃣',name:'3 Triples',desc:'3 triples all time'},
+  {id:'triple_10',icon:'3️⃣',name:'10 Triples',desc:'10 triples all time'},
+  {id:'triple_25',icon:'3️⃣',name:'25 Triples',desc:'25 triples all time'},
+  {id:'walk_10',icon:'🚶',name:'10 Walks',desc:'10 walks all time'},
+  {id:'walk_25',icon:'🚶',name:'25 Walks',desc:'25 walks all time'},
+  {id:'walk_50',icon:'🚶',name:'50 Walks',desc:'50 walks all time'},
+  {id:'hbp_5',icon:'🦶',name:'5 HBPs',desc:'5 HBPs all time'},
+  {id:'hbp_15',icon:'🦶',name:'15 HBPs',desc:'15 HBPs all time'},
+  {id:'hbp_30',icon:'🦶',name:'30 HBPs',desc:'30 HBPs all time'},
+  {id:'sb_5',icon:'💨',name:'5 Steals',desc:'5 stolen bases all time'},
+  {id:'sb_15',icon:'💨',name:'15 Steals',desc:'15 stolen bases all time'},
+  {id:'sb_30',icon:'💨',name:'30 Steals',desc:'30 stolen bases all time'},
+  {id:'dp_5',icon:'🔄',name:'5 Double Plays',desc:'5 double plays all time'},
+  {id:'dp_15',icon:'🔄',name:'15 Double Plays',desc:'15 double plays all time'},
+  {id:'dp_30',icon:'🔄',name:'30 Double Plays',desc:'30 double plays all time'},
+  {id:'bunt_5',icon:'🏏',name:'5 Bunts',desc:'5 bunts all time'},
+  {id:'bunt_15',icon:'🏏',name:'15 Bunts',desc:'15 bunts all time'},
+  {id:'bunt_30',icon:'🏏',name:'30 Bunts',desc:'30 bunts all time'},
+  {id:'p3_5',icon:'🎰',name:'5 Pick 3 Bonuses',desc:'5 Pick 3 bonuses all time'},
+  {id:'p3_15',icon:'🎰',name:'15 Pick 3 Bonuses',desc:'15 Pick 3 bonuses all time'},
+  {id:'p3_30',icon:'🎰',name:'30 Pick 3 Bonuses',desc:'30 Pick 3 bonuses all time'},
+  {id:'conf_10',icon:'💪',name:'10 Conf. Correct',desc:'10 confidence correct all time'},
+  {id:'conf_25',icon:'💪',name:'25 Conf. Correct',desc:'25 confidence correct all time'},
+  {id:'conf_50',icon:'💪',name:'50 Conf. Correct',desc:'50 confidence correct all time'},
+  {id:'streak_5',icon:'🔥',name:'5 Streak',desc:'5 correct in a row all time'},
+  {id:'streak_10',icon:'🔥',name:'10 Streak',desc:'10 correct in a row all time'},
+  {id:'streak_20',icon:'🔥',name:'20 Streak',desc:'20 correct in a row all time'},
+];
 
 let G={
   screen:'screen-title',players:[],scores:{},
-  inning:1,isBottom:false,inningAtBat:1,
-  priorityIdx:0,
+  inning:1,isBottom:false,inningAtBat:1,outs:0,
+  priorityIdx:0,priorityStreak:0,priorityHogTriggered:false,neverLostPriority:true,
   p3picks:{},p3alive:{},p3bonusGiven:{},p3bustedThisPlay:{},
   pendingPickers:[],currentPickerIdx:0,
   manualPicks:{},confidence:{},
-  pendingResult:null,pendingRuns:0,lastDeltas:{},
-  // per-player at-bat log for stats
-  atBatLog:[], // [{inning,isBottom,atBat,playerIdx,pick,outcome,pts,conf}]
-  finalStats:null,
+  pendingResult:null,pendingRuns:0,lastDeltas:{},lastResult:null,
+  atBatLog:[],finalStats:null,mvpBadge:null,
+  batterName:'',awayTeam:'',homeTeam:'',stadium:'',awayScore:0,homeScore:0,gameNotes:'',
+  gameAchievements:[],
+  consecutiveCorrect:0,consecutiveMiss:0,consecutiveConfWrong:0,consecutiveScoring:0,
+  halfInningCorrect:{},halfInningTotal:{},halfInningScore:{},halfInningPts:{},
+  confInGame:{correct:0,total:0},p3BonusesThisGame:0,boolBold:false,
 };
 let NAV=[];
-let leaderboard={};
-let gameHistory=[];
-let statsDeepIdx=0;
+let leaderboard={},gameHistory=[],roster=[],h2h={},historicalWins={};
+let settings={dark:false,haptic:true,sound:true,wake:false};
+let allTimeStreak=0;
+let statsDeepIdx=0,lbExpanded={},histExpanded={},trashIdx=0,winSplitShown={};
+let wakeLock=null;
 
 function lsGet(k){try{const v=localStorage.getItem(k);return v?JSON.parse(v):null;}catch(e){return null;}}
 function lsSet(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch(e){}}
@@ -470,298 +744,253 @@ function lsDel(k){try{localStorage.removeItem(k);}catch(e){}}
 function loadData(){
   leaderboard=lsGet('gb_lb')||{};
   gameHistory=lsGet('gb_hist')||[];
+  roster=lsGet('gb_roster')||[];
+  settings=lsGet('gb_settings')||{dark:false,haptic:true,sound:true,wake:false};
+  h2h=lsGet('gb_h2h')||{};
+  historicalWins=lsGet('gb_hist_wins')||{};
+  allTimeStreak=lsGet('gb_streak')||0;
   const saved=lsGet('gb_game');
   if(saved&&saved.players&&saved.players.length)G=saved;
+  if(settings.dark)document.body.classList.add('dark');
 }
 function saveGame(){lsSet('gb_game',G);}
-function clearGame(){lsDel('gb_game');}
 function saveMeta(){lsSet('gb_lb',leaderboard);lsSet('gb_hist',gameHistory);}
+function saveSettings(){lsSet('gb_settings',settings);}
 
-function push(screen){NAV.push({screen:G.screen,state:clone(G)});G.screen=screen;saveGame();render();}
-function back(){if(!NAV.length)return;const p=NAV.pop();G=p.state;render();}
-function goTo(screen){NAV.push({screen:G.screen,state:clone(G)});G.screen=screen;render();}
+function haptic(t){if(!settings.haptic||!navigator.vibrate)return;if(t==='tap')navigator.vibrate(8);else if(t==='correct')navigator.vibrate([12,30,20]);else if(t==='ach')navigator.vibrate([20,40,20,40,40]);}
 
-function openRules(){document.getElementById('rules-modal').classList.remove('hidden');}
-function closeRules(e){if(e.target===document.getElementById('rules-modal'))document.getElementById('rules-modal').classList.add('hidden');}
-function closeRulesBtn(){document.getElementById('rules-modal').classList.add('hidden');}
-function openHist(pIdx){
-  document.getElementById('hist-modal-title').textContent=G.players[pIdx]+' — BREAKDOWN';
-  const log=G.atBatLog.filter(e=>e.playerIdx===pIdx);
-  if(!log.length){
-    document.getElementById('hist-modal-body').innerHTML='<div class="empty-state" style="padding:24px">No points scored yet.</div>';
-  } else {
-    // separate base outcome pts, confidence, p3 bonus
-    const byOutcome={};
-    let confCorrectPts=0, confWrongPts=0, p3BonusPts=0;
-
-    log.forEach(e=>{
-      // base outcome points (pts from the outcome itself, not bonuses)
-      if(e.pts>0){
-        const basePts=oPts(e.outcome); // just the outcome base
-        const runPts=e.runs||0;
-        const base=basePts+runPts;
-        if(base>0){
-          if(!byOutcome[e.outcome])byOutcome[e.outcome]={count:0,pts:0};
-          byOutcome[e.outcome].count++;
-          byOutcome[e.outcome].pts+=base;
-        }
-        // confidence bonus
-        if(e.conf) confCorrectPts+=5;
-        // p3 bonus — if pts includes 7+ over base, there was a p3 bonus
-        const extra=e.pts-(base+(e.conf?5:0));
-        if(extra>=7) p3BonusPts+=7;
-      } else {
-        // negative pts = confidence wrong
-        if(e.conf) confWrongPts+=2;
-      }
-    });
-
-    const totalPts=log.reduce((s,e)=>s+e.pts,0);
-    let html=`<div class="hist-row" style="font-weight:700;border-bottom:2px solid #003DA5;padding-bottom:8px;margin-bottom:4px"><span>TOTAL</span><span class="hist-pts ${totalPts>=0?'pos':'neg'}">${totalPts>0?'+':''}${totalPts} pts</span></div>`;
-
-    // outcome rows
-    const outcomeEntries=Object.entries(byOutcome).sort((a,b)=>b[1].pts-a[1].pts);
-    if(outcomeEntries.length){
-      html+=`<div style="font-size:9px;letter-spacing:.08em;color:#1A56C4;text-transform:uppercase;padding:8px 0 4px">Outcomes</div>`;
-      html+=outcomeEntries.map(([oc,d])=>`
-        <div class="hist-row">
-          <span>${oLabel(oc)} ×${d.count}</span>
-          <span class="hist-pts pos">+${d.pts} pts</span>
-        </div>`).join('');
+function playSound(t){
+  if(!settings.sound)return;
+  try{
+    const ctx=new(window.AudioContext||window.webkitAudioContext)();
+    if(t==='correct'){
+      const o=ctx.createOscillator(),g=ctx.createGain();o.connect(g);g.connect(ctx.destination);
+      o.frequency.setValueAtTime(400,ctx.currentTime);o.frequency.exponentialRampToValueAtTime(700,ctx.currentTime+0.15);
+      g.gain.setValueAtTime(0.25,ctx.currentTime);g.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+0.5);
+      o.start();o.stop(ctx.currentTime+0.5);
+    } else if(t==='ach'){
+      [523,659,784,1047].forEach((freq,i)=>{
+        const o=ctx.createOscillator(),g=ctx.createGain();o.connect(g);g.connect(ctx.destination);
+        o.frequency.value=freq;o.type='sine';
+        g.gain.setValueAtTime(0,ctx.currentTime+i*0.12);
+        g.gain.linearRampToValueAtTime(0.35,ctx.currentTime+i*0.12+0.05);
+        g.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+i*0.12+0.22);
+        o.start(ctx.currentTime+i*0.12);o.stop(ctx.currentTime+i*0.12+0.25);
+      });
     }
-
-    // bonus rows
-    const hasBonus=confCorrectPts||confWrongPts||p3BonusPts;
-    if(hasBonus){
-      html+=`<div style="font-size:9px;letter-spacing:.08em;color:#1A56C4;text-transform:uppercase;padding:8px 0 4px">Bonuses</div>`;
-      if(p3BonusPts) html+=`<div class="hist-row"><span>Pick 3 bonus</span><span class="hist-pts pos">+${p3BonusPts} pts</span></div>`;
-      if(confCorrectPts) html+=`<div class="hist-row"><span>Confidence correct</span><span class="hist-pts pos">+${confCorrectPts} pts</span></div>`;
-      if(confWrongPts) html+=`<div class="hist-row"><span>Confidence wrong</span><span class="hist-pts neg">−${confWrongPts} pts</span></div>`;
-    }
-
-    document.getElementById('hist-modal-body').innerHTML=html;
-  }
-  document.getElementById('hist-modal').classList.remove('hidden');
+  }catch(e){}
 }
-function closeHist(e){if(e.target===document.getElementById('hist-modal'))document.getElementById('hist-modal').classList.add('hidden');}
-function closeHistBtn(){document.getElementById('hist-modal').classList.add('hidden');}
+
+async function requestWakeLock(){if(!settings.wake)return;try{if('wakeLock' in navigator)wakeLock=await navigator.wakeLock.request('screen');}catch(e){}}
+function releaseWakeLock(){try{if(wakeLock)wakeLock.release();}catch(e){}}
+
+function push(s){NAV.push({screen:G.screen,state:clone(G)});G.screen=s;saveGame();render();}
+function back(){if(!NAV.length)return;const p=NAV.pop();G=p.state;render();}
+function goTo(s){NAV.push({screen:G.screen,state:clone(G)});G.screen=s;render();}
+
+function openModal(id){document.getElementById(id).classList.remove('hidden');}
+function closeModal(id,e){if(e.target===document.getElementById(id))document.getElementById(id).classList.add('hidden');}
+function closeModalBtn(id){document.getElementById(id).classList.add('hidden');}
+
+function outsHTML(){let h='<span class="outs-label">OUTS</span>';for(let i=0;i<3;i++)h+=`<div class="out-dot${i<G.outs?' filled':''}"></div>`;return h;}
+function gsBarHTML(){
+  if(!G.awayTeam&&!G.homeTeam)return'';
+  return`<span>${G.awayTeam||'Away'}</span> ${G.awayScore||0} — ${G.homeScore||0} <span>${G.homeTeam||'Home'}</span>`;
+}
+function setHeaderBars(){
+  ['p3','p3r','pick','result','sb'].forEach(id=>{
+    const od=document.getElementById(id+'-outs');if(od)od.innerHTML=outsHTML();
+    const gs=document.getElementById('gsbar-'+id);if(gs)gs.innerHTML=gsBarHTML();
+  });
+}
 
 function render(){
   document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
-  const s=document.getElementById(G.screen);
-  if(s)s.classList.add('active');
+  const s=document.getElementById(G.screen);if(s)s.classList.add('active');
   window.scrollTo(0,0);
+  setHeaderBars();
   if(G.screen==='screen-title')renderTitle();
-  ({
-    'screen-setup':renderSetup,
-    'screen-pick3':renderPick3,
-    'screen-p3review':renderP3Review,
-    'screen-pick':renderPick,
-    'screen-result':renderResult,
-    'screen-scoreboard':renderScoreboard,
-    'screen-stats':renderStats,
-    'screen-leaderboard':renderLeaderboard,
-    'screen-history':renderHistoryScreen,
-  }[G.screen]||function(){})();
-}
-
-/* SETUP */
-function renderSetup(){
-  if(!G.players||!G.players.length)G.players=['',''];
-  document.getElementById('player-inputs').innerHTML=G.players.map((p,i)=>`
-    <div class="input-row">
-      <input class="player-input" style="flex:1" placeholder="PLAYER ${i+1}" value="${p}" oninput="G.players[${i}]=this.value;checkStart()">
-      ${G.players.length>2?`<button class="btn-secondary" style="width:auto;padding:10px 12px;margin:0;flex-shrink:0" onclick="removePlayer(${i})">✕</button>`:''}
-    </div>`).join('');
-  document.getElementById('add-player-wrap').innerHTML=G.players.length<3?`<button class="btn-secondary" onclick="addPlayer()">+ ADD PLAYER</button>`:'';
-  checkStart();
-}
-function checkStart(){const b=document.getElementById('start-btn');if(b)b.disabled=G.players.filter(p=>p.trim()).length<2;}
-function addPlayer(){G.players.push('');render();}
-function removePlayer(i){G.players.splice(i,1);render();}
-function startGame(){
-  G.players=G.players.map((p,i)=>p.trim()||'PLAYER '+(i+1));
-  NAV=[];
-  G.scores={};G.players.forEach((_,i)=>G.scores[i]=0);
-  G.inning=1;G.isBottom=false;G.inningAtBat=1;G.priorityIdx=0;
-  G.p3picks={};G.p3alive={};G.p3bonusGiven={};G.p3bustedThisPlay={};
-  G.players.forEach((_,i)=>{G.p3picks[i]=[];G.p3alive[i]=true;});
-  G.currentPickerIdx=0;G.manualPicks={};G.confidence={};
-  G.pendingResult=null;G.pendingRuns=0;G.lastDeltas={};
-  G.atBatLog=[];G.finalStats=null;
-  push('screen-pick3');
+  if(G.screen==='screen-setup')renderSetup();
+  if(G.screen==='screen-pick3')renderPick3();
+  if(G.screen==='screen-p3review')renderP3Review();
+  if(G.screen==='screen-pick')renderPick();
+  if(G.screen==='screen-result')renderResult();
+  if(G.screen==='screen-scoreboard')renderScoreboard();
+  if(G.screen==='screen-stats')renderStatsPage();
+  if(G.screen==='screen-stats-menu')renderStatsMenu();
+  if(G.screen==='screen-leaderboard')renderLeaderboard();
+  if(G.screen==='screen-history')renderHistoryScreen();
+  if(G.screen==='screen-hof')renderHOF();
+  if(G.screen==='screen-h2h')renderH2H();
+  if(G.screen==='screen-yr')renderYearReview();
+  if(G.screen==='screen-settings')renderSettings();
+  if(G.screen==='screen-achievements')renderAchievementsList();
+  if(G.screen==='screen-tutorial')renderTutorial();
 }
 
 function renderTitle(){
   const saved=lsGet('gb_game');
   const wrap=document.getElementById('resume-btn-wrap');
-  if(!wrap)return;
-  if(saved&&saved.players&&saved.players.length){
-    wrap.innerHTML=`
-      <button class="menu-btn" style="background:#D6E4F7;border-color:#003DA5" onclick="resumeGame()"><span>⚾ RESUME GAME</span><span>→</span></button>
-      <button class="menu-btn" style="background:#F0EDE3;border-color:#A32D2D;color:#A32D2D;margin-bottom:16px" onclick="clearSavedGame()"><span>CLEAR SAVED GAME</span><span>✕</span></button>`;
-  } else {
-    wrap.innerHTML='';
+  if(wrap){
+    wrap.innerHTML=saved&&saved.players&&saved.players.length
+      ?`<button class="menu-btn resume" onclick="resumeGame()"><span>⚾ RESUME GAME</span><span>→</span></button>
+         <button class="menu-btn danger" onclick="clearActiveGame()" style="margin-bottom:10px"><span>CLEAR ACTIVE GAME</span><span>✕</span></button>`
+      :'';
   }
+  const now=new Date(),showYR=now.getMonth()>=9;
+  const sb=document.getElementById('season-btn-wrap');
+  if(sb)sb.innerHTML=showYR?`<button class="menu-btn season" onclick="goTo('screen-yr')" style="margin-bottom:10px"><span>🌟 YEAR IN REVIEW</span><span>→</span></button>`:'';
 }
-function resumeGame(){
-  const saved=lsGet('gb_game');
-  if(saved&&saved.players){G=saved;NAV=[];render();}
-}
-function clearSavedGame(){
-  if(confirm('Clear the saved game? This cannot be undone.')){
-    clearGame();
-    document.getElementById('resume-btn-wrap').innerHTML='';
-  }
-}
+function resumeGame(){const s=lsGet('gb_game');if(s&&s.players){G=s;NAV=[];requestWakeLock();render();}}
+function clearActiveGame(){if(confirm('Clear active game?')){lsDel('gb_game');renderTitle();}}
 function newGameFromTitle(){
-  const saved=lsGet('gb_game');
-  if(saved&&saved.players&&saved.players.length){
-    if(!confirm('Start a new game? Your current saved game will be lost.'))return;
-    clearGame();
-  }
-  G.players=['',''];
+  const s=lsGet('gb_game');
+  if(s&&s.players&&s.players.length){if(!confirm('Start new game? Current active game will be lost.'))return;lsDel('gb_game');}
+  G.players=['',''];G.awayTeam='';G.homeTeam='';G.stadium='';G.awayScore=0;G.homeScore=0;
   goTo('screen-setup');
 }
 
-/* PICK 3 */
-function p3Order(idx){
-  const order=[G.priorityIdx,...G.players.map((_,i)=>i).filter(i=>i!==G.priorityIdx)];
-  return order[idx];
+function renderSetup(){
+  if(!G.players||!G.players.length)G.players=['',''];
+  const opts=`<option value="">Select team...</option>`+MLB_NAMES.map(t=>`<option value="${t}">${t}</option>`).join('')+`<option value="__other__">Other (type name...)</option>`;
+  const awSel=document.getElementById('away-sel');if(awSel){awSel.innerHTML=opts;awSel.value=G.awayTeam||'';}
+  const hmSel=document.getElementById('home-sel');if(hmSel){hmSel.innerHTML=opts;hmSel.value=G.homeTeam||'';}
+  const sd=document.getElementById('stadium-display');if(sd)sd.textContent=G.stadium?'📍 '+G.stadium:'';
+  const al=document.getElementById('away-score-lbl'),hl=document.getElementById('home-score-lbl');
+  if(al)al.textContent=G.awayTeam||'AWAY';if(hl)hl.textContent=G.homeTeam||'HOME';
+  document.getElementById('player-inputs').innerHTML=G.players.map((p,i)=>`
+    <div class="input-row">
+      <select class="player-input" style="flex:1" onchange="onPlayerSelect(${i},this.value)">
+        <option value="">PLAYER ${i+1}</option>
+        ${roster.map(r=>`<option value="${r}" ${p===r?'selected':''}>${r}</option>`).join('')}
+        <option value="__custom__">Type name...</option>
+      </select>
+      ${G.players.length>2?`<button class="btn-secondary" style="width:auto;padding:10px 12px;margin:0" onclick="removePlayer(${i})">✕</button>`:''}
+    </div>
+    <div id="ci-${i}" style="display:${p&&!roster.includes(p)?'block':'none'};margin-bottom:8px">
+      <input class="player-input" placeholder="TYPE NAME" value="${p&&!roster.includes(p)?p:''}" oninput="G.players[${i}]=this.value;checkStart()">
+    </div>`).join('');
+  document.getElementById('add-player-wrap').innerHTML=G.players.length<3?`<button class="btn-secondary" onclick="addPlayer()">+ ADD PLAYER</button>`:'';
+  checkStart();
 }
+function onPlayerSelect(i,v){if(v==='__custom__'){G.players[i]='';document.getElementById('ci-'+i).style.display='block';}else{G.players[i]=v;const el=document.getElementById('ci-'+i);if(el)el.style.display='none';}checkStart();}
+function onTeamSelect(side,v){
+  if(v==='__other__'){document.getElementById(side+'-custom').style.display='block';if(side==='home'){G.homeTeam='';G.stadium='';}}
+  else{document.getElementById(side+'-custom').style.display='none';if(side==='away'){G.awayTeam=v;}else{G.homeTeam=v;if(v&&MLB_TEAMS[v]){G.stadium=MLB_TEAMS[v];}else if(v){openModal('stadium-modal');}else G.stadium='';}}
+  const sd=document.getElementById('stadium-display');if(sd)sd.textContent=G.stadium?'📍 '+G.stadium:'';checkStart();
+}
+function confirmStadium(){const inp=document.getElementById('stadium-input');G.stadium=inp.value.trim()||G.homeTeam+' Stadium';closeModalBtn('stadium-modal');const sd=document.getElementById('stadium-display');if(sd)sd.textContent='📍 '+G.stadium;}
+function checkStart(){const b=document.getElementById('start-btn');if(b)b.disabled=G.players.filter(p=>p.trim()).length<2;}
+function addPlayer(){G.players.push('');renderSetup();}
+function removePlayer(i){G.players.splice(i,1);renderSetup();}
+
+function getDefaultPriority(){
+  if(G.players.length<2)return 0;
+  const recent=gameHistory.find(g=>g.players.length===2&&g.players.every(p=>G.players.includes(p.name)));
+  if(!recent)return 0;
+  const idx=G.players.indexOf(recent.winner);return idx>=0?idx:0;
+}
+
+function startGame(){
+  G.players=G.players.map((p,i)=>p.trim()||'PLAYER '+(i+1));
+  G.scores={};G.players.forEach((_,i)=>G.scores[i]=0);
+  G.inning=1;G.isBottom=false;G.inningAtBat=1;G.outs=0;
+  G.priorityIdx=getDefaultPriority();
+  G.priorityStreak=0;G.priorityHogTriggered=false;G.neverLostPriority=true;
+  G.p3picks={};G.p3alive={};G.p3bonusGiven={};G.p3bustedThisPlay={};
+  G.players.forEach((_,i)=>{G.p3picks[i]=[];G.p3alive[i]=true;});
+  G.currentPickerIdx=0;G.manualPicks={};G.confidence={};
+  G.pendingResult=null;G.pendingRuns=0;G.lastDeltas={};G.lastResult=null;
+  G.atBatLog=[];G.finalStats=null;G.mvpBadge=null;G.batterName='';G.gameNotes='';
+  G.gameAchievements=[];G.consecutiveCorrect=0;G.consecutiveMiss=0;
+  G.consecutiveConfWrong=0;G.consecutiveScoring=0;
+  G.halfInningCorrect={};G.halfInningTotal={};G.halfInningScore={};G.halfInningPts={};
+  G.confInGame={correct:0,total:0};G.p3BonusesThisGame=0;G.boolBold=false;
+  NAV=[];requestWakeLock();push('screen-pick3');
+}
+
+function p3Order(idx){return[G.priorityIdx,...G.players.map((_,i)=>i).filter(i=>i!==G.priorityIdx)][idx];}
+
 function renderPick3(){
-  const pIdx=p3Order(G.currentPickerIdx);
-  const picks=G.p3picks[pIdx]||[];
+  const pIdx=p3Order(G.currentPickerIdx),picks=G.p3picks[pIdx]||[];
   document.getElementById('p3-title').textContent=G.players[pIdx];
   document.getElementById('p3-tag').textContent=inningLabel(G.inning,G.isBottom)+' · Pick 3';
   document.getElementById('p3-slots').innerHTML=['AT-BAT 1','AT-BAT 2','AT-BAT 3'].map((s,i)=>`
-    <div class="p3-slot${i<picks.length?' filled':''}">
-      <div class="slot-num">${s}</div>
-      <div class="slot-val">${i<picks.length?oLabel(picks[i]):'—'}</div>
-    </div>`).join('');
+    <div class="p3-slot${i<picks.length?' filled':''}"><div class="slot-num">${s}</div><div class="slot-val">${i<picks.length?oLabel(picks[i]):'—'}</div></div>`).join('');
   const lockedOut=(G.currentPickerIdx>0&&picks.length===0)?(G.p3picks[G.priorityIdx]||[])[0]:null;
   const done=picks.length===3;
   document.getElementById('p3-pick-label').textContent=done?'':'CHOOSE AT-BAT '+(picks.length+1);
-  const grid=document.getElementById('p3-grid');
-  grid.style.display=done?'none':'grid';
-  if(!done){
-    grid.innerHTML=PLAYER_OUTCOMES.map(o=>{
-      const locked=lockedOut===o.id;
-      return `<div class="oc${locked?' locked':''}" ${locked?'':'onclick="addP3Pick('+pIdx+',\''+o.id+'\')"'}>
-        <div class="oc-lbl">${o.label}</div>
-        <div class="oc-pts">${o.pts} pt${o.pts!==1?'s':''}</div>
-      </div>`;
-    }).join('');
-  }
+  const grid=document.getElementById('p3-grid');grid.style.display=done?'none':'grid';
+  if(!done)grid.innerHTML=PLAYER_OUTCOMES.map(o=>`<div class="oc${lockedOut===o.id?' locked':''}" ${lockedOut===o.id?'':'onclick="addP3Pick('+pIdx+',\''+o.id+'\')"'}><div class="oc-lbl">${o.label}</div><div class="oc-pts">${o.pts}pt${o.pts!==1?'s':''}</div></div>`).join('');
   document.getElementById('p3-actions').innerHTML=done
-    ?`<div class="info-box">All 3 picks locked in.</div>
-       <button class="btn-primary" onclick="confirmP3()">CONFIRM →</button>
-       <button class="btn-secondary" onclick="clearP3(${pIdx})">CLEAR PICKS</button>`
+    ?`<div class="info-box">All 3 locked in.</div><button class="btn-primary" onclick="confirmP3()">CONFIRM →</button><button class="btn-secondary" onclick="clearP3(${pIdx})">CLEAR</button>`
     :`<button class="btn-secondary" onclick="skipP3()">SKIP PICK 3</button>`;
 }
-function addP3Pick(pIdx,id){
-  if(!G.p3picks[pIdx])G.p3picks[pIdx]=[];
-  if(G.p3picks[pIdx].length<3){G.p3picks[pIdx].push(id);render();}
-}
-function clearP3(pIdx){G.p3picks[pIdx]=[];render();}
-function confirmP3(){
-  G.currentPickerIdx++;
-  if(G.currentPickerIdx>=G.players.length){G.currentPickerIdx=0;push('screen-p3review');}
-  else push('screen-pick3');
-}
-function skipP3(){
-  const pIdx=p3Order(G.currentPickerIdx);
-  G.p3picks[pIdx]=[];G.p3alive[pIdx]=false;
-  G.currentPickerIdx++;
-  if(G.currentPickerIdx>=G.players.length){G.currentPickerIdx=0;push('screen-p3review');}
-  else push('screen-pick3');
-}
+function addP3Pick(pIdx,id){haptic('tap');if(!G.p3picks[pIdx])G.p3picks[pIdx]=[];if(G.p3picks[pIdx].length<3){G.p3picks[pIdx].push(id);renderPick3();}}
+function clearP3(pIdx){G.p3picks[pIdx]=[];renderPick3();}
+function confirmP3(){G.currentPickerIdx++;if(G.currentPickerIdx>=G.players.length){G.currentPickerIdx=0;push('screen-p3review');}else push('screen-pick3');}
+function skipP3(){const pIdx=p3Order(G.currentPickerIdx);G.p3picks[pIdx]=[];G.p3alive[pIdx]=false;G.currentPickerIdx++;if(G.currentPickerIdx>=G.players.length){G.currentPickerIdx=0;push('screen-p3review');}else push('screen-pick3');}
 
-/* P3 REVIEW */
 function renderP3Review(){
   document.getElementById('p3r-tag').textContent=inningLabel(G.inning,G.isBottom);
   document.getElementById('p3-review-rows').innerHTML=G.players.map((name,i)=>{
-    const picks=G.p3picks[i]||[];const has=picks.length===3;
-    return `<div class="score-row no-tap${i===G.priorityIdx?' leader':''}">
-      <div>
-        <div class="score-name">${name}${i===G.priorityIdx?' <span class="priority-badge">PRIORITY</span>':''}</div>
-        <div style="font-size:10px;color:#1A56C4;margin-top:3px">${has?picks.map(oLabel).join(' · '):'NO PICK 3'}</div>
-      </div>
-    </div>`;
+    const picks=G.p3picks[i]||[];
+    return`<div class="score-row no-tap${i===G.priorityIdx?' leader':''}"><div><div class="score-name">${name}${i===G.priorityIdx?' <span class="priority-badge">PRIORITY</span>':''}</div><div style="font-size:10px;color:var(--subtext);margin-top:3px">${picks.length===3?picks.map(oLabel).join(' · '):'NO PICK 3'}</div></div></div>`;
   }).join('');
 }
 
-/* MANUAL PICK */
+function getStreak(pIdx){const log=G.atBatLog.filter(e=>e.playerIdx===pIdx);let s=0;for(let i=log.length-1;i>=0;i--){if(log[i].pts>0)s++;else break;}return s;}
+
 function renderPick(){
-  const queue=G.pendingPickers;
-  const pIdx=queue[G.currentPickerIdx];
-  const isLast=G.currentPickerIdx===queue.length-1;
+  const queue=G.pendingPickers,pIdx=queue[G.currentPickerIdx],isLast=G.currentPickerIdx===queue.length-1;
   document.getElementById('pick-title').textContent=G.players[pIdx];
-  document.getElementById('pick-tag').textContent=inningLabel(G.inning,G.isBottom)+' · At-bat '+G.inningAtBat+(queue.length>1?' · '+(G.currentPickerIdx+1)+'/'+queue.length:'');
-  document.getElementById('pick-player-rows').innerHTML=G.players.map((n,i)=>{
-    const sl=G.inningAtBat-1;const pk=G.p3picks[i]||[];
-    const live=pk.length===3&&G.p3alive[i]&&sl<3;
-    const myPick=live?pk[sl]:G.manualPicks[i];
-    const pickLabel=i===pIdx?'choosing...':(myPick?(oLabel(myPick)+(G.confidence[i]?' WITH CONFIDENCE':'')):'—');
-    return `<div class="pr${i===G.players.length-1?' last':''}">
-      <div>
-        <div class="pname">${n}${i===G.priorityIdx?' <span class="priority-badge">PRIORITY</span>':''}${live?' <span class="p3-badge">P3</span>':''}</div>
-        <div class="ppick">${pickLabel}</div>
-      </div>
-      <div class="pscore">${G.scores[i]||0}</div>
-    </div>`;
-  }).join('');
+  document.getElementById('pick-tag').textContent=inningLabel(G.inning,G.isBottom)+' · AB '+G.inningAtBat+(queue.length>1?' · '+(G.currentPickerIdx+1)+'/'+queue.length:'');
+  const bi=document.getElementById('batter-input'),bd=document.getElementById('batter-display');
+  if(bi){bi.value=G.batterName||'';if(bd)bd.textContent=G.batterName||'—';}
   const sl=G.inningAtBat-1;
-  const prPk=G.p3picks[G.priorityIdx]||[];
-  const prLive=prPk.length===3&&G.p3alive[G.priorityIdx]&&sl<3;
+  const prPk=G.p3picks[G.priorityIdx]||[],prLive=prPk.length===3&&G.p3alive[G.priorityIdx]&&sl<3;
   const priorityPick=prLive?prPk[sl]:G.manualPicks[G.priorityIdx];
   const lockedOut=pIdx!==G.priorityIdx?priorityPick:null;
-  const sel=G.manualPicks[pIdx];
-  document.getElementById('pick-grid').innerHTML=PLAYER_OUTCOMES.map(o=>{
-    const locked=lockedOut===o.id;const isSel=sel===o.id;
-    return `<div class="oc${isSel?' sel':''}${locked?' locked':''}" ${locked?'':'onclick="selectPick('+pIdx+',\''+o.id+'\')"'}>
-      <div class="oc-lbl">${o.label}</div>
-      <div class="oc-pts">${o.pts} pt${o.pts!==1?'s':''}</div>
-    </div>`;
+  document.getElementById('pick-player-rows').innerHTML=G.players.map((n,i)=>{
+    const pk=G.p3picks[i]||[],live=pk.length===3&&G.p3alive[i]&&sl<3,myPick=live?pk[sl]:G.manualPicks[i];
+    const isActive=i===pIdx,streak=getStreak(i);
+    const lbl=isActive?'choosing...':(myPick?(oLabel(myPick)+(G.confidence[i]?' WITH CONFIDENCE':'')):'—');
+    return`<div class="pr${i===G.players.length-1?' last':''}${isActive?' active-player':''}"><div><div class="pname">${n}${i===G.priorityIdx?' <span class="priority-badge">PRIORITY</span>':''}${live?' <span class="p3-badge">P3</span>':''}${streak>=3?` <span class="streak-badge">🔥${streak}</span>`:''}</div><div class="ppick">${lbl}</div></div><div class="pscore">${G.scores[i]||0}</div></div>`;
   }).join('');
+  const sel=G.manualPicks[pIdx];
+  document.getElementById('pick-grid').innerHTML=PLAYER_OUTCOMES.map(o=>`<div class="oc${sel===o.id?' sel':''}${lockedOut===o.id?' locked':''}" ${lockedOut===o.id?'':'onclick="selectPick('+pIdx+',\''+o.id+'\')"'}><div class="oc-lbl">${o.label}</div><div class="oc-pts">${o.pts}pt${o.pts!==1?'s':''}</div></div>`).join('');
   document.getElementById('conf-toggle').className='toggle'+(G.confidence[pIdx]?' on':'');
-  const btn=document.getElementById('pick-next-btn');
-  btn.textContent=isLast?'ENTER OUTCOME →':'NEXT PLAYER →';
-  btn.disabled=!sel;
+  const btn=document.getElementById('pick-next-btn');btn.textContent=isLast?'ENTER OUTCOME →':'NEXT PLAYER →';btn.disabled=!sel;
 }
-function selectPick(pIdx,id){G.manualPicks[pIdx]=id;render();}
-function toggleConf(){const pIdx=G.pendingPickers[G.currentPickerIdx];G.confidence[pIdx]=!G.confidence[pIdx];render();}
-function submitPick(){
-  if(G.currentPickerIdx<G.pendingPickers.length-1){G.currentPickerIdx++;render();}
-  else{G.pendingResult=null;G.pendingRuns=0;push('screen-result');}
-}
+function selectPick(pIdx,id){haptic('tap');G.manualPicks[pIdx]=id;renderPick();}
+function toggleConf(){const pIdx=G.pendingPickers[G.currentPickerIdx];G.confidence[pIdx]=!G.confidence[pIdx];renderPick();}
+function submitPick(){if(G.currentPickerIdx<G.pendingPickers.length-1){G.currentPickerIdx++;renderPick();}else{G.pendingResult=null;G.pendingRuns=0;push('screen-result');}}
 
-/* RESULT */
 function renderResult(){
-  document.getElementById('result-tag').textContent=inningLabel(G.inning,G.isBottom)+' · At-bat '+G.inningAtBat;
+  const sl=G.inningAtBat-1;
+  document.getElementById('result-tag').textContent=inningLabel(G.inning,G.isBottom)+' · AB '+G.inningAtBat;
+  const al=document.getElementById('away-score-lbl'),hl=document.getElementById('home-score-lbl');
+  if(al)al.textContent=G.awayTeam||'AWAY';if(hl)hl.textContent=G.homeTeam||'HOME';
+  const asi=document.getElementById('away-score-inp'),hsi=document.getElementById('home-score-inp');
+  if(asi)asi.value=G.awayScore||0;if(hsi)hsi.value=G.homeScore||0;
   document.getElementById('result-player-rows').innerHTML=G.players.map((n,i)=>{
-    const sl=G.inningAtBat-1;const pk=G.p3picks[i]||[];
-    const live=pk.length===3&&G.p3alive[i]&&sl<3;
-    const myPick=live?pk[sl]:G.manualPicks[i];
-    const pickDisp=myPick?(oLabel(myPick)+(G.confidence[i]?' WITH CONFIDENCE':'')):'—';
-    return `<div class="pr${i===G.players.length-1?' last':''}">
-      <div>
-        <div class="pname">${n}${i===G.priorityIdx?' <span class="priority-badge">PRIORITY</span>':''}${live?' <span class="p3-badge">P3</span>':''}</div>
-        <div class="ppick">${pickDisp}</div>
-      </div>
-      <div class="pscore">${G.scores[i]||0}</div>
-    </div>`;
+    const pk=G.p3picks[i]||[],live=pk.length===3&&G.p3alive[i]&&sl<3,myPick=live?pk[sl]:G.manualPicks[i];
+    const lbl=myPick?(oLabel(myPick)+(G.confidence[i]?' WITH CONFIDENCE':'')):'—';
+    const streak=getStreak(i);
+    return`<div class="pr${i===G.players.length-1?' last':''}"><div><div class="pname">${n}${i===G.priorityIdx?' <span class="priority-badge">PRIORITY</span>':''}${live?' <span class="p3-badge">P3</span>':''}${streak>=3?` <span class="streak-badge">🔥${streak}</span>`:''}</div><div class="ppick">${lbl}</div></div><div class="pscore">${G.scores[i]||0}</div></div>`;
   }).join('');
   const sel=G.pendingResult;
-  document.getElementById('result-grid').innerHTML=RESULT_OUTCOMES.map(o=>`
-    <div class="oc${sel===o.id?' sel':''}" onclick="selectResult('${o.id}')">
-      <div class="oc-lbl">${o.label}</div>
-      <div class="oc-pts">${o.pts>0?o.pts+' pt'+(o.pts!==1?'s':''):'—'}</div>
-    </div>`).join('');
-  document.getElementById('runs-input').value=G.pendingRuns||0;
+  document.getElementById('result-grid').innerHTML=RESULT_OUTCOMES.map(o=>`<div class="oc${sel===o.id?' sel':''}" onclick="selectResult('${o.id}')"><div class="oc-lbl">${o.label}</div><div class="oc-pts">${o.pts>0?o.pts+'pt':'—'}</div></div>`).join('');
+  const rd=document.getElementById('runs-display-text');if(rd)rd.textContent=(G.pendingRuns||0)+' run'+((G.pendingRuns||0)!==1?'s':'');
   document.getElementById('result-btn').disabled=!sel;
 }
-function selectResult(id){G.pendingResult=id;render();}
+function selectResult(id){haptic('tap');G.pendingResult=id;renderResult();}
+function openRunsSheet(){
+  const rc=document.getElementById('run-cards');
+  if(rc)rc.innerHTML=[0,1,2,3,4].map(n=>`<div onclick="selectRuns(${n})" style="flex:1;padding:18px 4px;text-align:center;border:1.5px solid var(--border);border-radius:3px;background:${G.pendingRuns===n?'var(--ink)':'var(--card)'};cursor:pointer;font-family:'Courier New',monospace;font-size:22px;font-weight:700;color:${G.pendingRuns===n?'#fff':'var(--text)'};">${n}</div>`).join('');
+  openModal('runs-modal');
+}
+function selectRuns(n){haptic('tap');G.pendingRuns=n;const rd=document.getElementById('runs-display-text');if(rd)rd.textContent=n+' run'+(n!==1?'s':'');closeModalBtn('runs-modal');}
 
 function submitResult(){
   const outcome=G.pendingResult;if(!outcome)return;
@@ -769,338 +998,519 @@ function submitResult(){
   const deltas={};G.players.forEach((_,i)=>deltas[i]=0);
   G.p3bustedThisPlay={};
   let newPriority=G.priorityIdx;
+  const halfKey=G.inning+'_'+(G.isBottom?'b':'t');
+  if(!G.halfInningPts[halfKey])G.halfInningPts[halfKey]={};
+  // snapshot for undo
+  G.lastResult={outcome,runs,scores:clone(G.scores),outs:G.outs,inningAtBat:G.inningAtBat,priorityIdx:G.priorityIdx,p3alive:clone(G.p3alive),p3bonusGiven:clone(G.p3bonusGiven),atBatLogLen:G.atBatLog.length,manualPicks:clone(G.manualPicks),confidence:clone(G.confidence)};
 
   G.players.forEach((_,i)=>{
-    const sl=G.inningAtBat-1;const pk=G.p3picks[i]||[];
-    const live=pk.length===3&&G.p3alive[i]&&sl<3;
-    const pick=live?pk[sl]:G.manualPicks[i];
+    const sl=G.inningAtBat-1,pk=G.p3picks[i]||[],live=pk.length===3&&G.p3alive[i]&&sl<3,pick=live?pk[sl]:G.manualPicks[i];
+    if(!G.halfInningTotal[halfKey])G.halfInningTotal[halfKey]={};
+    if(!G.halfInningCorrect[halfKey])G.halfInningCorrect[halfKey]={};
+    if(!G.halfInningScore[halfKey])G.halfInningScore[halfKey]={};
+    if(pick)G.halfInningTotal[halfKey][i]=(G.halfInningTotal[halfKey][i]||0)+1;
     if(!pick)return;
     const correct=pick===outcome;
     if(correct){
       let pts=oPts(outcome)+runs;
       if(G.confidence[i])pts+=5;
       deltas[i]+=pts;
-      if(live&&sl===2&&!G.p3bonusGiven[i]){deltas[i]+=7;G.p3bonusGiven[i]=true;}
+      G.halfInningScore[halfKey][i]=(G.halfInningScore[halfKey][i]||0)+pts;
+      G.halfInningPts[halfKey][i]=(G.halfInningPts[halfKey][i]||0)+pts;
+      if(live&&sl===2&&!G.p3bonusGiven[i]){deltas[i]+=7;G.p3bonusGiven[i]=true;G.p3BonusesThisGame++;}
       if(i!==G.priorityIdx)newPriority=i;
-      // log
+      G.halfInningCorrect[halfKey][i]=(G.halfInningCorrect[halfKey][i]||0)+1;
       G.atBatLog.push({inning:G.inning,isBottom:G.isBottom,atBat:G.inningAtBat,playerIdx:i,pick,outcome,pts:deltas[i],conf:!!G.confidence[i],runs});
+      playSound('correct');haptic('correct');
     } else {
-      let pts=0;
-      if(G.confidence[i]){pts=-2;deltas[i]-=2;}
+      let pts=0;if(G.confidence[i]){pts=-2;deltas[i]-=2;}
       if(live){G.p3alive[i]=false;G.p3bustedThisPlay[i]=true;}
-      if(pts!==0)G.atBatLog.push({inning:G.inning,isBottom:G.isBottom,atBat:G.inningAtBat,playerIdx:i,pick,outcome,pts,conf:!!G.confidence[i]});
+      if(pts!==0)G.atBatLog.push({inning:G.inning,isBottom:G.isBottom,atBat:G.inningAtBat,playerIdx:i,pick,outcome,pts,conf:!!G.confidence[i],runs});
     }
   });
 
+  // ghost
+  const bothMissed=G.players.every((_,i)=>deltas[i]<=0);
+  if(bothMissed)G.atBatLog.push({inning:G.inning,isBottom:G.isBottom,atBat:G.inningAtBat,playerIdx:-1,pick:'',outcome,pts:0,conf:false,runs,ghost:true});
+
+  // streaks
+  const anyCorrect=G.players.some((_,i)=>deltas[i]>0);
+  if(anyCorrect){G.consecutiveCorrect++;G.consecutiveMiss=0;G.consecutiveScoring++;allTimeStreak++;lsSet('gb_streak',allTimeStreak);}
+  else{G.consecutiveMiss++;G.consecutiveCorrect=0;G.consecutiveScoring=0;allTimeStreak=0;lsSet('gb_streak',0);}
+  G.players.forEach((_,i)=>{if(G.confidence[i]&&deltas[i]>0){G.confInGame.correct++;G.confInGame.total++;G.consecutiveConfWrong=0;if(!G.boolBold){G.boolBold=true;awardAchievement('bold',true);}}else if(G.confidence[i]&&deltas[i]<0){G.consecutiveConfWrong++;G.confInGame.total++;}});
+
+  if(newPriority!==G.priorityIdx)G.neverLostPriority=false;
+  if(newPriority===G.priorityIdx)G.priorityStreak++;else G.priorityStreak=1;
   G.priorityIdx=newPriority;
   G.players.forEach((_,i)=>G.scores[i]=(G.scores[i]||0)+deltas[i]);
   G.lastDeltas=deltas;
+  if(isOut(outcome))G.outs++;
   G.inningAtBat++;
+  checkMidGameAch(outcome,deltas,runs);
   push('screen-scoreboard');
 }
 
-/* SCOREBOARD */
+function undoLast(){
+  if(!G.lastResult){alert('Nothing to undo.');return;}
+  const lr=G.lastResult;
+  G.scores=clone(lr.scores);G.outs=lr.outs;G.inningAtBat=lr.inningAtBat;
+  G.priorityIdx=lr.priorityIdx;G.p3alive=clone(lr.p3alive);G.p3bonusGiven=clone(lr.p3bonusGiven);
+  G.atBatLog=G.atBatLog.slice(0,lr.atBatLogLen);G.lastResult=null;
+  G.manualPicks=clone(lr.manualPicks);G.confidence=clone(lr.confidence);
+  G.pendingResult=null;G.pendingRuns=0;
+  buildManualQueue(false);push('screen-pick');
+}
+
 function renderScoreboard(){
-  document.getElementById('sb-tag').textContent=inningLabel(G.inning,G.isBottom)+' · After at-bat '+(G.inningAtBat-1);
+  document.getElementById('sb-tag').textContent=inningLabel(G.inning,G.isBottom)+' · After AB '+(G.inningAtBat-1);
   const d=G.lastDeltas||{};
   const sorted=[...G.players.map((n,i)=>({n,i,s:G.scores[i]||0}))].sort((a,b)=>b.s-a.s);
   document.getElementById('sb-scores').innerHTML=sorted.map((p,rank)=>{
-    const pts=d[p.i]||0;
-    const deltaHtml=pts!==0?`<div class="${pts>0?'score-delta-pos':'score-delta-neg'}">${pts>0?'+':''}${pts}</div>`:'';
-    const busted=G.p3bustedThisPlay&&G.p3bustedThisPlay[p.i];
+    const pts=d[p.i]||0,streak=getStreak(p.i),busted=G.p3bustedThisPlay&&G.p3bustedThisPlay[p.i];
     const bonusHtml=G.p3bonusGiven[p.i]&&pts>0?'<span class="p3-badge" style="margin-left:4px">+7 P3</span>':'';
-    return `<div class="score-row${rank===0?' leader':''}" onclick="openHist(${p.i})">
-      <div class="score-left">
-        <div class="score-name-line">
-          <span class="score-name">${rank===0?'⚾ ':''}${p.n}</span>
-          ${p.i===G.priorityIdx?'<span class="priority-badge">PRIORITY</span>':''}
-          ${bonusHtml}
-        </div>
-        ${busted?'<div class="score-sub">Pick 3 busted</div>':''}
-      </div>
-      <div class="score-right">
-        ${deltaHtml}
-        <div class="score-pts">${p.s}</div>
-      </div>
-    </div>`;
+    return`<div class="score-row${rank===0?' leader':''}" onclick="openHistModal(${p.i})"><div class="score-left"><div class="score-name-line"><span class="score-name">${rank===0?'⚾ ':''}${p.n}</span>${p.i===G.priorityIdx?'<span class="priority-badge">PRIORITY</span>':''}${streak>=3?`<span class="streak-badge">🔥×${streak}</span>`:''}${bonusHtml}</div>${busted?'<div class="score-sub">Pick 3 busted</div>':''}</div><div class="score-right">${pts!==0?`<div class="${pts>0?'score-delta-pos':'score-delta-neg'}">${pts>0?'+':''}${pts}</div>`:''}<div class="score-pts">${p.s}</div></div></div>`;
   }).join('');
-  const notes=G.players.map((name,i)=>{
-    const pk=G.p3picks[i]||[];if(pk.length<3||!G.p3alive[i])return '';
-    const next=G.inningAtBat-1;
-    if(next<3&&pk[next])return `<div class="info-box">${name}: Pick 3 alive — next: ${oLabel(pk[next])}</div>`;
-    return '';
-  }).filter(Boolean).join('');
+  const notes=G.players.map((name,i)=>{const pk=G.p3picks[i]||[];if(pk.length<3||!G.p3alive[i])return'';const next=G.inningAtBat-1;if(next<3&&pk[next])return`<div class="info-box">${name}: P3 alive — next: ${oLabel(pk[next])}</div>`;return'';}).filter(Boolean).join('');
   document.getElementById('sb-p3-notes').innerHTML=notes?`<div style="margin-top:8px">${notes}</div>`:'';
+  const nb=document.getElementById('sb-next-btn'),hb=document.getElementById('sb-half-btn');
+  if(G.outs>=3){if(nb)nb.style.display='none';if(hb)hb.textContent='NEXT HALF-INNING →';}
+  else{if(nb)nb.style.display='block';if(hb)hb.textContent='NEW HALF-INNING';}
+}
+
+function openHistModal(pIdx){
+  document.getElementById('hist-modal-title').textContent=G.players[pIdx]+' — BREAKDOWN';
+  const log=G.atBatLog.filter(e=>e.playerIdx===pIdx);
+  if(!log.length){document.getElementById('hist-modal-body').innerHTML='<div style="padding:24px;text-align:center;color:var(--subtext)">No points yet.</div>';openModal('hist-modal');return;}
+  const byOutcome={};let ccPts=0,cwPts=0,p3Pts=0;
+  log.forEach(e=>{
+    if(e.pts>0){const base=oPts(e.outcome)+(e.runs||0);if(base>0){if(!byOutcome[e.outcome])byOutcome[e.outcome]={count:0,pts:0};byOutcome[e.outcome].count++;byOutcome[e.outcome].pts+=base;}if(e.conf)ccPts+=5;const extra=e.pts-(base+(e.conf?5:0));if(extra>=7)p3Pts+=7;}
+    else if(e.conf)cwPts+=2;
+  });
+  const total=log.reduce((s,e)=>s+e.pts,0);
+  const cRec=`${G.confInGame.correct}W — ${G.confInGame.total-G.confInGame.correct}L`;
+  let html=`<div class="hist-row" style="font-weight:700;border-bottom:2px solid var(--border);padding-bottom:8px;margin-bottom:4px"><span>TOTAL</span><span class="hist-pts ${total>=0?'pos':'neg'}">${total>0?'+':''}${total} pts</span></div>`;
+  const entries=Object.entries(byOutcome).sort((a,b)=>b[1].pts-a[1].pts);
+  if(entries.length){html+=`<div style="font-size:9px;letter-spacing:.08em;color:var(--subtext);text-transform:uppercase;padding:8px 0 4px">Outcomes</div>`;html+=entries.map(([oc,d])=>`<div class="hist-row"><span>${oLabel(oc)} ×${d.count}</span><span class="hist-pts pos">+${d.pts} pts</span></div>`).join('');}
+  if(ccPts||cwPts||p3Pts){html+=`<div style="font-size:9px;letter-spacing:.08em;color:var(--subtext);text-transform:uppercase;padding:8px 0 4px">Bonuses</div>`;if(p3Pts)html+=`<div class="hist-row"><span>Pick 3 bonus</span><span class="hist-pts pos">+${p3Pts} pts</span></div>`;if(ccPts)html+=`<div class="hist-row"><span>Confidence correct</span><span class="hist-pts pos">+${ccPts} pts</span></div>`;if(cwPts)html+=`<div class="hist-row"><span>Confidence wrong</span><span class="hist-pts neg">−${cwPts} pts</span></div>`;}
+  html+=`<div style="font-size:9px;letter-spacing:.08em;color:var(--subtext);text-transform:uppercase;padding:8px 0 4px">Confidence record</div><div class="hist-row"><span>This game</span><span style="font-weight:700;color:var(--text)">${cRec}</span></div>`;
+  document.getElementById('hist-modal-body').innerHTML=html;openModal('hist-modal');
 }
 
 function nextAtBat(){buildManualQueue(true);}
-
 function buildManualQueue(nav){
   const queue=[];
-  G.players.forEach((_,i)=>{
-    const sl=G.inningAtBat-1;const pk=G.p3picks[i]||[];
-    const live=pk.length===3&&G.p3alive[i]&&sl<3;
-    if(!live)queue.push(i);
-  });
+  G.players.forEach((_,i)=>{const sl=G.inningAtBat-1,pk=G.p3picks[i]||[],live=pk.length===3&&G.p3alive[i]&&sl<3;if(!live)queue.push(i);});
   queue.sort((a,b)=>a===G.priorityIdx?-1:b===G.priorityIdx?1:0);
-  G.pendingPickers=queue;G.manualPicks={};G.confidence={};G.currentPickerIdx=0;
-  if(nav){
-    if(queue.length===0){G.pendingResult=null;G.pendingRuns=0;push('screen-result');}
-    else push('screen-pick');
-  }
+  G.pendingPickers=queue;G.manualPicks={};G.confidence={};G.currentPickerIdx=0;G.batterName='';
+  if(nav){if(queue.length===0){G.pendingResult=null;G.pendingRuns=0;push('screen-result');}else push('screen-pick');}
 }
-
 function startAtBats(){G.inningAtBat=1;buildManualQueue(true);}
-
 function nextHalfInning(){
-  // advance inning/half
-  if(!G.isBottom){
-    G.isBottom=true;
-  } else {
-    G.inning++;
-    G.isBottom=false;
-  }
-  G.inningAtBat=1;
-  G.p3picks={};G.p3alive={};G.p3bonusGiven={};G.p3bustedThisPlay={};
+  G.outs=0;if(!G.isBottom)G.isBottom=true;else{G.inning++;G.isBottom=false;}
+  G.inningAtBat=1;G.p3picks={};G.p3alive={};G.p3bonusGiven={};G.p3bustedThisPlay={};
   G.players.forEach((_,i)=>{G.p3picks[i]=[];G.p3alive[i]=true;});
-  G.currentPickerIdx=0;G.manualPicks={};G.confidence={};
-  G.pendingResult=null;G.pendingRuns=0;
+  G.currentPickerIdx=0;G.manualPicks={};G.confidence={};G.pendingResult=null;G.pendingRuns=0;G.batterName='';G.lastResult=null;
   push('screen-pick3');
 }
 
-/* END GAME → STATS */
-function endGame(){
-  // compute final stats
-  const stats=G.players.map((name,i)=>{
-    const log=G.atBatLog.filter(e=>e.playerIdx===i);
-    const totalPicks=log.length;
-    const correct=log.filter(e=>e.pts>0).length;
-    const pct=totalPicks>0?Math.round(correct/totalPicks*100):0;
-    // most common pick
-    const pickCount={};
-    log.forEach(e=>{pickCount[e.pick]=(pickCount[e.pick]||0)+1;});
-    const mostCommonPick=Object.entries(pickCount).sort((a,b)=>b[1]-a[1])[0];
-    // most common correct
-    const correctLog=log.filter(e=>e.pts>0);
-    const correctCount={};
-    correctLog.forEach(e=>{correctCount[e.outcome]=(correctCount[e.outcome]||0)+1;});
-    const mostCommonCorrect=Object.entries(correctCount).sort((a,b)=>b[1]-a[1])[0];
-    // best at-bat (most pts)
-    const best=log.reduce((b,e)=>e.pts>b.pts?e:b,{pts:-999});
-    // p3 bonuses
-    const p3bonuses=log.filter(e=>e.pts>=7).length;
-    return {
-      name,score:G.scores[i]||0,totalPicks,correct,pct,
-      mostCommonPick:mostCommonPick?mostCommonPick[0]:null,
-      mostCommonCorrect:mostCommonCorrect?mostCommonCorrect[0]:null,
-      best:best.pts>0?best:null,
-      confCorrect:log.filter(e=>e.conf&&e.pts>0).length,
-      confWrong:log.filter(e=>e.conf&&e.pts<0).length,
-    };
-  });
-  G.finalStats=stats;
+function confirmEndGame(){
+  const naturalEnd=G.inning>=9&&G.isBottom&&G.homeScore>G.awayScore;
+  if(!naturalEnd&&!confirm('End the game?'))return;
+  openModal('notes-modal');
+}
+function confirmNotes(){const inp=document.getElementById('notes-input');G.gameNotes=inp.value.trim();closeModalBtn('notes-modal');finishEndGame();}
 
-  // save to lb/history
-  const sorted=[...G.players.map((n,i)=>({n,s:G.scores[i]||0}))].sort((a,b)=>b.s-a.s);
-  const winner=sorted[0];
-  const date=new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
-  G.players.forEach((name,i)=>{
-    if(!leaderboard[name])leaderboard[name]={games:0,wins:0,totalPts:0,totalPicks:0,totalCorrect:0,totalP3Bonuses:0,totalConfCorrect:0,totalConfWrong:0};
-    leaderboard[name].games++;
-    leaderboard[name].totalPts+=G.scores[i]||0;
-    if(name===winner.n)leaderboard[name].wins++;
-    // aggregate from atBatLog
-    const plog=G.atBatLog.filter(e=>e.playerIdx===i);
-    leaderboard[name].totalPicks+=(plog.length||0);
-    leaderboard[name].totalCorrect+=plog.filter(e=>e.pts>0).length;
-    leaderboard[name].totalP3Bonuses+=plog.filter(e=>{
-      const base=oPts(e.outcome)+(e.runs||0);
-      const extra=e.pts-(base+(e.conf?5:0));
-      return extra>=7;
-    }).length;
-    leaderboard[name].totalConfCorrect+=plog.filter(e=>e.conf&&e.pts>0).length;
-    leaderboard[name].totalConfWrong+=plog.filter(e=>e.conf&&e.pts<0).length;
+function checkMidGameAch(outcome,deltas,runs){
+  const aw=[];
+  if(G.consecutiveCorrect===5)aw.push('on_fire');if(G.consecutiveCorrect===7)aw.push('wave');if(G.consecutiveCorrect===10)aw.push('unstoppable');
+  if(G.consecutiveMiss===6)aw.push('ice_cold');if(G.consecutiveConfWrong===3)aw.push('rough_patch');if(G.consecutiveScoring===10)aw.push('hot_streak');
+  if(allTimeStreak>=5)aw.push('streak_5');if(allTimeStreak>=10)aw.push('streak_10');if(allTimeStreak>=20)aw.push('streak_20');
+  if(outcome==='triple')aw.push('unicorn');if(outcome==='hbp')aw.push('take_your_base');if(outcome==='bunt')aw.push('small_ball');
+  G.players.forEach((_,i)=>{
+    if(G.confidence[i]&&deltas[i]>0&&outcome==='home_run')aw.push('called_shot');
+    if(G.confidence[i]&&deltas[i]>0&&outcome==='double_play')aw.push('big_brain');
+    if(G.confidence[i]&&deltas[i]>0&&outcome==='triple')aw.push('first_to_third');
+    if(G.confidence[i]&&deltas[i]<0&&outcome==='home_run')aw.push('hubris');
+    if(G.confidence[i]&&deltas[i]>0&&i!==G.priorityIdx)aw.push('assassin');
+    if(deltas[i]>=5)aw.push('big_spender');
   });
-  gameHistory.unshift({date,players:G.players.map((n,i)=>({name:n,score:G.scores[i]||0})),winner:winner.n,inning:G.inning,stats:G.finalStats||null});
-  if(gameHistory.length>20)gameHistory=gameHistory.slice(0,20);
-  saveMeta();
-  statsDeepIdx=0;
-  push('screen-stats');
+  if(G.confInGame.total>=5&&G.confInGame.correct===G.confInGame.total)aw.push('diamond_hands');
+  if(G.priorityStreak>=10&&!G.priorityHogTriggered){G.priorityHogTriggered=true;aw.push('priority_hog');}
+  aw.forEach(id=>awardAchievement(id,true));
+}
+function awardAchievement(id,mid){
+  if(G.gameAchievements.includes(id))return;
+  G.gameAchievements.push(id);
+  const a=ACHIEVEMENTS.find(x=>x.id===id);if(!a)return;
+  if(mid)showAchPopup(a);
+}
+function showAchPopup(a){
+  haptic('ach');playSound('ach');
+  const ex=document.querySelector('.ach-popup');if(ex)ex.remove();
+  const el=document.createElement('div');el.className='ach-popup';
+  el.innerHTML=`<div class="ach-popup-icon">${a.icon}</div><div class="ach-popup-title">ACHIEVEMENT UNLOCKED</div><div class="ach-popup-name">${a.name}</div><div class="ach-popup-desc">${a.desc}</div>`;
+  document.body.appendChild(el);setTimeout(()=>el.remove(),3500);
+}
+function checkMilestones(name,lb){
+  const date=new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+  if(!lb.achievements)lb.achievements=[];
+  const ms=[
+    {id:'win_1',c:()=>lb.wins>=1},{id:'win_5',c:()=>lb.wins>=5},{id:'win_10',c:()=>lb.wins>=10},{id:'win_25',c:()=>lb.wins>=25},
+    {id:'games_5',c:()=>lb.games>=5},{id:'games_10',c:()=>lb.games>=10},{id:'games_25',c:()=>lb.games>=25},
+    {id:'pts_100',c:()=>lb.totalPts>=100},{id:'pts_500',c:()=>lb.totalPts>=500},{id:'pts_1000',c:()=>lb.totalPts>=1000},{id:'pts_2500',c:()=>lb.totalPts>=2500},
+    {id:'picks_25',c:()=>lb.totalCorrect>=25},{id:'picks_100',c:()=>lb.totalCorrect>=100},{id:'picks_250',c:()=>lb.totalCorrect>=250},
+    {id:'p3_5',c:()=>lb.totalP3>=5},{id:'p3_15',c:()=>lb.totalP3>=15},{id:'p3_30',c:()=>lb.totalP3>=30},
+    {id:'conf_10',c:()=>lb.totalConfCorrect>=10},{id:'conf_25',c:()=>lb.totalConfCorrect>=25},{id:'conf_50',c:()=>lb.totalConfCorrect>=50},
+  ];
+  ms.forEach(m=>{if(m.c()&&!lb.achievements.find(a=>a.id===m.id)){lb.achievements.push({id:m.id,date});G.gameAchievements.push(m.id);const a=ACHIEVEMENTS.find(x=>x.id===m.id);if(a)showAchPopup(a);}});
 }
 
-/* STATS PAGE */
-function renderStats(){
-  const stats=G.finalStats;
-  if(!stats)return;
-  const sorted=[...stats].sort((a,b)=>b.score-a.score);
-  const winner=sorted[0];
-  document.getElementById('stats-tag').textContent='Game over · Inning '+G.inning;
-
-  let html=``;
-  // winner banner
-  html+=`<div style="text-align:center;padding:16px 0 20px;border-bottom:2.5px solid #003DA5;margin-bottom:16px">
-    <div style="font-size:10px;letter-spacing:.12em;color:#1A56C4;margin-bottom:6px">WINNER</div>
-    <div style="font-size:32px;font-weight:700;color:#003DA5">⚾ ${winner.name}</div>
-    <div style="font-size:13px;color:#1A56C4;margin-top:4px">${winner.score} pts · ${winner.pct}% accuracy</div>
-  </div>`;
-
-  // side by side summary
-  html+=`<div class="section-label">Summary</div>
-  <div class="stats-summary">`;
-  stats.forEach((p,i)=>{
-    html+=`<div class="stat-card${i===stats.indexOf(winner)?' leader':''}">
-      <div class="stat-label">${p.name}</div>
-      <div class="stat-value">${p.score}</div>
-      <div class="stat-sub">${p.pct}% correct</div>
-    </div>`;
+function finishEndGame(){
+  releaseWakeLock();
+  const stats=G.players.map((name,i)=>{
+    const log=G.atBatLog.filter(e=>e.playerIdx===i);
+    const totalPicks=log.length,correct=log.filter(e=>e.pts>0).length,pct=totalPicks>0?Math.round(correct/totalPicks*100):0;
+    const pickCount={};log.forEach(e=>{pickCount[e.pick]=(pickCount[e.pick]||0)+1;});
+    const mcp=Object.entries(pickCount).sort((a,b)=>b[1]-a[1])[0];
+    const clog=log.filter(e=>e.pts>0);const cc={};clog.forEach(e=>{cc[e.outcome]=(cc[e.outcome]||0)+1;});
+    const mcc=Object.entries(cc).sort((a,b)=>b[1]-a[1])[0];
+    const best=log.reduce((b,e)=>e.pts>b.pts?e:b,{pts:-999});
+    const hl=log.reduce((b,e)=>Math.abs(e.pts)>Math.abs(b.pts)?e:b,{pts:0});
+    return{name,score:G.scores[i]||0,totalPicks,correct,pct,mostCommonPick:mcp?mcp[0]:null,mostCommonCorrect:mcc?mcc[0]:null,best:best.pts>0?best:null,highlight:Math.abs(hl.pts)>0?hl:null,confCorrect:log.filter(e=>e.conf&&e.pts>0).length,confWrong:log.filter(e=>e.conf&&e.pts<0).length};
   });
-  html+=`</div>`;
+  G.finalStats=stats;
+  const sorted=[...G.players.map((n,i)=>({n,s:G.scores[i]||0}))].sort((a,b)=>b.s-a.s);
+  const winner=sorted[0],loser=sorted[sorted.length-1],margin=winner.s-loser.s;
+  const date=new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
 
-  // player tabs for deep dive
-  html+=`<div class="section-label">Player breakdown</div>
-  <div class="player-tab-row">
-    ${stats.map((p,i)=>`<button class="player-tab${i===statsDeepIdx?' active':''}" onclick="setStatsTab(${i})">${p.name}</button>`).join('')}
-  </div>
-  <div id="stats-deep"></div>`;
+  // end-game achievements
+  stats.forEach((p,i)=>{
+    if(G.scores[i]>=20)awardAchievement('payday',false);
+    if(p.pct>=80&&p.totalPicks>=10)awardAchievement('dead_eye',false);
+    if(p.name===winner.n){if(margin===1)awardAchievement('sweating',false);if(margin>=20)awardAchievement('comfortable',false);}
+    if(p.name===loser.n&&margin>=20)awardAchievement('good_sport',false);
+  });
+  if(G.neverLostPriority)awardAchievement('perfect_game',false);
 
-  html+=`<div class="section-divider"></div>
-  <button class="btn-primary" onclick="goHome()">BACK TO HOME →</button>`;
+  // MVP
+  const ws=stats.find(p=>p.name===winner.n);
+  let mvp=null;
+  if(ws){
+    if(ws.pct>=80&&ws.totalPicks>=10)mvp={icon:'🎯',name:'Accuracy King',desc:ws.pct+'% correct'};
+    else if(G.p3BonusesThisGame>=3)mvp={icon:'🎰',name:'Pick 3 Machine',desc:G.p3BonusesThisGame+' bonuses'};
+    else if(margin>=10)mvp={icon:'📈',name:'Dominant',desc:'Won by '+margin+' pts'};
+    else mvp={icon:'⚾',name:'Winner',desc:winner.n+' takes it'};
+  }
+  G.mvpBadge=mvp;
 
+  // update leaderboard
+  G.players.forEach((name,i)=>{
+    if(!leaderboard[name])leaderboard[name]={games:0,wins:0,totalPts:0,totalPicks:0,totalCorrect:0,totalP3:0,totalConfCorrect:0,totalConfWrong:0,achievements:[],longestStreak:0};
+    const lb=leaderboard[name];
+    lb.games++;lb.totalPts+=G.scores[i]||0;
+    if(name===winner.n)lb.wins++;
+    const plog=G.atBatLog.filter(e=>e.playerIdx===i);
+    lb.totalPicks+=plog.length;lb.totalCorrect+=plog.filter(e=>e.pts>0).length;
+    lb.totalP3+=plog.filter(e=>{const base=oPts(e.outcome)+(e.runs||0);return e.pts-(base+(e.conf?5:0))>=7;}).length;
+    lb.totalConfCorrect+=plog.filter(e=>e.conf&&e.pts>0).length;
+    lb.totalConfWrong+=plog.filter(e=>e.conf&&e.pts<0).length;
+    let cur=0,mx=lb.longestStreak||0;plog.forEach(e=>{if(e.pts>0){cur++;mx=Math.max(mx,cur);}else cur=0;});lb.longestStreak=mx;
+    G.gameAchievements.forEach(id=>{if(!lb.achievements.find(a=>a.id===id))lb.achievements.push({id,date});});
+    checkMilestones(name,lb);
+  });
+
+  // h2h
+  if(G.players.length===2){
+    const key=[G.players[0],G.players[1]].sort().join('|||');
+    if(!h2h[key])h2h[key]={players:[G.players[0],G.players[1]],wins:{},games:0,history:[]};
+    h2h[key].wins[winner.n]=(h2h[key].wins[winner.n]||0)+1;
+    h2h[key].games=(h2h[key].games||0)+1;
+    if(!h2h[key].history)h2h[key].history=[];
+    h2h[key].history.unshift({date,winner:winner.n,scores:G.players.map((n,i)=>({name:n,score:G.scores[i]||0})),margin});
+    if(h2h[key].history.length>20)h2h[key].history=h2h[key].history.slice(0,20);
+    lsSet('gb_h2h',h2h);
+  }
+
+  const hlAB=G.atBatLog.reduce((b,e)=>Math.abs(e.pts)>Math.abs(b.pts)?e:b,{pts:0});
+  gameHistory.unshift({date,players:G.players.map((n,i)=>({name:n,score:G.scores[i]||0})),winner:winner.n,inning:G.inning,stats:G.finalStats,achievements:G.gameAchievements,mvpBadge:mvp,awayTeam:G.awayTeam,homeTeam:G.homeTeam,stadium:G.stadium,awayScore:G.awayScore,homeScore:G.homeScore,notes:G.gameNotes,highlightAtBat:hlAB});
+  if(gameHistory.length>50)gameHistory=gameHistory.slice(0,50);
+  saveMeta();lsSet('gb_achievements',leaderboard);lsDel('gb_game');
+  statsDeepIdx=0;trashIdx=0;push('screen-stats');
+}
+
+function generateTrash(){
+  const stats=G.finalStats;if(!stats||stats.length<2)return"Good game.";
+  const sorted=[...stats].sort((a,b)=>b.score-a.score);
+  const w=sorted[0],l=sorted[1],margin=w.score-l.score;
+  const lines=[
+    `${l.name} picked ${l.mostCommonPick?oLabel(l.mostCommonPick):'things'} all game and still lost.`,
+    `${w.name} wins with ${w.pct}% accuracy. ${l.name} managed ${l.pct}%. Should've stayed home.`,
+    margin>=20?`${l.name} got cooked by ${margin} points. That's a statement.`:`${w.name} squeaks it out. ${l.name} will ask for a rematch.`,
+    `${w.name}: ${w.score} pts. ${l.name}: ${l.score} pts. One of these is embarrassing.`,
+    `${l.name} had ${l.totalPicks} chances and got ${l.correct} right. Baseball is hard. Apparently.`,
+    w.best?`${w.name}'s best play: ${oLabel(w.best.outcome)} for +${w.best.pts} pts. ${l.name} was watching.`:`${w.name} wins. ${l.name} should've picked differently.`,
+    margin===1?`One point. ONE POINT. ${l.name} is going to lose sleep.`:`${w.name} wins by ${margin}. ${l.name} is blaming the umpires.`,
+    `${l.name} with ${l.pct}% accuracy. A coin flip would've done better.`,
+  ];
+  return lines[trashIdx%lines.length];
+}
+
+function renderStatsPage(){
+  const stats=G.finalStats;if(!stats)return;
+  const sorted=[...stats].sort((a,b)=>b.score-a.score),winner=sorted[0];
+  document.getElementById('stats-tag').textContent='Game over';
+  let html='';
+  if(G.mvpBadge)html+=`<div class="mvp-badge"><div class="mvp-icon">${G.mvpBadge.icon}</div><div class="mvp-name">${G.mvpBadge.name}</div><div class="mvp-desc">${G.mvpBadge.desc}</div></div>`;
+  html+=`<div style="text-align:center;padding:12px 0 20px;border-bottom:2.5px solid var(--border);margin-bottom:16px"><div style="font-size:10px;letter-spacing:.12em;color:var(--subtext);margin-bottom:6px">WINNER</div><div style="font-size:32px;font-weight:700;color:var(--text)">⚾ ${winner.name}</div><div style="font-size:13px;color:var(--subtext);margin-top:4px">${winner.score} pts · ${winner.pct}% accuracy</div></div>`;
+  if(G.awayTeam||G.homeTeam)html+=`<div class="info-box" style="text-align:center">${G.awayTeam||'Away'} ${G.awayScore} — ${G.homeScore} ${G.homeTeam||'Home'}${G.stadium?' · '+G.stadium:''}</div>`;
+  if(G.gameNotes)html+=`<div class="info-box">📝 ${G.gameNotes}</div>`;
+  if(G.players.length===2){
+    const key=[G.players[0],G.players[1]].sort().join('|||');
+    const rec=h2h[key];
+    if(rec){const w0=(rec.wins[G.players[0]]||0)+(historicalWins[G.players[0]]||0);const w1=(rec.wins[G.players[1]]||0)+(historicalWins[G.players[1]]||0);html+=`<div class="info-box" style="text-align:center">H2H: ${G.players[0]} ${w0} — ${w1} ${G.players[1]}</div>`;}
+  }
+  html+=`<div class="section-label">Summary</div><div class="stats-summary">`;
+  stats.forEach(p=>{html+=`<div class="stat-card${p.name===winner.name?' leader':''}"><div class="stat-label">${p.name}</div><div class="stat-value">${p.score}</div><div class="stat-sub">${p.pct}% correct</div></div>`;});
+  html+=`</div><div class="section-label">Player breakdown</div><div class="player-tab-row">${stats.map((p,i)=>`<button class="player-tab${i===statsDeepIdx?' active':''}" onclick="setStatsTab(${i})">${p.name}</button>`).join('')}</div><div id="stats-deep"></div>`;
+  if(G.gameAchievements&&G.gameAchievements.length){html+=`<div class="section-label" style="margin-top:16px">Achievements earned</div><div class="ach-icon-bar">`;G.gameAchievements.forEach(id=>{const a=ACHIEVEMENTS.find(x=>x.id===id);if(a)html+=`<div class="ach-icon" title="${a.name}">${a.icon}</div>`;});html+=`</div>`;}
+  html+=`<div class="section-divider"></div><button class="btn-secondary" onclick="shareStats()" style="margin-top:0">⬆ SHARE GAME CARD</button>`;
+  html+=`<div class="trash-talk"><div class="trash-talk-text" id="trash-text">${generateTrash()}</div><button class="trash-reroll" onclick="rerollTrash()">↺ NEW LINE</button></div>`;
+  html+=`<div class="section-divider"></div><button class="btn-primary" onclick="goHome()">BACK TO HOME →</button>`;
   document.getElementById('stats-body').innerHTML=html;
   renderStatsDeep();
 }
-
-function setStatsTab(i){statsDeepIdx=i;renderStats();}
-
+function setStatsTab(i){statsDeepIdx=i;renderStatsPage();}
+function rerollTrash(){trashIdx++;document.getElementById('trash-text').textContent=generateTrash();}
 function renderStatsDeep(){
   const p=G.finalStats[statsDeepIdx];
-  let html=`<div class="deep-stat-grid">
-    <div class="deep-stat"><div class="deep-stat-val">${p.totalPicks}</div><div class="deep-stat-lbl">Total picks</div></div>
-    <div class="deep-stat"><div class="deep-stat-val">${p.correct}</div><div class="deep-stat-lbl">Correct</div></div>
-    <div class="deep-stat"><div class="deep-stat-val">${p.pct}%</div><div class="deep-stat-lbl">Accuracy</div></div>
-    <div class="deep-stat"><div class="deep-stat-val">${p.score}</div><div class="deep-stat-lbl">Total pts</div></div>
-    <div class="deep-stat"><div class="deep-stat-val">${p.confCorrect}</div><div class="deep-stat-lbl">Conf. correct</div></div>
-    <div class="deep-stat"><div class="deep-stat-val">${p.confWrong}</div><div class="deep-stat-lbl">Conf. wrong</div></div>
-  </div>`;
-
-  if(p.mostCommonPick){
-    html+=`<div class="info-box">Most picked: <strong>${oLabel(p.mostCommonPick)}</strong></div>`;
-  }
-  if(p.mostCommonCorrect){
-    html+=`<div class="info-box">Best outcome: <strong>${oLabel(p.mostCommonCorrect)}</strong></div>`;
-  }
-  if(p.best){
-    html+=`<div class="info-box">Best at-bat: <strong>${oLabel(p.best.outcome)}</strong> — +${p.best.pts} pts in ${p.best.isBottom?'Bot':'Top'} ${p.best.inning}</div>`;
-  }
-
+  let html=`<div class="deep-stat-grid"><div class="deep-stat"><div class="deep-stat-val">${p.totalPicks}</div><div class="deep-stat-lbl">Total picks</div></div><div class="deep-stat"><div class="deep-stat-val">${p.correct}</div><div class="deep-stat-lbl">Correct</div></div><div class="deep-stat"><div class="deep-stat-val">${p.pct}%</div><div class="deep-stat-lbl">Accuracy</div></div><div class="deep-stat"><div class="deep-stat-val">${p.score}</div><div class="deep-stat-lbl">Total pts</div></div><div class="deep-stat"><div class="deep-stat-val">${p.confCorrect}</div><div class="deep-stat-lbl">Conf. correct</div></div><div class="deep-stat"><div class="deep-stat-val">${p.confWrong}</div><div class="deep-stat-lbl">Conf. wrong</div></div></div>`;
+  if(p.mostCommonPick)html+=`<div class="info-box">Most picked: <strong>${oLabel(p.mostCommonPick)}</strong></div>`;
+  if(p.mostCommonCorrect)html+=`<div class="info-box">Best outcome: <strong>${oLabel(p.mostCommonCorrect)}</strong></div>`;
+  if(p.best)html+=`<div class="info-box">Best AB: <strong>${oLabel(p.best.outcome)}</strong> +${p.best.pts} pts in ${p.best.isBottom?'Bot':'Top'} ${p.best.inning}</div>`;
+  if(p.highlight&&Math.abs(p.highlight.pts)>0)html+=`<div class="info-box">🌟 Highlight: <strong>${oLabel(p.highlight.outcome)}</strong> in ${p.highlight.isBottom?'Bot':'Top'} ${p.highlight.inning}</div>`;
   document.getElementById('stats-deep').innerHTML=html;
 }
+function shareStats(){
+  const stats=G.finalStats;if(!stats)return;
+  const sorted=[...stats].sort((a,b)=>b.score-a.score);
+  let text=`⚾ GUESS BALL — ${new Date().toLocaleDateString()}\n`;
+  if(G.awayTeam)text+=`${G.awayTeam} ${G.awayScore} — ${G.homeScore} ${G.homeTeam}\n`;
+  if(G.stadium)text+=`📍 ${G.stadium}\n`;
+  text+=`\n`+sorted.map(p=>`${p.name}: ${p.score} pts (${p.pct}%)`).join('\n');
+  text+=`\n\nWinner: ${sorted[0].name} 🏆\n${generateTrash()}`;
+  if(navigator.share)navigator.share({title:'Guess Ball Results',text});
+  else navigator.clipboard.writeText(text).then(()=>alert('Copied!'));
+}
+function goHome(){lsDel('gb_game');NAV=[];G.screen='screen-title';G.players=[];G.atBatLog=[];G.finalStats=null;G.mvpBadge=null;render();}
 
-function goHome(){
-  clearGame();
-  NAV=[];G.screen='screen-title';G.players=[];G.atBatLog=[];G.finalStats=null;
-  render();
+function renderStatsMenu(){
+  const now=new Date(),showYR=now.getMonth()>=9;
+  const w=document.getElementById('yr-stats-wrap');
+  if(w)w.innerHTML=showYR?`<button class="menu-btn season" onclick="goTo('screen-yr')" style="margin-top:10px"><span>🌟 YEAR IN REVIEW</span><span>→</span></button>`:'';
 }
 
-/* LEADERBOARD */
-let lbExpanded={};
 function renderLeaderboard(){
-  const entries=Object.entries(leaderboard).sort((a,b)=>b[1].wins-a[1].wins);
-  if(!entries.length){
-    document.getElementById('lb-rows').innerHTML=`<div class="empty-state">NO GAMES PLAYED YET<br>Finish a game to<br>see standings.</div>`;
-    return;
-  }
+  const entries=Object.entries(leaderboard).sort((a,b)=>{
+    const aw=(b[1].wins||0)+(historicalWins[b[0]]||0),bw=(a[1].wins||0)+(historicalWins[a[0]]||0);return aw-bw;
+  }).reverse();
+  if(!entries.length){document.getElementById('lb-rows').innerHTML=`<div class="empty-state">NO GAMES YET</div>`;return;}
   document.getElementById('lb-rows').innerHTML=entries.map(([name,s],i)=>{
-    const winPct=s.games>0?Math.round(s.wins/s.games*100):0;
+    const hw=historicalWins[name]||0,tw=(s.wins||0)+hw;
+    const winPct=s.games>0?Math.round(tw/s.games*100):0;
     const avgScore=s.games>0?Math.round(s.totalPts/s.games):0;
     const pickPct=s.totalPicks>0?Math.round(s.totalCorrect/s.totalPicks*100):0;
-    const expanded=lbExpanded[name];
-    return `<div style="border-bottom:1px dashed #003DA5">
-      <div class="lb-row" style="border-bottom:none;cursor:pointer" onclick="toggleLbPlayer('${name}')">
-        <div>
-          <div class="lb-name">${i===0?'⚾ ':''}${name}</div>
-          <div class="lb-stat">${s.games} game${s.games!==1?'s':''} · ${s.wins} win${s.wins!==1?'s':''}</div>
-        </div>
+    const exp=lbExpanded[name],split=winSplitShown[name];
+    const achs=s.achievements||[];
+    return`<div style="border-bottom:1px dashed var(--border)">
+      <div class="lb-row" style="border-bottom:none;cursor:pointer" onclick="toggleLb('${name.replace(/'/g,"\\'")}')">
+        <div><div class="lb-name">${i===0?'⚾ ':''}${name}</div><div class="lb-stat">${s.games} game${s.games!==1?'s':''} · ${s.longestStreak||0} best streak</div></div>
         <div style="display:flex;align-items:center;gap:10px">
-          <div class="lb-pts">${s.wins}W</div>
-          <div style="font-size:14px;color:#1A56C4">${expanded?'▲':'▼'}</div>
+          <div class="lb-pts" onclick="event.stopPropagation();toggleSplit('${name.replace(/'/g,"\\'")}')">${tw}W</div>
+          <div style="font-size:14px;color:var(--subtext)">${exp?'▲':'▼'}</div>
         </div>
       </div>
-      ${expanded?`<div style="padding:0 0 14px;display:grid;grid-template-columns:1fr 1fr;gap:7px">
-        <div class="deep-stat"><div class="deep-stat-val">${winPct}%</div><div class="deep-stat-lbl">Win %</div></div>
-        <div class="deep-stat"><div class="deep-stat-val">${avgScore}</div><div class="deep-stat-lbl">Avg score</div></div>
-        <div class="deep-stat"><div class="deep-stat-val">${pickPct}%</div><div class="deep-stat-lbl">Pick %</div></div>
-        <div class="deep-stat"><div class="deep-stat-val">${s.totalP3Bonuses||0}</div><div class="deep-stat-lbl">P3 bonuses</div></div>
-        <div class="deep-stat"><div class="deep-stat-val">${s.totalConfCorrect||0}</div><div class="deep-stat-lbl">Conf. correct</div></div>
-        <div class="deep-stat"><div class="deep-stat-val">${s.totalConfWrong||0}</div><div class="deep-stat-lbl">Conf. wrong</div></div>
-        <div class="deep-stat" style="grid-column:1/-1"><div class="deep-stat-val">${s.totalPts}</div><div class="deep-stat-lbl">All-time pts</div></div>
-      </div>`:''}
+      ${split?`<div style="display:flex;gap:8px;padding-bottom:8px"><div class="deep-stat" style="flex:1"><div class="deep-stat-val" style="color:var(--positive)">${s.wins||0}</div><div class="deep-stat-lbl">App wins</div></div><div class="deep-stat" style="flex:1"><div class="deep-stat-val" style="color:var(--ink)">${hw}</div><div class="deep-stat-lbl">Historical</div></div></div>`:''}
+      ${exp?`<div style="padding:0 0 14px"><div class="deep-stat-grid"><div class="deep-stat"><div class="deep-stat-val">${winPct}%</div><div class="deep-stat-lbl">Win %</div></div><div class="deep-stat"><div class="deep-stat-val">${avgScore}</div><div class="deep-stat-lbl">Avg score</div></div><div class="deep-stat"><div class="deep-stat-val">${pickPct}%</div><div class="deep-stat-lbl">Pick %</div></div><div class="deep-stat"><div class="deep-stat-val">${s.totalP3||0}</div><div class="deep-stat-lbl">P3 bonuses</div></div><div class="deep-stat"><div class="deep-stat-val">${s.totalConfCorrect||0}</div><div class="deep-stat-lbl">Conf. correct</div></div><div class="deep-stat"><div class="deep-stat-val">${s.longestStreak||0}</div><div class="deep-stat-lbl">Best streak</div></div></div>${achs.length?`<div class="section-label">Achievements</div><div class="ach-icon-bar">${achs.map(a=>{const ach=ACHIEVEMENTS.find(x=>x.id===a.id);return ach?`<div class="ach-icon" title="${ach.name}">${ach.icon}</div>`:''}).join('')}</div>`:''}</div>`:''}
     </div>`;
   }).join('');
 }
-function toggleLbPlayer(name){
-  lbExpanded[name]=!lbExpanded[name];
-  renderLeaderboard();
-}
+function toggleLb(name){lbExpanded[name]=!lbExpanded[name];renderLeaderboard();}
+function toggleSplit(name){winSplitShown[name]=!winSplitShown[name];renderLeaderboard();}
 
-/* HISTORY */
-let histExpanded={};
 function renderHistoryScreen(){
-  if(!gameHistory.length){
-    document.getElementById('history-rows').innerHTML=`<div class="empty-state">NO GAMES YET<br>Play a game to<br>see history.</div>`;
-    return;
-  }
+  if(!gameHistory.length){document.getElementById('history-rows').innerHTML=`<div class="empty-state">NO GAMES YET</div>`;return;}
   document.getElementById('history-rows').innerHTML=gameHistory.map((g,idx)=>{
-    const expanded=histExpanded[idx];
-    return `<div style="border-bottom:1px dashed #003DA5">
-      <div class="history-row" style="border-bottom:none;cursor:pointer" onclick="toggleHistEntry(${idx})">
-        <div class="history-date">${g.date}</div>
+    const exp=histExpanded[idx];
+    return`<div style="border-bottom:1px dashed var(--border)">
+      <div class="history-row" style="border-bottom:none" onclick="toggleHist(${idx})">
+        <div class="history-date">${g.date}${g.stadium?' · '+g.stadium:''}</div>
+        ${g.awayTeam?`<div style="font-size:10px;color:var(--subtext);margin-bottom:3px">${g.awayTeam} ${g.awayScore||0} — ${g.homeScore||0} ${g.homeTeam}</div>`:''}
         <div style="display:flex;justify-content:space-between;align-items:center">
           <div class="history-result">⚾ ${g.winner} wins</div>
-          <div style="font-size:14px;color:#1A56C4">${expanded?'▲':'▼'}</div>
+          <div style="font-size:14px;color:var(--subtext)">${exp?'▲':'▼'}</div>
         </div>
-        <div class="history-detail">${g.players.map(p=>p.name+' '+p.score+'pts').join(' · ')} · ${g.inning} inning${g.inning!==1?'s':''}</div>
+        <div class="history-detail">${g.players.map(p=>p.name+' '+p.score+'pts').join(' · ')} · ${g.inning} inn</div>
+        ${g.notes?`<div style="font-size:10px;color:var(--subtext);margin-top:3px;font-style:italic">📝 ${g.notes}</div>`:''}
       </div>
-      ${expanded?renderHistExpanded(g,idx):''}
+      ${exp?renderHistExp(g,idx):''}
     </div>`;
   }).join('');
 }
-function toggleHistEntry(idx){
-  histExpanded[idx]=!histExpanded[idx];
-  renderHistoryScreen();
-}
-function renderHistExpanded(g,idx){
-  // summary cards for each player
+function toggleHist(idx){histExpanded[idx]=!histExpanded[idx];renderHistoryScreen();}
+function renderHistExp(g,idx){
   let html=`<div style="padding-bottom:14px">`;
   if(g.stats){
     html+=`<div style="display:grid;grid-template-columns:${g.stats.length>1?'1fr 1fr':'1fr'};gap:7px;margin-bottom:10px">`;
-    g.stats.forEach(p=>{
-      html+=`<div class="stat-card">
-        <div class="stat-label">${p.name}</div>
-        <div class="stat-value">${p.score}</div>
-        <div class="stat-sub">${p.pct}% correct</div>
-      </div>`;
-    });
+    g.stats.forEach(p=>{html+=`<div class="stat-card${p.name===g.winner?' leader':''}"><div class="stat-label">${p.name}</div><div class="stat-value">${p.score}</div><div class="stat-sub">${p.pct}% correct</div></div>`;});
     html+=`</div>`;
+    if(g.highlightAtBat&&Math.abs(g.highlightAtBat.pts)>0)html+=`<div class="info-box">🌟 Highlight: ${oLabel(g.highlightAtBat.outcome)} for +${g.highlightAtBat.pts} pts</div>`;
+    if(g.mvpBadge)html+=`<div class="info-box">${g.mvpBadge.icon} ${g.mvpBadge.name}: ${g.mvpBadge.desc}</div>`;
     html+=`<button class="btn-secondary" style="margin-top:0" onclick="viewHistStats(${idx})">FULL STATS →</button>`;
-  } else {
-    html+=`<div class="info-box">Full stats not available for this game.</div>`;
-  }
-  html+=`</div>`;
-  return html;
+  } else html+=`<div class="info-box">Stats not available.</div>`;
+  html+=`</div>`;return html;
 }
 function viewHistStats(idx){
-  const g=gameHistory[idx];
-  if(!g.stats)return;
-  // push a read-only stats view
-  G.finalStats=g.stats;
-  G.inning=g.inning;
-  statsDeepIdx=0;
-  goTo('screen-stats');
+  const g=gameHistory[idx];if(!g.stats)return;
+  G.finalStats=g.stats;G.inning=g.inning;G.gameAchievements=g.achievements||[];G.mvpBadge=g.mvpBadge||null;
+  G.awayTeam=g.awayTeam||'';G.homeTeam=g.homeTeam||'';G.stadium=g.stadium||'';G.awayScore=g.awayScore||0;G.homeScore=g.homeScore||0;G.gameNotes=g.notes||'';
+  G.players=g.players.map(p=>p.name);
+  statsDeepIdx=0;trashIdx=0;goTo('screen-stats');
+}
+
+function renderHOF(){
+  const el=document.getElementById('hof-body');
+  const records=[];
+  gameHistory.forEach(g=>{
+    if(!g.stats)return;
+    g.stats.forEach(p=>{
+      if(p.score>0)records.push({type:'high_score',player:p.name,value:p.score,date:g.date,desc:'Highest single game score'});
+      if(p.pct>0&&p.totalPicks>=10)records.push({type:'accuracy',player:p.name,value:p.pct,date:g.date,desc:'Best accuracy (min 10 picks)'});
+    });
+    if(g.players.length>=2){const m=Math.abs(g.players[0].score-g.players[1].score);if(m>0)records.push({type:'margin',player:g.winner,value:m,date:g.date,desc:'Biggest win margin'});}
+    if(g.highlightAtBat&&g.highlightAtBat.pts>0)records.push({type:'best_ab',player:g.winner,value:g.highlightAtBat.pts,date:g.date,desc:'Best at-bat: '+oLabel(g.highlightAtBat.outcome)});
+  });
+  Object.entries(leaderboard).forEach(([name,s])=>{
+    if(s.longestStreak>0)records.push({type:'streak',player:name,value:s.longestStreak,date:'',desc:'Longest pick streak ever'});
+    if(s.totalP3>0)records.push({type:'p3',player:name,value:s.totalP3,date:'',desc:'Most Pick 3 bonuses all time'});
+    if(s.totalConfCorrect>0)records.push({type:'conf',player:name,value:s.totalConfCorrect,date:'',desc:'Most confidence correct all time'});
+  });
+  const best={};records.forEach(r=>{if(!best[r.type]||r.value>best[r.type].value)best[r.type]=r;});
+  const entries=Object.values(best);
+  if(!entries.length){el.innerHTML=`<div class="empty-state">NO RECORDS YET<br>Play some games first.</div>`;return;}
+  el.innerHTML=`<div class="section-label">Records — only shown with data</div>`+entries.map(r=>`<div class="hof-row"><div class="hof-record">${r.desc}</div><div class="hof-value">${r.type==='accuracy'?r.value+'%':r.type==='streak'?r.value+' in a row':r.value+(r.type==='margin'?' pts':'')}</div><div class="hof-holder">${r.player}${r.date?' · '+r.date:''}</div></div>`).join('');
+}
+
+function renderH2H(){
+  const el=document.getElementById('h2h-body'),pairs=Object.values(h2h);
+  if(!pairs.length){el.innerHTML=`<div class="empty-state">NO HEAD TO HEAD DATA<br>Play games between same players.</div>`;return;}
+  el.innerHTML=pairs.map(rec=>{
+    const[p1,p2]=rec.players,w1=(rec.wins[p1]||0)+(historicalWins[p1]||0),w2=(rec.wins[p2]||0)+(historicalWins[p2]||0),games=rec.games||0;
+    const canName=games>=10&&!rec.rivalryName;
+    const key=[p1,p2].sort().join('|||');
+    return`<div style="padding:14px;background:var(--card);border:1.5px solid var(--border);border-radius:3px;margin-bottom:10px">
+      ${rec.rivalryName?`<div style="font-size:10px;color:var(--subtext);letter-spacing:.08em;text-transform:uppercase;margin-bottom:8px">${rec.rivalryName}</div>`:''}
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+        <div style="text-align:center;flex:1"><div style="font-size:15px;font-weight:700;color:var(--text)">${p1}</div><div style="font-size:28px;font-weight:700;color:var(--positive)">${w1}W</div></div>
+        <div style="font-size:13px;color:var(--subtext);font-weight:700">VS</div>
+        <div style="text-align:center;flex:1"><div style="font-size:15px;font-weight:700;color:var(--text)">${p2}</div><div style="font-size:28px;font-weight:700;color:var(--positive)">${w2}W</div></div>
+      </div>
+      <div style="font-size:10px;color:var(--subtext);text-align:center">${games} app game${games!==1?'s':''}</div>
+      ${canName?`<div style="margin-top:10px;display:flex;gap:8px"><input class="player-input" placeholder="NAME YOUR RIVALRY..." id="rn-${key.replace(/[^a-z0-9]/gi,'_')}" style="flex:1;padding:8px 10px;font-size:12px"><button class="btn-secondary" style="width:auto;margin:0;padding:8px 12px;font-size:11px" onclick="nameRivalry('${key}')">SAVE</button></div>`:''}
+    </div>`;
+  }).join('');
+}
+function nameRivalry(key){const inp=document.getElementById('rn-'+key.replace(/[^a-z0-9]/gi,'_'));if(!inp)return;const n=inp.value.trim();if(!n)return;h2h[key].rivalryName=n;lsSet('gb_h2h',h2h);renderH2H();}
+
+function renderYearReview(){
+  const el=document.getElementById('yr-body'),year=new Date().getFullYear();
+  const yg=gameHistory.filter(g=>g.date&&g.date.includes(String(year)));
+  if(!yg.length){el.innerHTML=`<div class="empty-state">NO GAMES IN ${year}</div>`;return;}
+  const ps={};yg.forEach(g=>{g.players.forEach(p=>{if(!ps[p.name])ps[p.name]={games:0,wins:0,totalPts:0,correct:0,totalPicks:0};ps[p.name].games++;ps[p.name].totalPts+=p.score||0;if(p.name===g.winner)ps[p.name].wins++;if(g.stats){const s=g.stats.find(x=>x.name===p.name);if(s){ps[p.name].correct+=s.correct||0;ps[p.name].totalPicks+=s.totalPicks||0;}}});});
+  const stadiums={},teams={};
+  yg.forEach(g=>{if(g.stadium)stadiums[g.stadium]=(stadiums[g.stadium]||0)+1;if(g.awayTeam)teams[g.awayTeam]=(teams[g.awayTeam]||0)+1;if(g.homeTeam)teams[g.homeTeam]=(teams[g.homeTeam]||0)+1;});
+  const ts=Object.entries(stadiums).sort((a,b)=>b[1]-a[1])[0];
+  const tt=Object.entries(teams).sort((a,b)=>b[1]-a[1])[0];
+  let html=`<div style="text-align:center;padding:16px 0 24px;border-bottom:2.5px solid var(--border);margin-bottom:20px"><div style="font-size:10px;letter-spacing:.12em;color:var(--subtext);margin-bottom:6px">${year} SEASON</div><div style="font-size:36px;font-weight:700;color:var(--text)">🌟 Year in Review</div></div>`;
+  html+=`<div class="yr-stat"><div class="yr-stat-val">${yg.length}</div><div class="yr-stat-lbl">Games played in ${year}</div></div>`;
+  if(ts)html+=`<div class="yr-stat"><div class="yr-stat-val" style="font-size:18px">📍 ${ts[0]}</div><div class="yr-stat-lbl">Favorite stadium (${ts[1]} game${ts[1]!==1?'s':''})</div></div>`;
+  if(tt)html+=`<div class="yr-stat"><div class="yr-stat-val" style="font-size:18px">⚾ ${tt[0]}</div><div class="yr-stat-lbl">Most watched team (${tt[1]} game${tt[1]!==1?'s':''})</div></div>`;
+  html+=`<div class="section-label">Player stats</div>`;
+  Object.entries(ps).sort((a,b)=>b[1].wins-a[1].wins).forEach(([name,s])=>{
+    const pct=s.totalPicks>0?Math.round(s.correct/s.totalPicks*100):0;
+    html+=`<div class="deep-stat-grid"><div class="deep-stat" style="grid-column:1/-1"><div class="deep-stat-val" style="font-size:15px">${name}</div></div><div class="deep-stat"><div class="deep-stat-val">${s.wins}</div><div class="deep-stat-lbl">Wins</div></div><div class="deep-stat"><div class="deep-stat-val">${s.games}</div><div class="deep-stat-lbl">Games</div></div><div class="deep-stat"><div class="deep-stat-val">${pct}%</div><div class="deep-stat-lbl">Pick %</div></div><div class="deep-stat"><div class="deep-stat-val">${s.totalPts}</div><div class="deep-stat-lbl">Total pts</div></div></div>`;
+  });
+  el.innerHTML=html;
+}
+
+function renderSettings(){
+  document.getElementById('dark-toggle').className='toggle'+(settings.dark?' on':'');
+  document.getElementById('haptic-toggle').className='toggle'+(settings.haptic?' on':'');
+  document.getElementById('sound-toggle').className='toggle'+(settings.sound?' on':'');
+  document.getElementById('wake-toggle').className='toggle'+(settings.wake?' on':'');
+  document.getElementById('roster-list').innerHTML=roster.length
+    ?roster.map((name,i)=>`<div class="settings-row"><div class="settings-label">${name}</div><button class="btn-danger" style="width:auto;padding:6px 12px;margin:0;font-size:11px" onclick="deleteRosterPlayer(${i})">DELETE</button></div>`).join('')
+    :`<div style="font-size:11px;color:var(--subtext);padding:8px 0">No saved players yet.</div>`;
+  const hw=document.getElementById('hist-wins-editor');
+  if(hw)hw.innerHTML=!roster.length?`<div style="font-size:11px;color:var(--subtext);padding:8px 0">Add players to roster first.</div>`:roster.map(name=>{
+    const n=historicalWins[name]||0;
+    return`<div class="settings-row"><div class="settings-label">${name}</div><div style="display:flex;align-items:center;gap:10px"><button onclick="adjHW('${name}',-1)" style="width:32px;height:32px;border:1.5px solid var(--border);border-radius:3px;background:var(--card);color:var(--text);font-size:18px;cursor:pointer;font-family:'Courier New',monospace">−</button><span style="font-size:18px;font-weight:700;color:var(--text);min-width:28px;text-align:center">${n}</span><button onclick="adjHW('${name}',1)" style="width:32px;height:32px;border:1.5px solid var(--border);border-radius:3px;background:var(--card);color:var(--text);font-size:18px;cursor:pointer;font-family:'Courier New',monospace">+</button></div></div>`;
+  }).join('');
+}
+function toggleDark(){settings.dark=!settings.dark;document.body.classList.toggle('dark',settings.dark);saveSettings();renderSettings();}
+function toggleHaptic(){settings.haptic=!settings.haptic;saveSettings();renderSettings();}
+function toggleSound(){settings.sound=!settings.sound;saveSettings();renderSettings();}
+function toggleWake(){settings.wake=!settings.wake;saveSettings();renderSettings();if(settings.wake)requestWakeLock();else releaseWakeLock();}
+function addRosterPlayer(){const inp=document.getElementById('new-player-inp');const name=inp.value.trim();if(!name||roster.includes(name))return;roster.push(name);lsSet('gb_roster',roster);inp.value='';renderSettings();}
+function deleteRosterPlayer(i){const name=roster[i];const ent=prompt(`Type "${name}" to confirm deletion:`);if(ent===name){roster.splice(i,1);lsSet('gb_roster',roster);renderSettings();}else if(ent!==null)alert('Name did not match.');}
+function adjHW(name,d){const cur=historicalWins[name]||0,next=cur+d;if(next<0){if(!confirm('Remove a historical win for '+name+'?'))return;}if(next<0)return;historicalWins[name]=next;lsSet('gb_hist_wins',historicalWins);renderSettings();}
+
+function renderAchievementsList(){
+  const emap={};
+  Object.entries(leaderboard).forEach(([name,s])=>{(s.achievements||[]).forEach(a=>{if(!emap[a.id])emap[a.id]=[];emap[a.id].push({player:name,date:a.date});});});
+  let html='';
+  ACHIEVEMENTS.forEach(a=>{
+    const earners=emap[a.id]||[],earned=earners.length>0;
+    html+=`<div class="ach-list-row" onclick="toggleAchDet('${a.id}')">
+      <div class="ach-list-icon${earned?'':' ach-icon-locked'}">${a.icon}</div>
+      <div style="flex:1"><div class="ach-list-name" style="${earned?'':'opacity:.55'}">${a.name}</div><div class="ach-list-desc" style="${earned?'':'opacity:.4'}">${a.desc}</div>${earned?`<div class="ach-list-earned">✓ Earned</div>`:''}</div>
+      <div style="font-size:12px;color:var(--subtext)">▼</div>
+    </div>
+    <div id="ad-${a.id}" style="display:none;padding:6px 12px 10px;background:var(--xpale);border-radius:3px;margin-bottom:6px;font-size:11px;color:var(--subtext)">
+      ${earned?earners.map(e=>`<div style="padding:2px 0">${e.player} — ${e.date}</div>`).join(''):'<div style="opacity:.5">Not yet earned</div>'}
+    </div>`;
+  });
+  document.getElementById('ach-list-body').innerHTML=html;
+}
+function toggleAchDet(id){const el=document.getElementById('ad-'+id);if(el)el.style.display=el.style.display==='none'?'block':'none';}
+
+function renderTutorial(){
+  document.getElementById('tutorial-body').innerHTML=`
+    <div class="tut-section"><div class="tut-heading">⚾ The Basics</div>
+      <div class="tut-row"><div class="tut-icon">🎯</div><div>Before each at-bat, predict the outcome. <strong>Priority</strong> player picks first. Others can't pick the same outcome.</div></div>
+      <div class="tut-row"><div class="tut-icon">✅</div><div>Correct prediction → earn points. Runs scored add +1 each.</div></div>
+      <div class="tut-row"><div class="tut-icon">👑</div><div>Non-priority player scores → steals priority. Default priority goes to winner of last matchup.</div></div>
+    </div>
+    <div class="tut-section"><div class="tut-heading">🎰 Pick 3</div>
+      <div class="tut-row"><div class="tut-icon">📋</div><div>At every half-inning start, predict the first 3 outcomes in order.</div></div>
+      <div class="tut-row"><div class="tut-icon">🔒</div><div>Player 2's first pick can't match Player 1's.</div></div>
+      <div class="tut-row"><div class="tut-icon">💀</div><div>Miss any pick → Pick 3 busted, pick manually from then on.</div></div>
+      <div class="tut-row"><div class="tut-icon">🌟</div><div>All 3 correct → +7 bonus on top of normal points.</div></div>
+    </div>
+    <div class="tut-section"><div class="tut-heading">💎 Confidence</div>
+      <div class="tut-row"><div class="tut-icon">😤</div><div>Call confidence before picking. Correct → +5. Wrong → −2.</div></div>
+      <div class="tut-row"><div class="tut-icon">🚫</div><div>Intentional walks: use the OTHER card.</div></div>
+    </div>
+    <div class="tut-section"><div class="tut-heading">📊 Quick scoring</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+        ${[['Strikeout/Out','1 pt'],['Double play','2 pts'],['Single/Walk/HBP','2 pts'],['Home run','6 pts'],['Double','5 pts'],['Triple','8 pts'],['Stolen base','3 pts'],['Pick 3 bonus','+7 pts'],['Confidence ✓','+5 pts'],['Confidence ✗','−2 pts']].map(([k,v])=>`<div style="background:var(--card);border:1px solid var(--border);border-radius:3px;padding:8px;font-size:11px"><div style="font-weight:700;color:var(--text)">${k}</div><div style="color:var(--subtext)">${v}</div></div>`).join('')}
+      </div>
+    </div>
+    <button class="btn-primary" style="margin-top:20px" onclick="back()">GOT IT →</button>`;
 }
 
 loadData();
 render();
+if(!lsGet('gb_tutdone')){lsSet('gb_tutdone',true);setTimeout(()=>goTo('screen-tutorial'),400);}
 </script>
 </body>
 </html>
