@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Guess Ball">
 <title>Guess Ball</title>
-<link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 160 160'%3E%3Crect width='160' height='160' rx='36' fill='%23003DA5'/%3E%3Cpolygon points='80,8 152,80 80,152 8,80' fill='none' stroke='%23F7F5EE' stroke-width='2' opacity='0.22'/%3E%3Ctext x='80' y='100' font-family='Courier New,monospace' font-size='76' font-weight='700' fill='%23F7F5EE' text-anchor='middle'%3EG%3C/text%3E%3C/svg%3E">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 :root{
@@ -535,8 +535,7 @@ select.player-input{cursor:pointer}
     </div>
     <div class="settings-section">
       <div class="section-label">Historical wins (pre-app)</div>
-      <div style="font-size:10px;color:var(--subtext);margin-bottom:10px;line-height:1.6">Wins from before the app. Combined with app wins on leaderboard. Tap leaderboard total to see split.</div>
-      <div id="hist-wins-editor"></div>
+      <button class="btn-secondary" style="margin-top:0" onclick="goTo('screen-hist-wins')">EDIT HISTORICAL WINS →</button>
     </div>
     <div class="settings-section">
       <div class="section-label">Tutorial</div>
@@ -573,6 +572,17 @@ select.player-input{cursor:pointer}
   <div class="screen-body" id="tutorial-body"></div>
 </div>
 
+
+<!-- HISTORICAL WINS -->
+<div class="screen" id="screen-hist-wins">
+  <div class="screen-head">
+    <div class="sh-left"><button class="back-btn" onclick="back()">←</button><div class="sh-title">HISTORICAL WINS</div></div>
+  </div>
+  <div class="screen-body">
+    <div style="font-size:11px;color:var(--subtext);margin-bottom:16px;line-height:1.6">Wins from before the app. These are added to app-tracked wins on the leaderboard. Tap the combined total on the leaderboard to see the split.</div>
+    <div id="hist-wins-page-editor"></div>
+  </div>
+</div>
 </div><!-- #gb -->
 <script>
 const MLB_TEAMS={
@@ -824,6 +834,7 @@ function render(){
   if(G.screen==='screen-h2h')renderH2H();
   if(G.screen==='screen-yr')renderYearReview();
   if(G.screen==='screen-settings')renderSettings();
+  if(G.screen==='screen-hist-wins')renderHistWinsPage();
   if(G.screen==='screen-achievements')renderAchievementsList();
   if(G.screen==='screen-tutorial')renderTutorial();
 }
@@ -1462,7 +1473,22 @@ function toggleSound(){settings.sound=!settings.sound;saveSettings();renderSetti
 function toggleWake(){settings.wake=!settings.wake;saveSettings();renderSettings();if(settings.wake)requestWakeLock();else releaseWakeLock();}
 function addRosterPlayer(){const inp=document.getElementById('new-player-inp');const name=inp.value.trim();if(!name||roster.includes(name))return;roster.push(name);lsSet('gb_roster',roster);inp.value='';renderSettings();}
 function deleteRosterPlayer(i){const name=roster[i];const ent=prompt(`Type "${name}" to confirm deletion:`);if(ent===name){roster.splice(i,1);lsSet('gb_roster',roster);renderSettings();}else if(ent!==null)alert('Name did not match.');}
-function adjHW(name,d){const cur=historicalWins[name]||0,next=cur+d;if(next<0){if(!confirm('Remove a historical win for '+name+'?'))return;}if(next<0)return;historicalWins[name]=next;lsSet('gb_hist_wins',historicalWins);renderSettings();}
+function adjHW(name,d){const cur=historicalWins[name]||0,next=cur+d;if(next<0){if(!confirm('Remove a historical win for '+name+'?'))return;}if(next<0)return;historicalWins[name]=next;lsSet('gb_hist_wins',historicalWins);if(G.screen==='screen-settings')renderSettings();else if(G.screen==='screen-hist-wins')renderHistWinsPage();}
+
+function renderHistWinsPage(){
+  const hw=document.getElementById('hist-wins-page-editor');
+  if(!hw)return;
+  if(!roster.length){hw.innerHTML=`<div class="empty-state">NO SAVED PLAYERS<br>Add players in Settings first.</div>`;return;}
+  hw.innerHTML=roster.map(name=>{
+    const n=historicalWins[name]||0;
+    return`<div class="settings-row"><div class="settings-label">${name}</div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <button onclick="adjHW('${name}',-1)" style="width:36px;height:36px;border:1.5px solid var(--border);border-radius:3px;background:var(--card);color:var(--text);font-size:20px;cursor:pointer;font-family:'Courier New',monospace">−</button>
+        <span style="font-size:22px;font-weight:700;color:var(--text);min-width:36px;text-align:center">${n}</span>
+        <button onclick="adjHW('${name}',1)" style="width:36px;height:36px;border:1.5px solid var(--border);border-radius:3px;background:var(--card);color:var(--text);font-size:20px;cursor:pointer;font-family:'Courier New',monospace">+</button>
+      </div></div>`;
+  }).join('');
+}
 
 function renderAchievementsList(){
   const emap={};
