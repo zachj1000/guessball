@@ -548,7 +548,7 @@ select.player-input{cursor:pointer}
       <div class="section-label">Data</div>
       <button class="btn-danger" onclick="clearActiveGame()">CLEAR ACTIVE GAME</button>
     </div>
-    <div style="text-align:center;padding:16px 0;font-size:10px;color:var(--subtext);letter-spacing:.08em">GUESS BALL v1.6.0</div>
+    <div style="text-align:center;padding:16px 0;font-size:10px;color:var(--subtext);letter-spacing:.08em">GUESS BALL v1.7.0</div>
   </div>
 </div>
 
@@ -781,7 +781,7 @@ let G={
   batterName:'',awayTeam:'',homeTeam:'',stadium:'',awayScore:0,homeScore:0,gameNotes:'',
   gameAchievements:[],
   consecutiveCorrect:0,consecutiveMiss:0,consecutiveConfWrong:0,consecutiveScoring:0,
-  halfInningCorrect:{},halfInningTotal:{},halfInningScore:{},halfInningPts:{},
+  halfInningCorrect:{},halfInningTotal:{},halfInningScore:{},halfInningPts:{},inningPts:{},
   confInGame:{correct:0,total:0},p3BonusesThisGame:0,boolBold:false,
 };
 let NAV=[];
@@ -1040,8 +1040,8 @@ function startGame(){
   G.atBatLog=[];G.finalStats=null;G.mvpBadge=null;G.batterName='';G.gameNotes='';
   G.gameAchievements=[];G.consecutiveCorrect=0;G.consecutiveMiss=0;
   G.consecutiveConfWrong=0;G.consecutiveScoring=0;
-  G.halfInningCorrect={};G.halfInningTotal={};G.halfInningScore={};G.halfInningPts={};
-  G.confInGame={correct:0,total:0};G.p3BonusesThisGame=0;G.boolBold=false;
+  G.halfInningCorrect={};G.halfInningTotal={};G.halfInningScore={};G.halfInningPts={};G.inningPts={};
+  G.confInGame={correct:0,total:0};G.p3BonusesThisGame=0;G.boolBold=false;G.maxDeficit={};
   NAV=[];requestWakeLock();push('screen-pick3');
 }
 
@@ -1150,6 +1150,10 @@ function submitResult(){
       deltas[i]+=pts;
       G.halfInningScore[halfKey][i]=(G.halfInningScore[halfKey][i]||0)+pts;
       G.halfInningPts[halfKey][i]=(G.halfInningPts[halfKey][i]||0)+pts;
+      // track full inning pts
+      const innKey=G.inning+'_'+i;
+      if(!G.inningPts[innKey])G.inningPts[innKey]=0;
+      G.inningPts[innKey]+=pts;
       if(live&&sl===2&&!G.p3bonusGiven[i]){deltas[i]+=7;G.p3bonusGiven[i]=true;G.p3BonusesThisGame++;}
       if(i!==G.priorityIdx)newPriority=i;
       G.halfInningCorrect[halfKey][i]=(G.halfInningCorrect[halfKey][i]||0)+1;
@@ -1176,6 +1180,18 @@ function submitResult(){
   if(newPriority===G.priorityIdx)G.priorityStreak++;else G.priorityStreak=1;
   G.priorityIdx=newPriority;
   G.players.forEach((_,i)=>G.scores[i]=(G.scores[i]||0)+deltas[i]);
+  // track biggest comeback deficit
+  if(!G.maxDeficit)G.maxDeficit={};
+  G.players.forEach((_,i)=>{
+    G.players.forEach((_,j)=>{
+      if(i===j)return;
+      const deficit=(G.scores[j]||0)-(G.scores[i]||0);
+      if(deficit>0){
+        const key=i+'_'+j;
+        G.maxDeficit[key]=Math.max(G.maxDeficit[key]||0,deficit);
+      }
+    });
+  });
   G.lastDeltas=deltas;
   if(isOut(outcome)){
     if(outcome==='double_play')G.outs+=2;
@@ -1391,7 +1407,38 @@ function finishEndGame(){
   }
 
   const hlAB=G.atBatLog.reduce((b,e)=>Math.abs(e.pts)>Math.abs(b.pts)?e:b,{pts:0});
-  gameHistory.unshift({date,players:G.players.map((n,i)=>({name:n,score:G.scores[i]||0})),winner:winner.n,inning:G.inning,stats:G.finalStats,achievements:G.gameAchievements,mvpBadge:mvp,awayTeam:G.awayTeam,homeTeam:G.homeTeam,stadium:G.stadium,awayScore:G.awayScore,homeScore:G.homeScore,notes:G.gameNotes,highlightAtBat:hlAB});
+  // biggest comeback this game
+  let biggestComeback={player:null,deficit:0};
+  if(G.maxDeficit){
+    Object.entries(G.maxDeficit).forEach(([key,deficit])=>{
+      const winnerIdx=parseInt(key.split('_')[0]);
+      if(G.players[winnerIdx]===winner.n&&deficit>biggestComeback.deficit){
+        biggestComeback={player:winner.n,deficit};
+      }
+    });
+  }
+  // best half-inning per player
+  let bestHalf={player:null,pts:0,key:''};
+  Object.entries(G.halfInningPts||{}).forEach(([hk,playerPts])=>{
+    if(typeof playerPts==='object'){
+      Object.entries(playerPts).forEach(([pIdx,pts])=>{
+        if(pts>bestHalf.pts)bestHalf={player:G.players[parseInt(pIdx)],pts,key:hk};
+      });
+    }
+  });
+  // best inning (top+bottom combined per player)
+  const innTotals={};
+  Object.entries(G.inningPts||{}).forEach(([key,pts])=>{
+    const[inn,pIdx]=key.split('_');
+    const k=inn+'_'+pIdx;
+    innTotals[k]=(innTotals[k]||0)+pts;
+  });
+  let bestInning={player:null,pts:0,inning:0};
+  Object.entries(innTotals).forEach(([key,pts])=>{
+    const[inn,pIdx]=key.split('_');
+    if(pts>bestInning.pts)bestInning={player:G.players[parseInt(pIdx)],pts,inning:parseInt(inn)};
+  });
+  gameHistory.unshift({date,players:G.players.map((n,i)=>({name:n,score:G.scores[i]||0})),winner:winner.n,inning:G.inning,stats:G.finalStats,achievements:G.gameAchievements,mvpBadge:mvp,awayTeam:G.awayTeam,homeTeam:G.homeTeam,stadium:G.stadium,awayScore:G.awayScore,homeScore:G.homeScore,notes:G.gameNotes,highlightAtBat:hlAB,biggestComeback,bestHalf,bestInning});
   if(gameHistory.length>50)gameHistory=gameHistory.slice(0,50);
   saveMeta();lsSet('gb_achievements',leaderboard);lsDel('gb_game');
   statsDeepIdx=0;trashIdx=0;push('screen-stats');
@@ -1622,10 +1669,25 @@ function renderHOF(){
     if(s.totalP3>0)records.push({type:'p3',player:name,value:s.totalP3,date:'',desc:'Most Pick 3 bonuses all time'});
     if(s.totalConfCorrect>0)records.push({type:'conf',player:name,value:s.totalConfCorrect,date:'',desc:'Most confidence correct all time'});
   });
+  // comeback, best half, best inning from game history
+  gameHistory.forEach(g=>{
+    if(g.biggestComeback&&g.biggestComeback.deficit>0)
+      records.push({type:'comeback',player:g.biggestComeback.player,value:g.biggestComeback.deficit,date:g.date,desc:'Biggest comeback (deficit overcome)'});
+    if(g.bestHalf&&g.bestHalf.pts>0)
+      records.push({type:'best_half',player:g.bestHalf.player,value:g.bestHalf.pts,date:g.date,desc:'Most points in a single half-inning'});
+    if(g.bestInning&&g.bestInning.pts>0)
+      records.push({type:'best_inning',player:g.bestInning.player,value:g.bestInning.pts,date:g.date,desc:'Most points in a single inning'});
+  });
   const best={};records.forEach(r=>{if(!best[r.type]||r.value>best[r.type].value)best[r.type]=r;});
   const entries=Object.values(best);
   if(!entries.length){el.innerHTML=`<div class="empty-state">NO RECORDS YET<br>Play some games first.</div>`;return;}
-  el.innerHTML=`<div class="section-label">Records — only shown with data</div>`+entries.map(r=>`<div class="hof-row"><div class="hof-record">${r.desc}</div><div class="hof-value">${r.type==='accuracy'?r.value+'%':r.type==='streak'?r.value+' in a row':r.value+(r.type==='margin'?' pts':'')}</div><div class="hof-holder">${r.player}${r.date?' · '+r.date:''}</div></div>`).join('');
+  el.innerHTML=`<div class="section-label">Records — only shown with data</div>`+entries.map(r=>{
+    let valStr=r.value;
+    if(r.type==='accuracy')valStr=r.value+'%';
+    else if(r.type==='streak')valStr=r.value+' in a row';
+    else if(r.type==='margin'||r.type==='comeback'||r.type==='best_half'||r.type==='best_inning')valStr=r.value+' pts';
+    return`<div class="hof-row"><div class="hof-record">${r.desc}</div><div class="hof-value">${valStr}</div><div class="hof-holder">${r.player}${r.date?' · '+r.date:''}</div></div>`;
+  }).join('');
 }
 
 function renderH2H(){
