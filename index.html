@@ -407,10 +407,14 @@ select.player-input{cursor:pointer}
     <div class="outcome-grid" id="result-grid"></div>
     <div style="margin-bottom:14px">
       <div class="section-label">Runs scored</div>
-      <div onclick="openRunsSheet()" style="display:flex;align-items:center;justify-content:space-between;padding:12px 14px;border:1.5px solid var(--border);border-radius:3px;background:var(--card);cursor:pointer">
-        <span style="font-size:13px;font-weight:700;color:var(--text)" id="runs-display-text">0 runs</span>
-        <span style="color:var(--subtext);font-size:12px">tap ▲</span>
+      <div style="display:flex;gap:8px;align-items:stretch">
+        <div onclick="openRunsSheet()" style="flex:1;display:flex;align-items:center;justify-content:space-between;padding:12px 14px;border:1.5px solid var(--border);border-radius:3px;background:var(--card);cursor:pointer">
+          <span style="font-size:13px;font-weight:700;color:var(--text)" id="runs-display-text">0 runs</span>
+          <span style="color:var(--subtext);font-size:12px">tap ▲</span>
+        </div>
+        <div onclick="addExtraOut()" id="extra-out-btn" style="display:flex;align-items:center;justify-content:center;padding:12px 14px;border:1.5px solid var(--border);border-radius:3px;background:var(--card);cursor:pointer;font-family:Courier New,monospace;font-size:12px;font-weight:700;color:var(--text);flex-shrink:0;white-space:nowrap">+OUT</div>
       </div>
+      <div id="extra-out-count" style="display:none;font-size:10px;font-weight:700;color:var(--positive);margin-top:4px;text-align:right"></div>
     </div>
 
     <button class="btn-primary" id="result-btn" onclick="submitResult()" disabled>SCORE IT →</button>
@@ -433,7 +437,7 @@ select.player-input{cursor:pointer}
     <div class="section-divider"></div>
     <button class="btn-primary" id="sb-next-btn" onclick="nextAtBat()">NEXT AT-BAT →</button>
     <button class="btn-secondary" id="sb-half-btn" onclick="nextHalfInning()">NEW HALF-INNING</button>
-    <button class="btn-secondary" onclick="addExtraOut()" style="border-color:var(--negative);color:var(--negative)">+ OUT (RUNNER THROWN OUT)</button>
+
     <button class="btn-secondary" onclick="confirmEndGame()">END GAME</button>
   </div>
 </div>
@@ -549,7 +553,7 @@ select.player-input{cursor:pointer}
       <button class="btn-secondary" style="margin-top:0" onclick="goTo('screen-data-tools')">DATA TOOLS →</button>
       <button class="btn-danger" onclick="clearActiveGame()">CLEAR ACTIVE GAME</button>
     </div>
-    <div style="text-align:center;padding:16px 0;font-size:10px;color:var(--subtext);letter-spacing:.08em">GUESS BALL v1.1.0</div>
+    <div style="text-align:center;padding:16px 0;font-size:10px;color:var(--subtext);letter-spacing:.08em">GUESS BALL v1.3.0</div>
   </div>
 </div>
 
@@ -1299,6 +1303,7 @@ function submitResult(){
     if(outcome==='double_play')G.outs+=2;
     else G.outs++;
   }
+  if(G.pendingExtraOuts){G.outs+=G.pendingExtraOuts;G.pendingExtraOuts=0;}
   G.inningAtBat++;
   // walk-off check: were you losing before this at-bat, did you just score, and did opponent not?
   G.players.forEach((_,i)=>{
@@ -1313,6 +1318,12 @@ function submitResult(){
   });
   checkMidGameAch(outcome,deltas,runs);
   push('screen-scoreboard');
+  // auto-end if game is naturally over
+  if(isGameNaturallyOver()){
+    setTimeout(()=>{
+      openModal('notes-modal');
+    },600);
+  }
 }
 
 function undoLast(){
@@ -1363,22 +1374,18 @@ function openHistModal(pIdx){
 
 function nextAtBat(){buildManualQueue(true);}
 function addExtraOut(){
-  if(!confirm('Add an extra out for a runner thrown out on the play?'))return;
-  G.outs++;
-  saveGame();
-  renderScoreboard();
-  setHeaderBars();
-  // check if inning should end
-  const nb=document.getElementById('sb-next-btn');
-  const hb=document.getElementById('sb-half-btn');
-  if(G.outs>=3){if(nb)nb.style.display='none';if(hb)hb.textContent='NEXT HALF-INNING →';}
-  else{if(nb)nb.style.display='block';if(hb)hb.textContent='NEW HALF-INNING';}
+  if(!G.pendingExtraOuts)G.pendingExtraOuts=0;
+  G.pendingExtraOuts++;
+  const btn=document.getElementById('extra-out-btn');
+  const cnt=document.getElementById('extra-out-count');
+  if(btn)btn.style.background='var(--ink)',btn.style.color='#fff',btn.style.borderColor='var(--ink)';
+  if(cnt){cnt.style.display='block';cnt.textContent='+'+G.pendingExtraOuts+' out'+(G.pendingExtraOuts!==1?'s':'')+' will be added';}
 }
 function buildManualQueue(nav){
   const queue=[];
   G.players.forEach((_,i)=>{const sl=G.inningAtBat-1,pk=G.p3picks[i]||[],live=pk.length===3&&G.p3alive[i]&&sl<3;if(!live)queue.push(i);});
   queue.sort((a,b)=>a===G.priorityIdx?-1:b===G.priorityIdx?1:0);
-  G.pendingPickers=queue;G.manualPicks={};G.confidence={};G.currentPickerIdx=0;G.batterName='';
+  G.pendingPickers=queue;G.manualPicks={};G.confidence={};G.currentPickerIdx=0;G.batterName='';G.pendingExtraOuts=0;
   if(nav){if(queue.length===0){G.pendingResult=null;G.pendingRuns=0;push('screen-result');}else push('screen-pick');}
 }
 function startAtBats(){G.inningAtBat=1;buildManualQueue(true);}
@@ -1386,7 +1393,7 @@ function nextHalfInning(){
   G.outs=0;if(!G.isBottom)G.isBottom=true;else{G.inning++;G.isBottom=false;}
   G.inningAtBat=1;G.p3picks={};G.p3alive={};G.p3bonusGiven={};G.p3bustedThisPlay={};
   G.players.forEach((_,i)=>{G.p3picks[i]=[];G.p3alive[i]=true;});
-  G.currentPickerIdx=0;G.manualPicks={};G.confidence={};G.pendingResult=null;G.pendingRuns=0;G.batterName='';G.lastResult=null;
+  G.currentPickerIdx=0;G.manualPicks={};G.confidence={};G.pendingResult=null;G.pendingRuns=0;G.batterName='';G.lastResult=null;G.pendingExtraOuts=0;
   push('screen-pick3');
 }
 
