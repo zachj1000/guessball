@@ -1629,6 +1629,8 @@ function initPullToRefresh(screenId, refreshFn){
 }
 
 function renderLeaderboard(){
+  console.log('renderLeaderboard: gameHistory.length=',gameHistory.length,'leaderboard keys=',Object.keys(leaderboard).length);
+  console.log('historical games:', gameHistory.filter(g=>g.historical).length);
   // Build leaderboard data by separating historical vs app games
   const combined={};
 
@@ -1671,6 +1673,7 @@ function renderLeaderboard(){
     longestStreak:s.longestStreak,
     achievements:s.achievements,
   })).filter(s=>s.wins>0||s.games>0||s.histGames>0).sort((a,b)=>b.wins-a.wins);
+  console.log('combined entries:', entries.length, entries.map(e=>e.name+':'+e.wins+'W '+e.histWins+'hW'));
   if(!entries.length){document.getElementById('lb-rows').innerHTML=`<div class="empty-state">${settings.hideHistorical?'NO APP GAMES YET':'NO GAMES YET'}</div>`;return;}
   document.getElementById('lb-rows').innerHTML=entries.map(([name,s],i)=>{
     const tw=s.wins||0,hw=0;
