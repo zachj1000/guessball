@@ -547,9 +547,10 @@ select.player-input{cursor:pointer}
     <div class="settings-section">
       <div class="section-label">Data</div>
       <button class="btn-secondary" style="margin-top:0" onclick="forceSync()">FORCE SYNC FROM CLOUD</button>
+      <button class="btn-secondary" style="margin-top:8px" onclick="testFirebase()">TEST FIREBASE CONNECTION</button>
       <button class="btn-danger" onclick="clearActiveGame()">CLEAR ACTIVE GAME</button>
     </div>
-    <div style="text-align:center;padding:16px 0;font-size:10px;color:var(--subtext);letter-spacing:.08em">GUESS BALL v2.0.0</div>
+    <div style="text-align:center;padding:16px 0;font-size:10px;color:var(--subtext);letter-spacing:.08em">GUESS BALL v2.1.0</div>
   </div>
 </div>
 
@@ -983,6 +984,16 @@ function forceSync(){
   lsDel('gb_roster');
   lsDel('gb_h2h');
   location.reload();
+}
+function testFirebase(){
+  showFBError('Testing Firebase connection...');
+  db.ref('test').set({ts:Date.now(),msg:'hello'})
+    .then(()=>{
+      showFBError('✓ Firebase write works!');
+      return db.ref('test').once('value');
+    })
+    .then(s=>showFBError('✓ Firebase read works! val='+JSON.stringify(s.val())))
+    .catch(e=>showFBError('✗ Firebase error: '+e.message));
 }
 
 function clearActiveGame(){
