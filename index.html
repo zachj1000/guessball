@@ -251,7 +251,8 @@ html,body{
         <div class="title-name">GUESS BALL</div>
         <div class="title-sub">⚾ &nbsp; ⚾ &nbsp; ⚾</div>
         <div class="title-divider"></div>
-        <button class="menu-btn primary" onclick="goTo('screen-setup')"><span>NEW GAME</span><span>→</span></button>
+        <div id="resume-btn-wrap"></div>
+        <button class="menu-btn primary" onclick="newGameFromTitle()"><span>NEW GAME</span><span>→</span></button>
         <button class="menu-btn" onclick="goTo('screen-leaderboard')"><span>LEADERBOARDS</span><span>→</span></button>
         <button class="menu-btn" onclick="goTo('screen-history')"><span>GAME HISTORY</span><span>→</span></button>
       </div>
@@ -550,6 +551,7 @@ function render(){
   const s=document.getElementById(G.screen);
   if(s)s.classList.add('active');
   window.scrollTo(0,0);
+  if(G.screen==='screen-title')renderTitle();
   ({
     'screen-setup':renderSetup,
     'screen-pick3':renderPick3,
@@ -565,6 +567,7 @@ function render(){
 
 /* SETUP */
 function renderSetup(){
+  if(!G.players||!G.players.length)G.players=['',''];
   document.getElementById('player-inputs').innerHTML=G.players.map((p,i)=>`
     <div class="input-row">
       <input class="player-input" style="flex:1" placeholder="PLAYER ${i+1}" value="${p}" oninput="G.players[${i}]=this.value;checkStart()">
@@ -578,6 +581,7 @@ function addPlayer(){G.players.push('');render();}
 function removePlayer(i){G.players.splice(i,1);render();}
 function startGame(){
   G.players=G.players.map((p,i)=>p.trim()||'PLAYER '+(i+1));
+  NAV=[];
   G.scores={};G.players.forEach((_,i)=>G.scores[i]=0);
   G.inning=1;G.isBottom=false;G.inningAtBat=1;G.priorityIdx=0;
   G.p3picks={};G.p3alive={};G.p3bonusGiven={};G.p3bustedThisPlay={};
@@ -586,6 +590,38 @@ function startGame(){
   G.pendingResult=null;G.pendingRuns=0;G.lastDeltas={};
   G.atBatLog=[];G.finalStats=null;
   push('screen-pick3');
+}
+
+function renderTitle(){
+  const saved=lsGet('gb_game');
+  const wrap=document.getElementById('resume-btn-wrap');
+  if(!wrap)return;
+  if(saved&&saved.players&&saved.players.length){
+    wrap.innerHTML=`
+      <button class="menu-btn" style="background:#D6E4F7;border-color:#003DA5" onclick="resumeGame()"><span>⚾ RESUME GAME</span><span>→</span></button>
+      <button class="menu-btn" style="background:#F0EDE3;border-color:#A32D2D;color:#A32D2D;margin-bottom:16px" onclick="clearSavedGame()"><span>CLEAR SAVED GAME</span><span>✕</span></button>`;
+  } else {
+    wrap.innerHTML='';
+  }
+}
+function resumeGame(){
+  const saved=lsGet('gb_game');
+  if(saved&&saved.players){G=saved;NAV=[];render();}
+}
+function clearSavedGame(){
+  if(confirm('Clear the saved game? This cannot be undone.')){
+    clearGame();
+    document.getElementById('resume-btn-wrap').innerHTML='';
+  }
+}
+function newGameFromTitle(){
+  const saved=lsGet('gb_game');
+  if(saved&&saved.players&&saved.players.length){
+    if(!confirm('Start a new game? Your current saved game will be lost.'))return;
+    clearGame();
+  }
+  G.players=['',''];
+  goTo('screen-setup');
 }
 
 /* PICK 3 */
