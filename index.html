@@ -550,7 +550,7 @@ select.player-input{cursor:pointer}
       <button class="btn-secondary" style="margin-top:0" onclick="goTo('screen-data-tools')">DATA TOOLS →</button>
       <button class="btn-danger" onclick="clearActiveGame()">CLEAR ACTIVE GAME</button>
     </div>
-    <div style="text-align:center;padding:16px 0;font-size:10px;color:var(--subtext);letter-spacing:.08em">GUESS BALL v1.3.8</div>
+    <div style="text-align:center;padding:16px 0;font-size:10px;color:var(--subtext);letter-spacing:.08em">GUESS BALL v1.3.9</div>
   </div>
 </div>
 
@@ -1629,67 +1629,71 @@ function initPullToRefresh(screenId, refreshFn){
 }
 
 function renderLeaderboard(){
-  // ensure gameHistory is an array
+  // Build from gameHistory directly — most reliable source
   const gh=Array.isArray(gameHistory)?gameHistory:Object.values(gameHistory||{});
-  // Build leaderboard data by separating historical vs app games
-  const combined={};
+  const players={};
 
-  // Count historical wins/games from game history entries marked historical
-  gh.filter(g=>g.historical).forEach(g=>{
+  gh.forEach(g=>{
+    if(!g.players)return;
+    const isHist=!!g.historical;
     g.players.forEach(p=>{
-      if(!combined[p.name])combined[p.name]={appGames:0,appWins:0,histGames:0,histWins:0,totalPts:0,totalPicks:0,totalCorrect:0,totalP3:0,totalConfCorrect:0,totalConfWrong:0,achievements:[],longestStreak:0};
-      combined[p.name].histGames++;
-      if(p.name===g.winner)combined[p.name].histWins++;
+      if(!p.name)return;
+      if(!players[p.name])players[p.name]={appWins:0,appGames:0,histWins:0,histGames:0};
+      if(isHist){
+        players[p.name].histGames++;
+        if(p.name===g.winner)players[p.name].histWins++;
+      } else {
+        players[p.name].appGames++;
+        if(p.name===g.winner)players[p.name].appWins++;
+      }
     });
   });
 
-  // Count app wins/games from leaderboard (real games tracked by app)
+  // merge pick stats from leaderboard object
   Object.entries(leaderboard).forEach(([name,s])=>{
-    if(!combined[name])combined[name]={appGames:0,appWins:0,histGames:0,histWins:0,totalPts:0,totalPicks:0,totalCorrect:0,totalP3:0,totalConfCorrect:0,totalConfWrong:0,achievements:[],longestStreak:0};
-    combined[name].appGames=s.games||0;
-    combined[name].appWins=s.wins||0;
-    combined[name].totalPicks=s.totalPicks||0;
-    combined[name].totalCorrect=s.totalCorrect||0;
-    combined[name].totalP3=s.totalP3||0;
-    combined[name].totalConfCorrect=s.totalConfCorrect||0;
-    combined[name].totalConfWrong=s.totalConfWrong||0;
-    combined[name].achievements=s.achievements||[];
-    combined[name].longestStreak=s.longestStreak||0;
+    if(!players[name])players[name]={appWins:0,appGames:0,histWins:0,histGames:0};
+    players[name].totalPicks=s.totalPicks||0;
+    players[name].totalCorrect=s.totalCorrect||0;
+    players[name].totalP3=s.totalP3||0;
+    players[name].totalConfCorrect=s.totalConfCorrect||0;
+    players[name].longestStreak=s.longestStreak||0;
+    players[name].achievements=s.achievements||[];
+    players[name].totalPts=s.totalPts||0;
   });
 
-  // Filter based on hide historical toggle
   const showHist=!settings.hideHistorical;
-  const entries=Object.entries(combined).map(([name,s])=>({
+  const entries=Object.entries(players).map(([name,s])=>({
     name,
-    wins:s.appWins+(showHist?s.histWins:0),
-    appWins:s.appWins,
-    histWins:s.histWins,
-    games:s.appGames+(showHist?s.histGames:0),
-    totalPts:s.totalPts,
-    totalPicks:s.totalPicks,
-    totalCorrect:s.totalCorrect,
-    totalP3:s.totalP3,
-    totalConfCorrect:s.totalConfCorrect,
-    longestStreak:s.longestStreak,
-    achievements:s.achievements,
-  })).filter(s=>s.wins>0||s.games>0||s.histGames>0).sort((a,b)=>b.wins-a.wins);
-  if(!entries.length){document.getElementById('lb-rows').innerHTML=`<div class="empty-state">${settings.hideHistorical?'NO APP GAMES YET':'NO GAMES YET'}</div>`;return;}
-  document.getElementById('lb-rows').innerHTML=entries.map(([name,s],i)=>{
-    const tw=s.wins||0,hw=0;
-    const winPct=s.games>0?Math.round(tw/s.games*100):0;
+    wins:(s.appWins||0)+(showHist?s.histWins||0:0),
+    appWins:s.appWins||0,
+    histWins:s.histWins||0,
+    games:(s.appGames||0)+(showHist?s.histGames||0:0),
+    totalPts:s.totalPts||0,
+    totalPicks:s.totalPicks||0,
+    totalCorrect:s.totalCorrect||0,
+    totalP3:s.totalP3||0,
+    totalConfCorrect:s.totalConfCorrect||0,
+    longestStreak:s.longestStreak||0,
+    achievements:s.achievements||[],
+  })).filter(s=>s.games>0).sort((a,b)=>b.wins-a.wins);
+
+  if(!entries.length){document.getElementById('lb-rows').innerHTML=`<div class="empty-state">NO GAMES YET</div>`;return;}
+  document.getElementById('lb-rows').innerHTML=entries.map((s,i)=>{
+    const name=s.name;
+    const winPct=s.games>0?Math.round(s.wins/s.games*100):0;
     const avgScore=s.games>0?Math.round(s.totalPts/s.games):0;
     const pickPct=s.totalPicks>0?Math.round(s.totalCorrect/s.totalPicks*100):0;
     const exp=lbExpanded[name],split=winSplitShown[name];
     const achs=s.achievements||[];
     return`<div style="border-bottom:1px dashed var(--border)">
-      <div class="lb-row" style="border-bottom:none;cursor:pointer" onclick="toggleLb('${name.replace(/'/g,"\\'")}')">
+      <div class="lb-row" style="border-bottom:none;cursor:pointer" onclick="toggleLb('${name.replace(/'/g,"\'")}')">
         <div><div class="lb-name">${i===0?'⚾ ':''}${name}</div><div class="lb-stat">${s.games} game${s.games!==1?'s':''} · ${s.longestStreak||0} best streak</div></div>
         <div style="display:flex;align-items:center;gap:10px">
-          <div class="lb-pts" onclick="event.stopPropagation();toggleSplit('${name.replace(/'/g,"\\'")}')">${tw}W</div>
+          <div class="lb-pts" onclick="event.stopPropagation();toggleSplit('${name.replace(/'/g,"\'")}')">${s.wins}W</div>
           <div style="font-size:14px;color:var(--subtext)">${exp?'▲':'▼'}</div>
         </div>
       </div>
-      ${split?`<div style="display:flex;gap:8px;padding-bottom:8px"><div class="deep-stat" style="flex:1"><div class="deep-stat-val" style="color:var(--positive)">${s.wins||0}</div><div class="deep-stat-lbl">App wins</div></div><div class="deep-stat" style="flex:1"><div class="deep-stat-val" style="color:var(--ink)">${hw}</div><div class="deep-stat-lbl">Historical</div></div></div>`:''}
+      ${split?`<div style="display:flex;gap:8px;padding-bottom:8px"><div class="deep-stat" style="flex:1"><div class="deep-stat-val" style="color:var(--positive)">${s.appWins}</div><div class="deep-stat-lbl">App wins</div></div><div class="deep-stat" style="flex:1"><div class="deep-stat-val" style="color:var(--ink3)">${s.histWins}</div><div class="deep-stat-lbl">Historical</div></div></div>`:''}
       ${exp?`<div style="padding:0 0 14px"><div class="deep-stat-grid"><div class="deep-stat"><div class="deep-stat-val">${winPct}%</div><div class="deep-stat-lbl">Win %</div></div><div class="deep-stat"><div class="deep-stat-val">${avgScore}</div><div class="deep-stat-lbl">Avg score</div></div><div class="deep-stat"><div class="deep-stat-val">${pickPct}%</div><div class="deep-stat-lbl">Pick %</div></div><div class="deep-stat"><div class="deep-stat-val">${s.totalP3||0}</div><div class="deep-stat-lbl">P3 bonuses</div></div><div class="deep-stat"><div class="deep-stat-val">${s.totalConfCorrect||0}</div><div class="deep-stat-lbl">Conf. correct</div></div><div class="deep-stat"><div class="deep-stat-val">${s.longestStreak||0}</div><div class="deep-stat-lbl">Best streak</div></div></div>${achs.length?`<div class="section-label">Achievements</div><div class="ach-icon-bar">${achs.map(a=>{const ach=ACHIEVEMENTS.find(x=>x.id===a.id);return ach?`<div class="ach-icon" title="${ach.name}">${ach.icon}</div>`:''}).join('')}</div>`:''}</div>`:''}
     </div>`;
   }).join('');
