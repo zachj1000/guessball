@@ -321,9 +321,11 @@ select.player-input{cursor:pointer}
     <div id="add-player-wrap"></div>
     <div class="section-divider"></div>
     <div class="section-label">Teams</div>
-    <div class="input-row"><select class="player-input" id="away-sel" onchange="onTeamSelect('away',this.value)"><option value="">Away team...</option></select></div>
+    <div style="font-size:9px;font-weight:700;color:var(--subtext);letter-spacing:.08em;text-transform:uppercase;margin-bottom:4px">✈ Away team</div>
+    <div class="input-row"><select class="player-input" id="away-sel" onchange="onTeamSelect('away',this.value)"><option value="">Select away team...</option></select></div>
     <div id="away-custom" style="display:none;margin-bottom:10px"><input class="player-input" id="away-custom-inp" placeholder="AWAY TEAM NAME" oninput="G.awayTeam=this.value"></div>
-    <div class="input-row"><select class="player-input" id="home-sel" onchange="onTeamSelect('home',this.value)"><option value="">Home team...</option></select></div>
+    <div style="font-size:9px;font-weight:700;color:var(--subtext);letter-spacing:.08em;text-transform:uppercase;margin-bottom:4px;margin-top:4px">🏠 Home team</div>
+    <div class="input-row"><select class="player-input" id="home-sel" onchange="onTeamSelect('home',this.value)"><option value="">Select home team...</option></select></div>
     <div id="home-custom" style="display:none;margin-bottom:10px"><input class="player-input" id="home-custom-inp" placeholder="HOME TEAM NAME" oninput="G.homeTeam=this.value"></div>
     <div id="stadium-display" style="font-size:11px;color:var(--subtext);padding:4px 0;margin-bottom:10px"></div>
     <div class="section-divider"></div>
@@ -550,7 +552,7 @@ select.player-input{cursor:pointer}
       <button class="btn-secondary" style="margin-top:0" onclick="goTo('screen-data-tools')">DATA TOOLS →</button>
       <button class="btn-danger" onclick="clearActiveGame()">CLEAR ACTIVE GAME</button>
     </div>
-    <div style="text-align:center;padding:16px 0;font-size:10px;color:var(--subtext);letter-spacing:.08em">GUESS BALL v1.3.9</div>
+    <div style="text-align:center;padding:16px 0;font-size:10px;color:var(--subtext);letter-spacing:.08em">GUESS BALL v1.4.1</div>
   </div>
 </div>
 
@@ -1810,24 +1812,58 @@ function renderHOF(){
 }
 
 function renderH2H(){
-  const el=document.getElementById('h2h-body'),pairs=Object.values(h2h);
-  if(!pairs.length){el.innerHTML=`<div class="empty-state">NO HEAD TO HEAD DATA<br>Play games between same players.</div>`;return;}
-  el.innerHTML=pairs.map(rec=>{
-    const[p1,p2]=rec.players,w1=(rec.wins[p1]||0)+(historicalWins[p1]||0),w2=(rec.wins[p2]||0)+(historicalWins[p2]||0),games=rec.games||0;
-    const canName=games>=10&&!rec.rivalryName;
+  const el=document.getElementById('h2h-body');
+  const gh=Array.isArray(gameHistory)?gameHistory:Object.values(gameHistory||{});
+  const showHist=!settings.hideHistorical;
+
+  // Build pairs from gameHistory
+  const pairs={};
+  gh.forEach(g=>{
+    if(!g.players||g.players.length<2)return;
+    if(g.historical&&!showHist)return;
+    // get all pairs in this game
+    for(let i=0;i<g.players.length;i++){
+      for(let j=i+1;j<g.players.length;j++){
+        const p1=g.players[i].name,p2=g.players[j].name;
+        const key=[p1,p2].sort().join('|||');
+        if(!pairs[key])pairs[key]={p1:[p1,p2].sort()[0],p2:[p1,p2].sort()[1],wins:{},games:0,history:[]};
+        pairs[key].games++;
+        if(g.winner&&g.winner!=='Tie'){
+          pairs[key].wins[g.winner]=(pairs[key].wins[g.winner]||0)+1;
+        }
+        pairs[key].history.unshift({date:g.date,winner:g.winner||'Tie',scores:g.players.map(p=>({name:p.name,score:p.score})),historical:!!g.historical});
+      }
+    }
+  });
+
+  const pairList=Object.values(pairs).sort((a,b)=>b.games-a.games);
+  if(!pairList.length){el.innerHTML=`<div class="empty-state">NO HEAD TO HEAD DATA</div>`;return;}
+
+  el.innerHTML=pairList.map(rec=>{
+    const p1=rec.p1,p2=rec.p2;
+    const w1=rec.wins[p1]||0,w2=rec.wins[p2]||0;
     const key=[p1,p2].sort().join('|||');
-    return`<div style="padding:14px;background:var(--card);border:1.5px solid var(--border);border-radius:3px;margin-bottom:10px">
-      ${rec.rivalryName?`<div style="font-size:10px;color:var(--subtext);letter-spacing:.08em;text-transform:uppercase;margin-bottom:8px">${rec.rivalryName}</div>`:''}
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-        <div style="text-align:center;flex:1"><div style="font-size:15px;font-weight:700;color:var(--text)">${p1}</div><div style="font-size:28px;font-weight:700;color:var(--positive)">${w1}W</div></div>
-        <div style="font-size:13px;color:var(--subtext);font-weight:700">VS</div>
-        <div style="text-align:center;flex:1"><div style="font-size:15px;font-weight:700;color:var(--text)">${p2}</div><div style="font-size:28px;font-weight:700;color:var(--positive)">${w2}W</div></div>
+    const exp=lbExpanded['h2h_'+key];
+    return`<div style="background:var(--card);border:1.5px solid var(--border);border-radius:3px;margin-bottom:10px;overflow:hidden">
+      <div onclick="toggleLb('h2h_${key.replace(/'/g,"\'")}')" style="padding:14px;cursor:pointer">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+          <div style="text-align:center;flex:1"><div style="font-size:14px;font-weight:700;color:var(--text)">${p1}</div><div style="font-size:26px;font-weight:700;color:var(--positive)">${w1}W</div></div>
+          <div style="font-size:12px;color:var(--subtext);font-weight:700;flex-shrink:0">VS</div>
+          <div style="text-align:center;flex:1"><div style="font-size:14px;font-weight:700;color:var(--text)">${p2}</div><div style="font-size:26px;font-weight:700;color:var(--positive)">${w2}W</div></div>
+        </div>
+        <div style="font-size:10px;color:var(--subtext);text-align:center;font-weight:600">${rec.games} game${rec.games!==1?'s':''} · tap to expand</div>
       </div>
-      <div style="font-size:10px;color:var(--subtext);text-align:center">${games} app game${games!==1?'s':''}</div>
-      ${canName?`<div style="margin-top:10px;display:flex;gap:8px"><input class="player-input" placeholder="NAME YOUR RIVALRY..." id="rn-${key.replace(/[^a-z0-9]/gi,'_')}" style="flex:1;padding:8px 10px;font-size:12px"><button class="btn-secondary" style="width:auto;margin:0;padding:8px 12px;font-size:11px" onclick="nameRivalry('${key}')">SAVE</button></div>`:''}
+      ${exp?`<div style="border-top:1px dashed var(--border);padding:10px 14px">
+        ${rec.history.slice(0,10).map(h=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px dashed rgba(128,128,128,.15);font-size:11px">
+          <div style="color:var(--subtext);font-weight:600">${h.date}${h.historical?' <span style="font-size:9px;border:1px solid var(--border);padding:1px 4px;border-radius:2px">PRE-APP</span>':''}</div>
+          <div style="font-weight:700;color:var(--text)">⚾ ${h.winner}</div>
+          <div style="color:var(--subtext);font-weight:600">${h.scores.map(s=>s.name.split(' ')[0]+' '+s.score).join(' · ')}</div>
+        </div>`).join('')}
+      </div>`:''}
     </div>`;
   }).join('');
 }
+
 function nameRivalry(key){const inp=document.getElementById('rn-'+key.replace(/[^a-z0-9]/gi,'_'));if(!inp)return;const n=inp.value.trim();if(!n)return;h2h[key].rivalryName=n;lsSet('gb_h2h',h2h);renderH2H();}
 
 function renderYearReview(){
