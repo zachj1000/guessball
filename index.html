@@ -552,7 +552,7 @@ select.player-input{cursor:pointer}
       <button class="btn-secondary" style="margin-top:0" onclick="goTo('screen-data-tools')">DATA TOOLS →</button>
       <button class="btn-danger" onclick="clearActiveGame()">CLEAR ACTIVE GAME</button>
     </div>
-    <div style="text-align:center;padding:16px 0;font-size:10px;color:var(--subtext);letter-spacing:.08em">GUESS BALL v1.4.5</div>
+    <div style="text-align:center;padding:16px 0;font-size:10px;color:var(--subtext);letter-spacing:.08em">GUESS BALL v1.4.6</div>
   </div>
 </div>
 
@@ -804,7 +804,7 @@ let G={
   p3picks:{},p3alive:{},p3bonusGiven:{},p3bustedThisPlay:{},
   pendingPickers:[],currentPickerIdx:0,
   manualPicks:{},confidence:{},
-  pendingResult:null,pendingRuns:0,lastDeltas:{},lastResult:null,
+  pendingResult:null,pendingRuns:0,lastDeltas:{},lastResult:null,stealContinuation:false,
   atBatLog:[],finalStats:null,mvpBadge:null,
   batterName:'',awayTeam:'',homeTeam:'',stadium:'',awayScore:0,homeScore:0,gameNotes:'',
   gameAchievements:[],
@@ -1058,6 +1058,9 @@ function testFirebase(){
 }
 
 function clearActiveGame(){
+  const pw=prompt('Enter password to clear active game:');
+  if(pw===null)return;
+  if(pw!=='iloveyoshi'){alert('Incorrect password.');return;}
   if(!confirm('Are you sure? The active game will be permanently deleted.'))return;
   lsDel('gb_game');
   NAV=[];G.screen='screen-title';G.players=[];G.atBatLog=[];G.finalStats=null;G.mvpBadge=null;
@@ -1173,9 +1176,9 @@ function renderPick(){
   const lockedOut=pIdx!==G.priorityIdx?priorityPick:null;
   document.getElementById('pick-player-rows').innerHTML=G.players.map((n,i)=>{
     const pk=G.p3picks[i]||[],live=pk.length===3&&G.p3alive[i]&&sl<3,myPick=live?pk[sl]:G.manualPicks[i];
-    const isActive=i===pIdx,streak=getStreak(i);
+    const isActive=i===pIdx;
     const lbl=isActive?'choosing...':(myPick?(oLabel(myPick)+(G.confidence[i]?' WITH CONFIDENCE':'')):'—');
-    return`<div class="pr${i===G.players.length-1?' last':''}${isActive?' active-player':''}"><div><div class="pname">${n}${i===G.priorityIdx?' <span class="priority-badge">PRIORITY</span>':''}${live?' <span class="p3-badge">P3</span>':''}${streak>=3?` <span class="streak-badge">🔥${streak}</span>`:''}</div><div class="ppick">${lbl}</div></div><div class="pscore">${G.scores[i]||0}</div></div>`;
+    return`<div class="pr${i===G.players.length-1?' last':''}${isActive?' active-player':''}"><div><div class="pname">${n}${i===G.priorityIdx?' <span class="priority-badge">PRIORITY</span>':''}${live?' <span class="p3-badge">P3</span>':''}</div><div class="ppick">${lbl}</div></div><div class="pscore">${G.scores[i]||0}</div></div>`;
   }).join('');
   const sel=G.manualPicks[pIdx];
   document.getElementById('pick-grid').innerHTML=PLAYER_OUTCOMES.map(o=>`<div class="oc${sel===o.id?' sel':''}${lockedOut===o.id?' locked':''}" ${lockedOut===o.id?'':'onclick="selectPick('+pIdx+',\''+o.id+'\')"'}><div class="oc-lbl">${o.label}</div><div class="oc-pts">${o.pts}pt${o.pts!==1?'s':''}</div></div>`).join('');
@@ -1193,11 +1196,14 @@ function renderResult(){
   document.getElementById('result-player-rows').innerHTML=G.players.map((n,i)=>{
     const pk=G.p3picks[i]||[],live=pk.length===3&&G.p3alive[i]&&sl<3,myPick=live?pk[sl]:G.manualPicks[i];
     const lbl=myPick?(oLabel(myPick)+(G.confidence[i]?' WITH CONFIDENCE':'')):'—';
-    const streak=getStreak(i);
-    return`<div class="pr${i===G.players.length-1?' last':''}"><div><div class="pname">${n}${i===G.priorityIdx?' <span class="priority-badge">PRIORITY</span>':''}${live?' <span class="p3-badge">P3</span>':''}${streak>=3?` <span class="streak-badge">🔥${streak}</span>`:''}</div><div class="ppick">${lbl}</div></div><div class="pscore">${G.scores[i]||0}</div></div>`;
+    return`<div class="pr${i===G.players.length-1?' last':''}"><div><div class="pname">${n}${i===G.priorityIdx?' <span class="priority-badge">PRIORITY</span>':''}${live?' <span class="p3-badge">P3</span>':''}</div><div class="ppick">${lbl}</div></div><div class="pscore">${G.scores[i]||0}</div></div>`;
   }).join('');
   const sel=G.pendingResult;
-  document.getElementById('result-grid').innerHTML=RESULT_OUTCOMES.map(o=>`<div class="oc${sel===o.id?' sel':''}" onclick="selectResult('${o.id}')"><div class="oc-lbl">${o.label}</div><div class="oc-pts">${o.pts>0?o.pts+'pt':'—'}</div></div>`).join('');
+  // on steal continuation, only show batting outcomes (no stolen base/caught stealing)
+  const availableOutcomes=G.stealContinuation
+    ?RESULT_OUTCOMES.filter(o=>o.id!=='stolen_base'&&o.id!=='caught_stealing')
+    :RESULT_OUTCOMES;
+  document.getElementById('result-grid').innerHTML=availableOutcomes.map(o=>`<div class="oc${sel===o.id?' sel':''}" onclick="selectResult('${o.id}')"><div class="oc-lbl">${o.label}</div><div class="oc-pts">${o.pts>0?o.pts+'pt':'—'}</div></div>`).join('');
   const rd=document.getElementById('runs-display-text');if(rd)rd.textContent=(G.pendingRuns||0)+' run'+((G.pendingRuns||0)!==1?'s':'');
   // reset +OUT button visual state
   const eob=document.getElementById('extra-out-btn');
@@ -1287,6 +1293,32 @@ function submitResult(){
     else G.outs++;
   }
   if(G.pendingExtraOuts){G.outs+=G.pendingExtraOuts;G.pendingExtraOuts=0;}
+
+  // handle steal attempts — at-bat continues unless it's the 3rd out
+  if(outcome==='stolen_base'||outcome==='caught_stealing'){
+    const innEnds=G.outs>=3;
+    if(!innEnds){
+      // at-bat continues — go back to result screen with remaining picks intact
+      // keep manualPicks but mark steal done for the player who picked it
+      G.stealContinuation=true;
+      G.pendingResult=null;G.pendingRuns=0;
+      // nullify pick for player(s) who picked the steal outcome
+      G.players.forEach((_,i)=>{
+        if(G.manualPicks[i]===outcome)G.manualPicks[i]=null;
+        // p3 picks: if their p3 pick was the steal, mark it as used
+        const sl=G.inningAtBat-1;
+        const pk=G.p3picks[i]||[];
+        if(pk.length===3&&G.p3alive[i]&&sl<3&&pk[sl]===outcome){
+          G.p3alive[i]=false;
+        }
+      });
+      checkMidGameAch(outcome,deltas,runs);
+      push('screen-scoreboard');
+      return;
+    }
+    // 3rd out on caught stealing — inning ends normally, fall through
+  }
+
   G.inningAtBat++;
   // walk-off check
   if(G.lastResult){
@@ -1326,9 +1358,9 @@ function renderScoreboard(){
   const d=G.lastDeltas||{};
   const sorted=[...G.players.map((n,i)=>({n,i,s:G.scores[i]||0}))].sort((a,b)=>b.s-a.s);
   document.getElementById('sb-scores').innerHTML=sorted.map((p,rank)=>{
-    const pts=d[p.i]||0,streak=getStreak(p.i),busted=G.p3bustedThisPlay&&G.p3bustedThisPlay[p.i];
+    const pts=d[p.i]||0,busted=G.p3bustedThisPlay&&G.p3bustedThisPlay[p.i];
     const bonusHtml=G.p3bonusGiven[p.i]&&pts>0?'<span class="p3-badge" style="margin-left:4px">+7 P3</span>':'';
-    return`<div class="score-row${rank===0?' leader':''}" onclick="openHistModal(${p.i})"><div class="score-left"><div class="score-name-line"><span class="score-name">${rank===0?'⚾ ':''}${p.n}</span>${p.i===G.priorityIdx?'<span class="priority-badge">PRIORITY</span>':''}${streak>=3?`<span class="streak-badge">🔥×${streak}</span>`:''}${bonusHtml}</div>${busted?'<div class="score-sub">Pick 3 busted</div>':''}</div><div class="score-right">${pts!==0?`<div class="${pts>0?'score-delta-pos':'score-delta-neg'}">${pts>0?'+':''}${pts}</div>`:''}<div class="score-pts">${p.s}</div></div></div>`;
+    return`<div class="score-row${rank===0?' leader':''}" onclick="openHistModal(${p.i})"><div class="score-left"><div class="score-name-line"><span class="score-name">${rank===0?'⚾ ':''}${p.n}</span>${p.i===G.priorityIdx?'<span class="priority-badge">PRIORITY</span>':''}${bonusHtml}</div>${busted?'<div class="score-sub">Pick 3 busted</div>':''}</div><div class="score-right">${pts!==0?`<div class="${pts>0?'score-delta-pos':'score-delta-neg'}">${pts>0?'+':''}${pts}</div>`:''}<div class="score-pts">${p.s}</div></div></div>`;
   }).join('');
   const notes=G.players.map((name,i)=>{const pk=G.p3picks[i]||[];if(pk.length<3||!G.p3alive[i])return'';const next=G.inningAtBat-1;if(next<3&&pk[next])return`<div class="info-box">${name}: P3 alive — next: ${oLabel(pk[next])}</div>`;return'';}).filter(Boolean).join('');
   document.getElementById('sb-p3-notes').innerHTML=notes?`<div style="margin-top:8px">${notes}</div>`:'';
@@ -1356,7 +1388,15 @@ function openHistModal(pIdx){
   document.getElementById('hist-modal-body').innerHTML=html;openModal('hist-modal');
 }
 
-function nextAtBat(){buildManualQueue(true);}
+function nextAtBat(){
+  if(G.stealContinuation){
+    G.stealContinuation=false;
+    G.pendingResult=null;G.pendingRuns=0;
+    push('screen-result');
+  } else {
+    buildManualQueue(true);
+  }
+}
 function addExtraOut(){
   if(!G.pendingExtraOuts)G.pendingExtraOuts=0;
   G.pendingExtraOuts++;
@@ -1369,7 +1409,7 @@ function buildManualQueue(nav){
   const queue=[];
   G.players.forEach((_,i)=>{const sl=G.inningAtBat-1,pk=G.p3picks[i]||[],live=pk.length===3&&G.p3alive[i]&&sl<3;if(!live)queue.push(i);});
   queue.sort((a,b)=>a===G.priorityIdx?-1:b===G.priorityIdx?1:0);
-  G.pendingPickers=queue;G.manualPicks={};G.confidence={};G.currentPickerIdx=0;G.batterName='';G.pendingExtraOuts=0;
+  G.pendingPickers=queue;G.manualPicks={};G.confidence={};G.currentPickerIdx=0;G.batterName='';G.pendingExtraOuts=0;G.stealContinuation=false;
   if(nav){if(queue.length===0){G.pendingResult=null;G.pendingRuns=0;push('screen-result');}else push('screen-pick');}
 }
 function startAtBats(){G.inningAtBat=1;buildManualQueue(true);}
@@ -1377,7 +1417,7 @@ function nextHalfInning(){
   G.outs=0;if(!G.isBottom)G.isBottom=true;else{G.inning++;G.isBottom=false;}
   G.inningAtBat=1;G.p3picks={};G.p3alive={};G.p3bonusGiven={};G.p3bustedThisPlay={};
   G.players.forEach((_,i)=>{G.p3picks[i]=[];G.p3alive[i]=true;});
-  G.currentPickerIdx=0;G.manualPicks={};G.confidence={};G.pendingResult=null;G.pendingRuns=0;G.batterName='';G.lastResult=null;G.pendingExtraOuts=0;
+  G.currentPickerIdx=0;G.manualPicks={};G.confidence={};G.pendingResult=null;G.pendingRuns=0;G.batterName='';G.lastResult=null;G.pendingExtraOuts=0;G.stealContinuation=false;
   push('screen-pick3');
 }
 
@@ -1736,6 +1776,9 @@ function renderHistoryScreen(){
 function toggleHist(idx){histExpanded[idx]=!histExpanded[idx];renderHistoryScreen();}
 function deleteHistGame(idx){
   const g=gameHistory[idx];
+  const pw=prompt('Enter password to delete this game:');
+  if(pw===null)return;
+  if(pw!=='iloveyoshi'){alert('Incorrect password.');return;}
   if(!confirm('Delete this game ('+g.date+', '+g.winner+' wins)? This cannot be undone.'))return;
   // reverse leaderboard wins/games for historical games only
   if(g.historical){
@@ -1917,7 +1960,12 @@ function saveRoster(){
 }
 function saveH2H(){fbSet('h2h',h2h);lsSet('gb_h2h',h2h);}
 function addRosterPlayer(){const inp=document.getElementById('new-player-inp');const name=inp.value.trim();if(!name||roster.includes(name))return;roster.push(name);saveRoster();inp.value='';renderSettings();}
-function deleteRosterPlayer(i){const name=roster[i];const ent=prompt(`Type "${name}" to confirm deletion:`);if(ent===name){roster.splice(i,1);saveRoster();if(G.screen==='screen-saved-players')renderSavedPlayersPage();else renderSettings();}else if(ent!==null)alert('Name did not match.');}
+function deleteRosterPlayer(i){
+  const name=roster[i];
+  const pw=prompt('Enter password to delete '+name+':');
+  if(pw===null)return;
+  if(pw!=='iloveyoshi'){alert('Incorrect password.');return;}
+  const ent=prompt(`Type "${name}" to confirm deletion:`);if(ent===name){roster.splice(i,1);saveRoster();if(G.screen==='screen-saved-players')renderSavedPlayersPage();else renderSettings();}else if(ent!==null)alert('Name did not match.');}
 function adjHW(name,d){const cur=historicalWins[name]||0,next=cur+d;if(next<0){if(!confirm('Remove a historical win for '+name+'?'))return;}if(next<0)return;historicalWins[name]=next;lsSet('gb_hist_wins',historicalWins);if(G.screen==='screen-settings')renderSettings();else if(G.screen==='screen-hist-wins')renderHistWinsPage();}
 
 function renderSavedPlayersPage(){
