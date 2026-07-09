@@ -552,7 +552,7 @@ select.player-input{cursor:pointer}
       <button class="btn-secondary" style="margin-top:0" onclick="goTo('screen-data-tools')">DATA TOOLS →</button>
       <button class="btn-danger" onclick="clearActiveGame()">CLEAR ACTIVE GAME</button>
     </div>
-    <div style="text-align:center;padding:16px 0;font-size:10px;color:var(--subtext);letter-spacing:.08em">GUESS BALL v1.4.7</div>
+    <div style="text-align:center;padding:16px 0;font-size:10px;color:var(--subtext);letter-spacing:.08em">GUESS BALL v1.4.8</div>
   </div>
 </div>
 
@@ -1249,12 +1249,12 @@ function submitResult(){
       if(live&&sl===2&&!G.p3bonusGiven[i]){deltas[i]+=7;G.p3bonusGiven[i]=true;G.p3BonusesThisGame++;}
       if(i!==G.priorityIdx)newPriority=i;
       G.halfInningCorrect[halfKey][i]=(G.halfInningCorrect[halfKey][i]||0)+1;
-      G.atBatLog.push({inning:G.inning,isBottom:G.isBottom,atBat:G.inningAtBat,playerIdx:i,pick,outcome,pts:deltas[i],conf:!!G.confidence[i],runs});
+      G.atBatLog.push({inning:G.inning,isBottom:G.isBottom,atBat:G.inningAtBat,playerIdx:i,pick,outcome,pts:deltas[i],conf:!!G.confidence[i],runs,correct:true});
       playSound('correct');haptic('correct');
     } else {
       let pts=0;if(G.confidence[i]){pts=-2;deltas[i]-=2;}
       if(live){G.p3alive[i]=false;G.p3bustedThisPlay[i]=true;}
-      if(pts!==0)G.atBatLog.push({inning:G.inning,isBottom:G.isBottom,atBat:G.inningAtBat,playerIdx:i,pick,outcome,pts,conf:!!G.confidence[i],runs});
+      G.atBatLog.push({inning:G.inning,isBottom:G.isBottom,atBat:G.inningAtBat,playerIdx:i,pick,outcome,pts,conf:!!G.confidence[i],runs,correct:false});
     }
   });
 
@@ -1480,7 +1480,7 @@ function finishEndGame(){
   releaseWakeLock();
   const stats=G.players.map((name,i)=>{
     const log=G.atBatLog.filter(e=>e.playerIdx===i);
-    const totalPicks=log.length,correct=log.filter(e=>e.pts>0).length,pct=totalPicks>0?Math.round(correct/totalPicks*100):0;
+    const totalPicks=log.filter(e=>!e.ghost).length,correct=log.filter(e=>e.correct).length,pct=totalPicks>0?Math.round(correct/totalPicks*100):0;
     const pickCount={};log.forEach(e=>{pickCount[e.pick]=(pickCount[e.pick]||0)+1;});
     const mcp=Object.entries(pickCount).sort((a,b)=>b[1]-a[1])[0];
     const clog=log.filter(e=>e.pts>0);const cc={};clog.forEach(e=>{cc[e.outcome]=(cc[e.outcome]||0)+1;});
@@ -1522,8 +1522,8 @@ function finishEndGame(){
     if(!lb.longestStreak)lb.longestStreak=0;
     lb.games++;lb.totalPts+=G.scores[i]||0;
     if(name===winner.n)lb.wins++;
-    const plog=G.atBatLog.filter(e=>e.playerIdx===i);
-    lb.totalPicks+=plog.length;lb.totalCorrect+=plog.filter(e=>e.pts>0).length;
+    const plog=G.atBatLog.filter(e=>e.playerIdx===i&&!e.ghost);
+    lb.totalPicks+=plog.length;lb.totalCorrect+=plog.filter(e=>e.correct).length;
     lb.totalP3+=plog.filter(e=>{const base=oPts(e.outcome)+(e.runs||0);return e.pts-(base+(e.conf?5:0))>=7;}).length;
     lb.totalConfCorrect+=plog.filter(e=>e.conf&&e.pts>0).length;
     lb.totalConfWrong+=plog.filter(e=>e.conf&&e.pts<0).length;
@@ -1777,20 +1777,35 @@ function deleteHistGame(idx){
   if(pw===null)return;
   if(pw!=='iloveyoshi'){alert('Incorrect password.');return;}
   if(!confirm('Delete this game ('+g.date+', '+g.winner+' wins)? This cannot be undone.'))return;
-  // reverse leaderboard wins/games for historical games only
-  if(g.historical){
-    g.players.forEach(p=>{
-      if(leaderboard[p.name]){
-        leaderboard[p.name].games=Math.max(0,(leaderboard[p.name].games||1)-1);
-        leaderboard[p.name].totalPts=Math.max(0,(leaderboard[p.name].totalPts||0)-p.score);
-        if(p.name===g.winner)leaderboard[p.name].wins=Math.max(0,(leaderboard[p.name].wins||1)-1);
+
+  // roll back leaderboard stats
+  g.players.forEach(p=>{
+    const lb=leaderboard[p.name];
+    if(!lb)return;
+    lb.games=Math.max(0,(lb.games||1)-1);
+    lb.totalPts=Math.max(0,(lb.totalPts||0)-p.score);
+    if(p.name===g.winner)lb.wins=Math.max(0,(lb.wins||1)-1);
+    // roll back pick stats for app games
+    if(!g.historical&&g.stats){
+      const ps=g.stats.find(s=>s.name===p.name);
+      if(ps){
+        lb.totalPicks=Math.max(0,(lb.totalPicks||0)-(ps.totalPicks||0));
+        lb.totalCorrect=Math.max(0,(lb.totalCorrect||0)-(ps.correct||0));
+        lb.totalConfCorrect=Math.max(0,(lb.totalConfCorrect||0)-(ps.confCorrect||0));
+        lb.totalConfWrong=Math.max(0,(lb.totalConfWrong||0)-(ps.confWrong||0));
       }
-    });
-  }
-  // remove players from leaderboard if they have 0 games left
+      // remove achievements earned in this game
+      if(g.achievements&&g.achievements.length){
+        lb.achievements=(lb.achievements||[]).filter(a=>!g.achievements.includes(a.id));
+      }
+    }
+  });
+
+  // remove players with 0 games
   Object.keys(leaderboard).forEach(name=>{
     if((leaderboard[name].games||0)<=0)delete leaderboard[name];
   });
+
   gameHistory.splice(idx,1);
   histExpanded={};
   saveMeta();
