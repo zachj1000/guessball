@@ -552,7 +552,7 @@ select.player-input{cursor:pointer}
       <button class="btn-secondary" style="margin-top:0" onclick="goTo('screen-data-tools')">DATA TOOLS →</button>
       <button class="btn-danger" onclick="clearActiveGame()">CLEAR ACTIVE GAME</button>
     </div>
-    <div style="text-align:center;padding:16px 0;font-size:10px;color:var(--subtext);letter-spacing:.08em">GUESS BALL v1.5.2</div>
+    <div style="text-align:center;padding:16px 0;font-size:10px;color:var(--subtext);letter-spacing:.08em">GUESS BALL v1.5.3</div>
   </div>
 </div>
 
@@ -817,7 +817,7 @@ let NAV=[];
 let leaderboard={},gameHistory=[],roster=[],h2h={},historicalWins={};
 let settings={dark:false,haptic:true,sound:true,wake:false};
 let allTimeStreak=0;
-let statsDeepIdx=0,lbExpanded={},histExpanded={},trashIdx=0,winSplitShown={};
+let statsDeepIdx=0,lbExpanded={},histExpanded={},trashIdx=0;
 let wakeLock=null;
 
 function lsGet(k){try{const v=localStorage.getItem(k);return v?JSON.parse(v):null;}catch(e){return null;}}
@@ -1917,24 +1917,62 @@ function renderLeaderboard(){
     const winPct=s.games>0?Math.round(s.wins/s.games*100):0;
     const avgScore=s.games>0?Math.round(s.totalPts/s.games):0;
     const pickPct=s.totalPicks>0?Math.round(s.totalCorrect/s.totalPicks*100):0;
-    const exp=lbExpanded[name],split=winSplitShown[name];
+    const exp=lbExpanded[name];
     const achs=s.achievements||[];
     return`<div style="border-bottom:1px dashed var(--border)">
       <div class="lb-row" style="border-bottom:none;cursor:pointer" onclick="toggleLb('${name.replace(/'/g,"\'")}')">
         <div><div class="lb-name">${i===0?'⚾ ':''}${name}</div><div class="lb-stat">${s.games} game${s.games!==1?'s':''} · ${s.longestStreak||0} best streak</div></div>
         <div style="display:flex;align-items:center;gap:10px">
-          <div class="lb-pts" onclick="event.stopPropagation();toggleSplit('${name.replace(/'/g,"\'")}')">${s.wins}W</div>
+          <div class="lb-pts">${s.wins}W</div>
           <div style="font-size:14px;color:var(--subtext)">${exp?'▲':'▼'}</div>
         </div>
       </div>
-      ${split?`<div style="display:flex;gap:8px;padding-bottom:8px"><div class="deep-stat" style="flex:1"><div class="deep-stat-val" style="color:var(--positive)">${s.appWins}</div><div class="deep-stat-lbl">App wins</div></div><div class="deep-stat" style="flex:1"><div class="deep-stat-val" style="color:var(--ink3)">${s.histWins}</div><div class="deep-stat-lbl">Historical</div></div></div>`:''}
-      ${exp?`<div style="padding:0 0 14px"><div class="deep-stat-grid"><div class="deep-stat"><div class="deep-stat-val">${winPct}%</div><div class="deep-stat-lbl">Win %</div></div><div class="deep-stat"><div class="deep-stat-val">${avgScore}</div><div class="deep-stat-lbl">Avg score</div></div><div class="deep-stat"><div class="deep-stat-val">${pickPct}%</div><div class="deep-stat-lbl">Pick %</div></div><div class="deep-stat"><div class="deep-stat-val">${s.totalP3||0}</div><div class="deep-stat-lbl">P3 bonuses</div></div><div class="deep-stat"><div class="deep-stat-val">${s.totalConfCorrect||0}</div><div class="deep-stat-lbl">Conf. correct</div></div><div class="deep-stat"><div class="deep-stat-val">${s.longestStreak||0}</div><div class="deep-stat-lbl">Best streak</div></div></div>${achs.length?`<div class="section-label">Achievements</div><div class="ach-icon-bar">${achs.map(a=>{const ach=ACHIEVEMENTS.find(x=>x.id===a.id);return ach?`<div class="ach-icon" title="${ach.name}">${ach.icon}</div>`:''}).join('')}</div>`:''}</div>`:''}
+      ${exp?`<div style="padding:0 0 14px">
+        <div style="display:flex;gap:8px;margin-bottom:8px">
+          <div class="deep-stat" style="flex:1"><div class="deep-stat-val" style="color:var(--positive)">${s.appWins}</div><div class="deep-stat-lbl">App wins</div></div>
+          <div class="deep-stat" style="flex:1"><div class="deep-stat-val" style="color:var(--ink3)">${s.histWins}</div><div class="deep-stat-lbl">Historical</div></div>
+        </div>
+        <div class="deep-stat-grid">
+          <div class="deep-stat"><div class="deep-stat-val">${winPct}%</div><div class="deep-stat-lbl">Win %</div></div>
+          <div class="deep-stat"><div class="deep-stat-val">${avgScore}</div><div class="deep-stat-lbl">Avg score</div></div>
+          <div class="deep-stat"><div class="deep-stat-val">${pickPct}%</div><div class="deep-stat-lbl">Pick %</div></div>
+          <div class="deep-stat"><div class="deep-stat-val">${s.totalP3||0}</div><div class="deep-stat-lbl">P3 bonuses</div></div>
+          <div class="deep-stat"><div class="deep-stat-val">${s.totalConfCorrect||0}</div><div class="deep-stat-lbl">Conf. correct</div></div>
+          <div class="deep-stat"><div class="deep-stat-val">${s.longestStreak||0}</div><div class="deep-stat-lbl">Best streak</div></div>
+        </div>
+        ${achs.length?`<div class="section-label">Achievements</div><div class="ach-icon-bar">${achs.map(a=>{const ach=ACHIEVEMENTS.find(x=>x.id===a.id);return ach?`<div class="ach-icon" title="${ach.name}">${ach.icon}</div>`:''}).join('')}</div>`:''}
+      </div>`:''}
     </div>`;
   }).join('');
 }
-function toggleLb(name){lbExpanded[name]=!lbExpanded[name];renderLeaderboard();}
-function toggleH2H(key){lbExpanded['h2h_'+key]=!lbExpanded['h2h_'+key];renderH2H();}
-function toggleSplit(name){winSplitShown[name]=!winSplitShown[name];renderLeaderboard();}
+function toggleLb(name){
+  lbExpanded[name]=!lbExpanded[name];
+  renderLeaderboard();
+  if(lbExpanded[name]){
+    setTimeout(()=>{
+      const rows=document.querySelectorAll('#lb-rows > div');
+      rows.forEach(row=>{
+        if(row.textContent.includes(name)){
+          row.scrollIntoView({behavior:'smooth',block:'start'});
+        }
+      });
+    },50);
+  }
+}
+function toggleH2H(key){
+  lbExpanded['h2h_'+key]=!lbExpanded['h2h_'+key];
+  renderH2H();
+  if(lbExpanded['h2h_'+key]){
+    setTimeout(()=>{
+      const rows=document.querySelectorAll('#h2h-body > div');
+      rows.forEach(row=>{
+        if(row.innerHTML.includes(key.split('|||')[0])||row.innerHTML.includes(key.split('|||')[1])){
+          row.scrollIntoView({behavior:'smooth',block:'start'});
+        }
+      });
+    },50);
+  }
+}
 
 function renderHistoryScreen(){
   // sort newest first, filter if needed
@@ -1962,7 +2000,16 @@ function renderHistoryScreen(){
     </div>`;
   }).join('');
 }
-function toggleHist(idx){histExpanded[idx]=!histExpanded[idx];renderHistoryScreen();}
+function toggleHist(idx){
+  histExpanded[idx]=!histExpanded[idx];
+  renderHistoryScreen();
+  if(histExpanded[idx]){
+    setTimeout(()=>{
+      const rows=document.querySelectorAll('#history-rows > div');
+      if(rows[idx])rows[idx].scrollIntoView({behavior:'smooth',block:'start'});
+    },50);
+  }
+}
 function deleteHistGame(idx){
   const g=gameHistory[idx];
   const pw=prompt('Enter password to delete this game:');
@@ -2370,7 +2417,17 @@ function renderAchievementsList(){
   });
   document.getElementById('ach-list-body').innerHTML=html;
 }
-function toggleAchDet(id){const el=document.getElementById('ad-'+id);if(el)el.style.display=el.style.display==='none'?'block':'none';}
+function toggleAchDet(id){
+  const el=document.getElementById('ad-'+id);
+  if(!el)return;
+  const opening=el.style.display==='none';
+  el.style.display=opening?'block':'none';
+  if(opening){
+    setTimeout(()=>{
+      el.scrollIntoView({behavior:'smooth',block:'nearest'});
+    },50);
+  }
+}
 
 function renderTutorial(){
   document.getElementById('tutorial-body').innerHTML=`
