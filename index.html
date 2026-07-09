@@ -811,6 +811,7 @@ let G={
   consecutiveCorrect:{},consecutiveMiss:{},consecutiveConfWrong:{},consecutiveScoring:{},
   halfInningCorrect:{},halfInningTotal:{},halfInningScore:{},halfInningPts:{},inningPts:{},
   confInGame:{},p3BonusesThisGame:0,boolBold:false,
+  pendingExtraOuts:0,maxDeficit:{},isTie:false,
 };
 let NAV=[];
 let leaderboard={},gameHistory=[],roster=[],h2h={},historicalWins={};
@@ -1039,7 +1040,6 @@ function renderTitle(){
 function resumeGame(){const s=lsGet('gb_game');if(s&&s.players){G=s;NAV=[];requestWakeLock();render();}}
 function forceSync(){
   if(!confirm('Re-sync all data from Firebase? This will reload the app.'))return;
-  lsDel('gb_hist_seeded');
   lsDel('gb_lb');
   lsDel('gb_hist');
   lsDel('gb_roster');
@@ -1125,7 +1125,7 @@ function startGame(){
   G.gameAchievements=[];G.consecutiveCorrect={};G.consecutiveMiss={};
   G.consecutiveConfWrong={};G.consecutiveScoring={};
   G.halfInningCorrect={};G.halfInningTotal={};G.halfInningScore={};G.halfInningPts={};G.inningPts={};
-  G.confInGame={};G.p3BonusesThisGame=0;G.boolBold=false;G.maxDeficit={};
+  G.confInGame={};G.p3BonusesThisGame=0;G.boolBold=false;G.maxDeficit={};G.pendingExtraOuts=0;G.stealContinuation=false;G.isTie=false;
   NAV=[];requestWakeLock();push('screen-pick3');
 }
 
@@ -1230,7 +1230,7 @@ function submitResult(){
   if(!G.halfInningScore[halfKey])G.halfInningScore[halfKey]={};
 
   // snapshot for undo
-  G.lastResult={outcome,runs,scores:clone(G.scores),outs:G.outs,inningAtBat:G.inningAtBat,priorityIdx:G.priorityIdx,p3alive:clone(G.p3alive),p3bonusGiven:clone(G.p3bonusGiven),atBatLogLen:G.atBatLog.length,manualPicks:clone(G.manualPicks),confidence:clone(G.confidence)};
+  G.lastResult={outcome,runs,scores:clone(G.scores),outs:G.outs,inningAtBat:G.inningAtBat,priorityIdx:G.priorityIdx,p3alive:clone(G.p3alive),p3bonusGiven:clone(G.p3bonusGiven),atBatLogLen:G.atBatLog.length,manualPicks:clone(G.manualPicks),confidence:clone(G.confidence),consecutiveCorrect:clone(G.consecutiveCorrect),consecutiveMiss:clone(G.consecutiveMiss),consecutiveConfWrong:clone(G.consecutiveConfWrong),consecutiveScoring:clone(G.consecutiveScoring),confInGame:clone(G.confInGame),maxDeficit:clone(G.maxDeficit),priorityStreak:G.priorityStreak,p3BonusesThisGame:G.p3BonusesThisGame};
 
   G.players.forEach((_,i)=>{
     const sl=G.inningAtBat-1;
@@ -1342,7 +1342,7 @@ function submitResult(){
   if(outcome==='stolen_base'||outcome==='caught_stealing'){
     if(G.outs<3){
       G.stealContinuation=true;
-      G.pendingResult=null;G.pendingRuns=0;
+      G.pendingResult=null;G.pendingRuns=0;G.pendingExtraOuts=0;
       G.players.forEach((_,i)=>{
         if(G.manualPicks[i]===outcome)G.manualPicks[i]=null;
         const sl=G.inningAtBat-1;
@@ -1382,6 +1382,14 @@ function undoLast(){
   G.priorityIdx=lr.priorityIdx;G.p3alive=clone(lr.p3alive);G.p3bonusGiven=clone(lr.p3bonusGiven);
   G.atBatLog=G.atBatLog.slice(0,lr.atBatLogLen);G.lastResult=null;
   G.manualPicks=clone(lr.manualPicks);G.confidence=clone(lr.confidence);
+  G.consecutiveCorrect=clone(lr.consecutiveCorrect||{});
+  G.consecutiveMiss=clone(lr.consecutiveMiss||{});
+  G.consecutiveConfWrong=clone(lr.consecutiveConfWrong||{});
+  G.consecutiveScoring=clone(lr.consecutiveScoring||{});
+  G.confInGame=clone(lr.confInGame||{});
+  G.maxDeficit=clone(lr.maxDeficit||{});
+  G.priorityStreak=lr.priorityStreak||0;
+  G.p3BonusesThisGame=lr.p3BonusesThisGame||0;
   G.pendingResult=null;G.pendingRuns=0;
   buildManualQueue(false);push('screen-pick');
 }
@@ -1614,6 +1622,8 @@ function finishEndGame(){
   });
   G.finalStats=stats;
   const sorted=[...G.players.map((n,i)=>({n,s:G.scores[i]||0}))].sort((a,b)=>b.s-a.s);
+  const isTie=sorted.length>=2&&sorted[0].s===sorted[1].s;
+  G.isTie=isTie;
   const winner=sorted[0],loser=sorted[sorted.length-1],margin=winner.s-loser.s;
   const date=new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
 
@@ -1681,7 +1691,7 @@ function finishEndGame(){
     if(!lb.achievements)lb.achievements=[];
     if(!lb.longestStreak)lb.longestStreak=0;
     lb.games++;lb.totalPts+=G.scores[i]||0;
-    if(name===winner.n)lb.wins++;
+    if(!isTie&&name===winner.n)lb.wins++;
     const plog=G.atBatLog.filter(e=>e.playerIdx===i&&!e.ghost);
     lb.totalPicks+=plog.length;
     lb.totalCorrect+=plog.filter(e=>e.correct).length;
@@ -1700,17 +1710,22 @@ function finishEndGame(){
     checkMilestones(name,lb);
   });
 
-  // h2h
-  if(G.players.length===2){
-    const key=[G.players[0],G.players[1]].sort().join('|||');
-    if(!h2h[key])h2h[key]={players:[G.players[0],G.players[1]],wins:{},games:0,history:[]};
-    h2h[key].wins[winner.n]=(h2h[key].wins[winner.n]||0)+1;
-    h2h[key].games=(h2h[key].games||0)+1;
-    if(!h2h[key].history)h2h[key].history=[];
-    h2h[key].history.unshift({date,winner:winner.n,scores:G.players.map((n,i)=>({name:n,score:G.scores[i]||0})),margin});
-    if(h2h[key].history.length>20)h2h[key].history=h2h[key].history.slice(0,20);
-    saveH2H();
+  // h2h — record each pair of players
+  for(let pi=0;pi<G.players.length;pi++){
+    for(let pj=pi+1;pj<G.players.length;pj++){
+      const p1=G.players[pi],p2=G.players[pj];
+      const key=[p1,p2].sort().join('|||');
+      if(!h2h[key])h2h[key]={players:[p1,p2].sort(),wins:{},games:0,history:[]};
+      if(!isTie)h2h[key].wins[winner.n]=(h2h[key].wins[winner.n]||0)+1;
+      h2h[key].games=(h2h[key].games||0)+1;
+      if(!h2h[key].history)h2h[key].history=[];
+      const pairScores=[{name:p1,score:G.scores[pi]||0},{name:p2,score:G.scores[pj]||0}];
+      const pairMargin=Math.abs((G.scores[pi]||0)-(G.scores[pj]||0));
+      h2h[key].history.unshift({date,winner:winner.n,scores:pairScores,margin:pairMargin});
+      if(h2h[key].history.length>20)h2h[key].history=h2h[key].history.slice(0,20);
+    }
   }
+  saveH2H();
 
   const hlAB=G.atBatLog.reduce((b,e)=>Math.abs(e.pts)>Math.abs(b.pts)?e:b,{pts:0});
   // biggest comeback this game
@@ -1744,7 +1759,7 @@ function finishEndGame(){
     const[inn,pIdx]=key.split('_');
     if(pts>bestInning.pts)bestInning={player:G.players[parseInt(pIdx)],pts,inning:parseInt(inn)};
   });
-  gameHistory.unshift({date,players:G.players.map((n,i)=>({name:n,score:G.scores[i]||0})),winner:winner.n,inning:G.inning,stats:G.finalStats,achievements:G.gameAchievements,mvpBadge:mvp,awayTeam:G.awayTeam,homeTeam:G.homeTeam,stadium:G.stadium,awayScore:G.awayScore,homeScore:G.homeScore,notes:G.gameNotes,highlightAtBat:hlAB,biggestComeback,bestHalf,bestInning});
+  gameHistory.unshift({date,players:G.players.map((n,i)=>({name:n,score:G.scores[i]||0})),winner:isTie?'Tie':winner.n,inning:G.inning,stats:G.finalStats,achievements:G.gameAchievements,mvpBadge:mvp,awayTeam:G.awayTeam,homeTeam:G.homeTeam,stadium:G.stadium,awayScore:G.awayScore,homeScore:G.homeScore,notes:G.gameNotes,highlightAtBat:hlAB,biggestComeback,bestHalf,bestInning});
   if(gameHistory.length>50)gameHistory=gameHistory.slice(0,50);
   saveMeta();autoBackup();lsSet('gb_achievements',leaderboard);lsDel('gb_game');
   statsDeepIdx=0;trashIdx=0;push('screen-stats');
@@ -1773,7 +1788,10 @@ function renderStatsPage(){
   document.getElementById('stats-tag').textContent='Game over';
   let html='';
   if(G.mvpBadge)html+=`<div class="mvp-badge"><div class="mvp-icon">${G.mvpBadge.icon}</div><div class="mvp-name">${G.mvpBadge.name}</div><div class="mvp-desc">${G.mvpBadge.desc}</div></div>`;
-  html+=`<div style="text-align:center;padding:12px 0 20px;border-bottom:2.5px solid var(--border);margin-bottom:16px"><div style="font-size:10px;letter-spacing:.12em;color:var(--subtext);margin-bottom:6px">WINNER</div><div style="font-size:32px;font-weight:700;color:var(--text)">⚾ ${winner.name}</div><div style="font-size:13px;color:var(--subtext);margin-top:4px">${winner.score} pts · ${winner.pct}% accuracy</div></div>`;
+  const isTie=!!G.isTie;
+  html+=isTie
+    ?`<div style="text-align:center;padding:12px 0 20px;border-bottom:2.5px solid var(--border);margin-bottom:16px"><div style="font-size:10px;letter-spacing:.12em;color:var(--subtext);margin-bottom:6px">RESULT</div><div style="font-size:32px;font-weight:700;color:var(--text)">🤝 TIE GAME</div><div style="font-size:13px;color:var(--subtext);margin-top:4px">${sorted[0].s} pts each</div></div>`
+    :`<div style="text-align:center;padding:12px 0 20px;border-bottom:2.5px solid var(--border);margin-bottom:16px"><div style="font-size:10px;letter-spacing:.12em;color:var(--subtext);margin-bottom:6px">WINNER</div><div style="font-size:32px;font-weight:700;color:var(--text)">⚾ ${winner.name}</div><div style="font-size:13px;color:var(--subtext);margin-top:4px">${winner.score} pts · ${winner.pct}% accuracy</div></div>`;
   if(G.awayTeam||G.homeTeam)html+=`<div class="info-box" style="text-align:center">${G.awayTeam||'Away'} ${G.awayScore} — ${G.homeScore} ${G.homeTeam||'Home'}${G.stadium?' · '+G.stadium:''}</div>`;
   if(G.gameNotes)html+=`<div class="info-box">📝 ${G.gameNotes}</div>`;
   if(G.players.length===2){
@@ -1966,6 +1984,16 @@ function deleteHistGame(idx){
       if(g.achievements&&g.achievements.length){
         lb.achievements=(lb.achievements||[]).filter(a=>!g.achievements.includes(a.id));
       }
+      // rollback outcome counts
+      if(g.stats){
+        const ps=g.stats.find(s=>s.name===p.name);
+        if(ps&&lb.outcomeCounts){
+          // recount from remaining games
+          lb.outcomeCounts={};
+        }
+      }
+      // rollback p3GameStreak - reset to 0, will rebuild on next game
+      lb.p3GameStreak=0;
     }
   });
 
@@ -2139,7 +2167,8 @@ function renderSettings(){
   document.getElementById('sound-toggle').className='toggle'+(settings.sound?' on':'');
   document.getElementById('wake-toggle').className='toggle'+(settings.wake?' on':'');
   const ht=document.getElementById('hist-toggle');if(ht)ht.className='toggle'+(settings.hideHistorical?' on':'');
-  document.getElementById('roster-list').innerHTML=roster.length
+  const rl=document.getElementById('roster-list');
+  if(rl)rl.innerHTML=roster.length
     ?roster.map((name,i)=>`<div class="settings-row"><div class="settings-label">${name}</div><button class="btn-danger" style="width:auto;padding:6px 12px;margin:0;font-size:11px" onclick="deleteRosterPlayer(${i})">DELETE</button></div>`).join('')
     :`<div style="font-size:11px;color:var(--subtext);padding:8px 0">No saved players yet.</div>`;
   const hw=document.getElementById('hist-wins-editor');
@@ -2293,6 +2322,12 @@ function saveHistoricalGame(){
     if(name===winner)leaderboard[name].wins++;
   });
 
+  // add new players to roster
+  players.forEach(p=>{
+    const name=p.name.trim();
+    if(name&&!roster.includes(name)){roster.push(name);saveRoster();}
+  });
+
   // add to history (insert by date)
   gameHistory.unshift(entry);
   if(gameHistory.length>50)gameHistory=gameHistory.slice(0,50);
@@ -2364,10 +2399,10 @@ function renderTutorial(){
 
 async function loadData(){
   settings=lsGet('gb_settings')||{dark:false,haptic:true,sound:true,wake:false,hideHistorical:false};
+  if(settings.dark)document.body.classList.add('dark');
   allTimeStreak=lsGet('gb_streak')||0;
   const saved=lsGet('gb_game');
   if(saved&&saved.players&&saved.players.length)G=saved;
-  if(settings.dark)document.body.classList.add('dark');
 
   const loadEl=document.createElement('div');
   loadEl.id='fb-loading';
