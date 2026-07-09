@@ -552,7 +552,7 @@ select.player-input{cursor:pointer}
       <button class="btn-secondary" style="margin-top:0" onclick="goTo('screen-data-tools')">DATA TOOLS →</button>
       <button class="btn-danger" onclick="clearActiveGame()">CLEAR ACTIVE GAME</button>
     </div>
-    <div style="text-align:center;padding:16px 0;font-size:10px;color:var(--subtext);letter-spacing:.08em">GUESS BALL v1.4.8</div>
+    <div style="text-align:center;padding:16px 0;font-size:10px;color:var(--subtext);letter-spacing:.08em">GUESS BALL v1.4.9</div>
   </div>
 </div>
 
@@ -1225,98 +1225,127 @@ function submitResult(){
   let newPriority=G.priorityIdx;
   const halfKey=G.inning+'_'+(G.isBottom?'b':'t');
   if(!G.halfInningPts[halfKey])G.halfInningPts[halfKey]={};
+  if(!G.halfInningTotal[halfKey])G.halfInningTotal[halfKey]={};
+  if(!G.halfInningCorrect[halfKey])G.halfInningCorrect[halfKey]={};
+  if(!G.halfInningScore[halfKey])G.halfInningScore[halfKey]={};
+
   // snapshot for undo
   G.lastResult={outcome,runs,scores:clone(G.scores),outs:G.outs,inningAtBat:G.inningAtBat,priorityIdx:G.priorityIdx,p3alive:clone(G.p3alive),p3bonusGiven:clone(G.p3bonusGiven),atBatLogLen:G.atBatLog.length,manualPicks:clone(G.manualPicks),confidence:clone(G.confidence)};
 
   G.players.forEach((_,i)=>{
-    const sl=G.inningAtBat-1,pk=G.p3picks[i]||[],live=pk.length===3&&G.p3alive[i]&&sl<3,pick=live?pk[sl]:G.manualPicks[i];
-    if(!G.halfInningTotal[halfKey])G.halfInningTotal[halfKey]={};
-    if(!G.halfInningCorrect[halfKey])G.halfInningCorrect[halfKey]={};
-    if(!G.halfInningScore[halfKey])G.halfInningScore[halfKey]={};
-    if(pick)G.halfInningTotal[halfKey][i]=(G.halfInningTotal[halfKey][i]||0)+1;
+    const sl=G.inningAtBat-1;
+    const pk=G.p3picks[i]||[];
+    const live=pk.length===3&&G.p3alive[i]&&sl<3;
+    const pick=live?pk[sl]:G.manualPicks[i];
+
+    // only process players who had a pick this at-bat
     if(!pick)return;
+
+    // count this as a pick attempt
+    G.halfInningTotal[halfKey][i]=(G.halfInningTotal[halfKey][i]||0)+1;
+
     const correct=pick===outcome;
+
     if(correct){
-      let pts=oPts(outcome)+runs;
-      if(G.confidence[i])pts+=5;
+      const basePts=oPts(outcome)+runs;
+      const confPts=G.confidence[i]?5:0;
+      let pts=basePts+confPts;
       deltas[i]+=pts;
+
       G.halfInningScore[halfKey][i]=(G.halfInningScore[halfKey][i]||0)+pts;
       G.halfInningPts[halfKey][i]=(G.halfInningPts[halfKey][i]||0)+pts;
-      // track full inning pts
+
       const innKey=G.inning+'_'+i;
       if(!G.inningPts[innKey])G.inningPts[innKey]=0;
       G.inningPts[innKey]+=pts;
-      if(live&&sl===2&&!G.p3bonusGiven[i]){deltas[i]+=7;G.p3bonusGiven[i]=true;G.p3BonusesThisGame++;}
+
+      // p3 bonus — add after logging base pts
+      let p3Bonus=0;
+      if(live&&sl===2&&!G.p3bonusGiven[i]){p3Bonus=7;deltas[i]+=7;G.p3bonusGiven[i]=true;G.p3BonusesThisGame++;}
+
       if(i!==G.priorityIdx)newPriority=i;
       G.halfInningCorrect[halfKey][i]=(G.halfInningCorrect[halfKey][i]||0)+1;
-      G.atBatLog.push({inning:G.inning,isBottom:G.isBottom,atBat:G.inningAtBat,playerIdx:i,pick,outcome,pts:deltas[i],conf:!!G.confidence[i],runs,correct:true});
+
+      // log with base pts only (p3 bonus tracked separately)
+      G.atBatLog.push({inning:G.inning,isBottom:G.isBottom,atBat:G.inningAtBat,playerIdx:i,pick,outcome,pts:pts+p3Bonus,basePts,confPts,p3Bonus,conf:!!G.confidence[i],runs,correct:true});
       playSound('correct');haptic('correct');
+
     } else {
-      let pts=0;if(G.confidence[i]){pts=-2;deltas[i]-=2;}
+      // wrong pick
+      const confPts=G.confidence[i]?-2:0;
+      deltas[i]+=confPts;
       if(live){G.p3alive[i]=false;G.p3bustedThisPlay[i]=true;}
-      G.atBatLog.push({inning:G.inning,isBottom:G.isBottom,atBat:G.inningAtBat,playerIdx:i,pick,outcome,pts,conf:!!G.confidence[i],runs,correct:false});
+      // always log wrong picks so totalPicks is accurate
+      G.atBatLog.push({inning:G.inning,isBottom:G.isBottom,atBat:G.inningAtBat,playerIdx:i,pick,outcome,pts:confPts,basePts:0,confPts,p3Bonus:0,conf:!!G.confidence[i],runs,correct:false});
     }
   });
 
-  // ghost
-  const bothMissed=G.players.every((_,i)=>deltas[i]<=0);
-  if(bothMissed)G.atBatLog.push({inning:G.inning,isBottom:G.isBottom,atBat:G.inningAtBat,playerIdx:-1,pick:'',outcome,pts:0,conf:false,runs,ghost:true});
+  // ghost — both missed or neither had a pick
+  const anyScored=G.players.some((_,i)=>deltas[i]>0);
+  if(!anyScored)G.atBatLog.push({inning:G.inning,isBottom:G.isBottom,atBat:G.inningAtBat,playerIdx:-1,pick:'',outcome,pts:0,conf:false,runs,ghost:true});
 
   // streaks
-  const anyCorrect=G.players.some((_,i)=>deltas[i]>0);
-  if(anyCorrect){G.consecutiveCorrect++;G.consecutiveMiss=0;G.consecutiveScoring++;allTimeStreak++;lsSet('gb_streak',allTimeStreak);}
+  if(anyScored){G.consecutiveCorrect++;G.consecutiveMiss=0;G.consecutiveScoring++;allTimeStreak++;lsSet('gb_streak',allTimeStreak);}
   else{G.consecutiveMiss++;G.consecutiveCorrect=0;G.consecutiveScoring=0;allTimeStreak=0;lsSet('gb_streak',0);}
-  G.players.forEach((_,i)=>{if(G.confidence[i]&&deltas[i]>0){G.confInGame.correct++;G.confInGame.total++;G.consecutiveConfWrong=0;if(!G.boolBold){G.boolBold=true;awardAchievement('bold',true);}}else if(G.confidence[i]&&deltas[i]<0){G.consecutiveConfWrong++;G.confInGame.total++;}});
+
+  // confidence tracking
+  G.players.forEach((_,i)=>{
+    if(!G.confidence[i])return;
+    if(deltas[i]>0){
+      G.confInGame.correct++;G.confInGame.total++;
+      G.consecutiveConfWrong=0;
+      if(!G.boolBold){G.boolBold=true;awardAchievement('bold',true);}
+    } else {
+      G.consecutiveConfWrong++;
+      G.confInGame.total++;
+    }
+  });
 
   if(newPriority!==G.priorityIdx)G.neverLostPriority=false;
   if(newPriority===G.priorityIdx)G.priorityStreak++;else G.priorityStreak=1;
   G.priorityIdx=newPriority;
+
+  // update scores
   G.players.forEach((_,i)=>G.scores[i]=(G.scores[i]||0)+deltas[i]);
+
   // track biggest comeback deficit
   if(!G.maxDeficit)G.maxDeficit={};
   G.players.forEach((_,i)=>{
     G.players.forEach((_,j)=>{
       if(i===j)return;
       const deficit=(G.scores[j]||0)-(G.scores[i]||0);
-      if(deficit>0){
-        const key=i+'_'+j;
-        G.maxDeficit[key]=Math.max(G.maxDeficit[key]||0,deficit);
-      }
+      if(deficit>0){const key=i+'_'+j;G.maxDeficit[key]=Math.max(G.maxDeficit[key]||0,deficit);}
     });
   });
+
   G.lastDeltas=deltas;
+
+  // outs
   if(isOut(outcome)){
     if(outcome==='double_play')G.outs+=2;
     else G.outs++;
   }
   if(G.pendingExtraOuts){G.outs+=G.pendingExtraOuts;G.pendingExtraOuts=0;}
 
-  // handle steal attempts — at-bat continues unless it's the 3rd out
+  // steal continuation — at-bat continues unless 3rd out
   if(outcome==='stolen_base'||outcome==='caught_stealing'){
-    const innEnds=G.outs>=3;
-    if(!innEnds){
-      // at-bat continues — go back to result screen with remaining picks intact
-      // keep manualPicks but mark steal done for the player who picked it
+    if(G.outs<3){
       G.stealContinuation=true;
       G.pendingResult=null;G.pendingRuns=0;
-      // nullify pick for player(s) who picked the steal outcome
       G.players.forEach((_,i)=>{
         if(G.manualPicks[i]===outcome)G.manualPicks[i]=null;
-        // p3 picks: if their p3 pick was the steal, mark it as used
         const sl=G.inningAtBat-1;
         const pk=G.p3picks[i]||[];
-        if(pk.length===3&&G.p3alive[i]&&sl<3&&pk[sl]===outcome){
-          G.p3alive[i]=false;
-        }
+        if(pk.length===3&&G.p3alive[i]&&sl<3&&pk[sl]===outcome)G.p3alive[i]=false;
       });
       checkMidGameAch(outcome,deltas,runs);
       push('screen-scoreboard');
       return;
     }
-    // 3rd out on caught stealing — inning ends normally, fall through
   }
 
   G.inningAtBat++;
+
   // walk-off check
   if(G.lastResult){
     G.players.forEach((_,i)=>{
@@ -1329,14 +1358,10 @@ function submitResult(){
       }
     });
   }
+
   checkMidGameAch(outcome,deltas,runs);
   push('screen-scoreboard');
-  // auto-end if game is naturally over
-  if(isGameNaturallyOver()){
-    setTimeout(()=>{
-      openModal('notes-modal');
-    },600);
-  }
+  if(isGameNaturallyOver()){setTimeout(()=>openModal('notes-modal'),600);}
 }
 
 function undoLast(){
@@ -1523,10 +1548,11 @@ function finishEndGame(){
     lb.games++;lb.totalPts+=G.scores[i]||0;
     if(name===winner.n)lb.wins++;
     const plog=G.atBatLog.filter(e=>e.playerIdx===i&&!e.ghost);
-    lb.totalPicks+=plog.length;lb.totalCorrect+=plog.filter(e=>e.correct).length;
-    lb.totalP3+=plog.filter(e=>{const base=oPts(e.outcome)+(e.runs||0);return e.pts-(base+(e.conf?5:0))>=7;}).length;
-    lb.totalConfCorrect+=plog.filter(e=>e.conf&&e.pts>0).length;
-    lb.totalConfWrong+=plog.filter(e=>e.conf&&e.pts<0).length;
+    lb.totalPicks+=plog.length;
+    lb.totalCorrect+=plog.filter(e=>e.correct).length;
+    lb.totalP3+=plog.filter(e=>e.p3Bonus>0).length;
+    lb.totalConfCorrect+=plog.filter(e=>e.conf&&e.correct).length;
+    lb.totalConfWrong+=plog.filter(e=>e.conf&&!e.correct).length;
     let cur=0,mx=lb.longestStreak||0;plog.forEach(e=>{if(e.pts>0){cur++;mx=Math.max(mx,cur);}else cur=0;});lb.longestStreak=mx;
     G.gameAchievements.forEach(id=>{if(!lb.achievements.find(a=>a.id===id))lb.achievements.push({id,date});});
     checkMilestones(name,lb);
@@ -1799,6 +1825,25 @@ function deleteHistGame(idx){
         lb.achievements=(lb.achievements||[]).filter(a=>!g.achievements.includes(a.id));
       }
     }
+  });
+
+  // recalculate longestStreak for all affected players from remaining history
+  const affectedPlayers=g.players.map(p=>p.name);
+  // remove this game first, then recalc
+  const remainingHistory=gameHistory.filter((_,i)=>i!==idx);
+  affectedPlayers.forEach(name=>{
+    if(!leaderboard[name])return;
+    let maxStreak=0;
+    remainingHistory.forEach(gh=>{
+      if(!gh.stats)return;
+      const ps=gh.stats.find(s=>s.name===name);
+      if(ps&&ps.totalPicks>0){
+        // rough streak from this game
+        const gameStreak=ps.correct||0;
+        maxStreak=Math.max(maxStreak,gameStreak);
+      }
+    });
+    leaderboard[name].longestStreak=maxStreak;
   });
 
   // remove players with 0 games
