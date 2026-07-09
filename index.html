@@ -1439,6 +1439,7 @@ function checkMilestones(name,lb){
 }
 
 function finishEndGame(){
+  try{
   releaseWakeLock();
   const stats=G.players.map((name,i)=>{
     const log=G.atBatLog.filter(e=>e.playerIdx===i);
@@ -1540,6 +1541,9 @@ function finishEndGame(){
   if(gameHistory.length>50)gameHistory=gameHistory.slice(0,50);
   saveMeta();autoBackup();lsSet('gb_achievements',leaderboard);lsDel('gb_game');
   statsDeepIdx=0;trashIdx=0;push('screen-stats');
+  } catch(e){
+    alert('Error ending game: '+e.message+' ('+e.stack.split('\n')[1]+')');
+  }
 }
 
 function generateTrash(){
