@@ -552,7 +552,7 @@ select.player-input{cursor:pointer}
       <button class="btn-secondary" style="margin-top:0" onclick="goTo('screen-data-tools')">DATA TOOLS →</button>
       <button class="btn-danger" onclick="clearActiveGame()">CLEAR ACTIVE GAME</button>
     </div>
-    <div style="text-align:center;padding:16px 0;font-size:10px;color:var(--subtext);letter-spacing:.08em">GUESS BALL v1.5.0</div>
+    <div style="text-align:center;padding:16px 0;font-size:10px;color:var(--subtext);letter-spacing:.08em">GUESS BALL v1.5.2</div>
   </div>
 </div>
 
@@ -1684,6 +1684,12 @@ function finishEndGame(){
   }
   G.mvpBadge=mvp;
 
+  // add new players to roster
+  G.players.forEach(name=>{
+    if(name&&!roster.includes(name)){roster.push(name);}
+  });
+  saveRoster();
+
   // update leaderboard
   G.players.forEach((name,i)=>{
     if(!leaderboard[name])leaderboard[name]={games:0,wins:0,totalPts:0,totalPicks:0,totalCorrect:0,totalP3:0,totalConfCorrect:0,totalConfWrong:0,achievements:[],longestStreak:0,outcomeCounts:{},p3GameStreak:0};
@@ -2486,7 +2492,7 @@ function restoreFromBackup(){
 }
 // ── EXPORT / IMPORT ──
 function exportData(){
-  const data={leaderboard,gameHistory,roster,h2h,exportedAt:new Date().toISOString(),version:'1.4.0'};
+  const data={leaderboard,gameHistory,roster,h2h,exportedAt:new Date().toISOString(),version:'1.5.0'};
   const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
   const url=URL.createObjectURL(blob);
   const a=document.createElement('a');a.href=url;a.download='guessball-'+new Date().toISOString().split('T')[0]+'.json';
