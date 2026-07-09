@@ -325,6 +325,7 @@ if('serviceWorker' in navigator){
       <button class="menu-btn" onclick="goTo('screen-stats-menu')"><span>STATS</span><span>→</span></button>
       <button class="menu-btn" onclick="goTo('screen-achievements')"><span>ACHIEVEMENTS</span><span>→</span></button>
       <button class="menu-btn" onclick="goTo('screen-settings')"><span>SETTINGS</span><span>→</span></button>
+      <button class="menu-btn" onclick="goTo('screen-tutorial')"><span>HOW TO PLAY</span><span>→</span></button>
     </div>
   </div>
 </div>
@@ -571,10 +572,7 @@ if('serviceWorker' in navigator){
       <div class="section-label">Historical games (pre-app)</div>
       <button class="btn-secondary" style="margin-top:0" onclick="goTo('screen-add-hist-game')">ADD HISTORICAL GAME →</button>
     </div>
-    <div class="settings-section">
-      <div class="section-label">Tutorial</div>
-      <button class="btn-secondary" style="margin-top:0" onclick="goTo('screen-tutorial')">VIEW TUTORIAL →</button>
-    </div>
+
 
     <div class="settings-section">
       <div class="section-label">Year in review</div>
@@ -585,7 +583,7 @@ if('serviceWorker' in navigator){
       <button class="btn-secondary" style="margin-top:0" onclick="goTo('screen-data-tools')">DATA TOOLS →</button>
       <button class="btn-danger" onclick="clearActiveGame()">CLEAR ACTIVE GAME</button>
     </div>
-    <div style="text-align:center;padding:16px 0;font-size:10px;color:var(--subtext);letter-spacing:.08em">GUESS BALL v1.5.8</div>
+    <div style="text-align:center;padding:16px 0;font-size:10px;color:var(--subtext);letter-spacing:.08em">GUESS BALL v1.6.0</div>
   </div>
 </div>
 
@@ -600,9 +598,9 @@ if('serviceWorker' in navigator){
 <!-- TUTORIAL -->
 <div class="screen" id="screen-tutorial">
   <div class="screen-head">
-    <div class="sh-left"><button class="back-btn" onclick="back()">←</button><div class="sh-title">HOW TO PLAY</div></div>
+    <div class="sh-left"><button class="back-btn" id="tut-back-btn" onclick="back()">←</button><div class="sh-title">HOW TO PLAY</div></div>
   </div>
-  <div class="screen-body" id="tutorial-body"></div>
+  <div class="screen-body" id="tut-body"></div>
 </div>
 
 
@@ -850,7 +848,7 @@ let NAV=[];
 let leaderboard={},gameHistory=[],roster=[],h2h={},historicalWins={};
 let settings={dark:false,haptic:true,sound:true,wake:false};
 let allTimeStreak=0;
-let statsDeepIdx=0,lbExpanded={},histExpanded={},trashIdx=0;
+let statsDeepIdx=0,lbExpanded={},histExpanded={},trashIdx=0,tutPage=0;
 let wakeLock=null;
 
 function lsGet(k){try{const v=localStorage.getItem(k);return v?JSON.parse(v):null;}catch(e){return null;}}
@@ -1059,7 +1057,7 @@ function render(dir){
   if(G.screen==='screen-add-hist-game')renderAddHistGame();
   if(G.screen==='screen-achievements')renderAchievementsList();
   if(G.screen==='screen-data-tools'){renderSyncStatus();};
-  if(G.screen==='screen-tutorial')renderTutorial();
+  if(G.screen==='screen-tutorial'){renderTutorial();}
 }
 
 function renderTitle(){
@@ -2484,78 +2482,74 @@ function toggleAchDet(id){
 }
 
 function renderTutorial(){
-  document.getElementById('tutorial-body').innerHTML=`
-    <div style="background:var(--ink);border-radius:6px;padding:16px;margin-bottom:20px;text-align:center">
-      <div style="font-size:28px;margin-bottom:8px">⚾</div>
-      <div style="font-size:16px;font-weight:700;color:#fff;letter-spacing:.04em;margin-bottom:8px">WHAT IS GUESS BALL?</div>
-      <div style="font-size:12px;color:rgba(255,255,255,.85);line-height:1.7;font-weight:600">Guess Ball is a prediction game you play live at a baseball game. Before each at-bat, you and your opponent predict what's going to happen — strikeout, home run, single, stolen base, whatever you think. Get it right and you earn points. The player with the most points at the end of the game wins. The twist: one player has priority and picks first, locking out that outcome for the other player. Score points and you steal priority. It's competitive, strategic, and makes every at-bat mean something.</div>
-    </div>
-    <div class="tut-section"><div class="tut-heading">⚾ The Basics</div>
-      <div class="tut-row"><div class="tut-icon">🎯</div><div>Before each at-bat, predict the outcome. <strong>Priority</strong> player picks first. Others can't pick the same outcome.</div></div>
-      <div class="tut-row"><div class="tut-icon">✅</div><div>Correct prediction → earn points. Runs scored add +1 each.</div></div>
-      <div class="tut-row"><div class="tut-icon">👑</div><div>Non-priority player scores → steals priority. Default priority goes to winner of last matchup.</div></div>
-    </div>
-    <div class="tut-section"><div class="tut-heading">🎰 Pick 3</div>
-      <div class="tut-row"><div class="tut-icon">📋</div><div>At every half-inning start, predict the first 3 outcomes in order.</div></div>
-      <div class="tut-row"><div class="tut-icon">🔒</div><div>Player 2's first pick can't match Player 1's.</div></div>
-      <div class="tut-row"><div class="tut-icon">💀</div><div>Miss any pick → Pick 3 busted, pick manually from then on.</div></div>
-      <div class="tut-row"><div class="tut-icon">🌟</div><div>All 3 correct → +7 bonus on top of normal points.</div></div>
-    </div>
-    <div class="tut-section"><div class="tut-heading">💎 Confidence</div>
-      <div class="tut-row"><div class="tut-icon">😤</div><div>Call confidence before picking. Correct → +5. Wrong → −2.</div></div>
-      <div class="tut-row"><div class="tut-icon">🚫</div><div>Intentional walks: use the OTHER card.</div></div>
-    </div>
-    <div class="tut-section"><div class="tut-heading">📊 Quick scoring</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
-        ${[['Strikeout/Out','1 pt'],['Double play','2 pts'],['Single/Walk/HBP','2 pts'],['Home run','6 pts'],['Double','5 pts'],['Triple','8 pts'],['Stolen base','3 pts'],['Pick 3 bonus','+7 pts'],['Confidence ✓','+5 pts'],['Confidence ✗','−2 pts']].map(([k,v])=>`<div style="background:var(--card);border:1px solid var(--border);border-radius:3px;padding:8px;font-size:11px"><div style="font-weight:700;color:var(--text)">${k}</div><div style="color:var(--subtext)">${v}</div></div>`).join('')}
-      </div>
-    </div>
-    <button class="btn-primary" style="margin-top:20px" onclick="back()">GOT IT →</button>`;
+  const pages=[pageTut0,pageTut1,pageTut2,pageTut3];
+  const body=document.getElementById('tut-body');
+  if(body)body.innerHTML=pages[tutPage]();
+  const backBtn=document.getElementById('tut-back-btn');
+  if(backBtn)backBtn.onclick=tutPage===0?()=>back():()=>tutPrev();
 }
-
-
-async function loadData(){
-  settings=lsGet('gb_settings')||{dark:false,haptic:true,sound:true,wake:false,hideHistorical:false};
-  if(settings.dark)document.body.classList.add('dark');
-  allTimeStreak=lsGet('gb_streak')||0;
-  const saved=lsGet('gb_game');
-  if(saved&&saved.players&&saved.players.length)G=saved;
-
-  const loadEl=document.createElement('div');
-  loadEl.id='fb-loading';
-  loadEl.style.cssText='position:fixed;inset:0;background:var(--bg);z-index:999;display:flex;align-items:center;justify-content:center;font-family:Courier New,monospace;font-size:13px;color:var(--subtext);letter-spacing:.08em;font-weight:700';
-  loadEl.textContent='LOADING...';
-  document.body.appendChild(loadEl);
-
-  try{
-    if(!db)throw new Error('Firebase not available');
-    const[lb,hist,rst,h2hData]=await Promise.all([
-      db.ref('leaderboard').once('value').then(s=>s.val()),
-      db.ref('gameHistory').once('value').then(s=>s.val()),
-      db.ref('roster').once('value').then(s=>s.val()),
-      db.ref('h2h').once('value').then(s=>s.val()),
-    ]);
-    leaderboard=lb||{};
-    gameHistory=hist?Object.values(hist):[];
-    roster=rst?(Array.isArray(rst)?rst:Object.values(rst)):[];
-    h2h=h2hData||{};
-    lsSet('gb_lb',leaderboard);lsSet('gb_hist',gameHistory);lsSet('gb_roster',roster);lsSet('gb_h2h',h2h);
-    setupRealtimeListeners();
-    updateSyncStatus(true);
-  }catch(e){
-    console.warn('Firebase load failed, using localStorage:',e.message);
-    leaderboard=lsGet('gb_lb')||{};
-    gameHistory=lsGet('gb_hist')||[];
-    roster=lsGet('gb_roster')||[];
-    h2h=lsGet('gb_h2h')||{};
-  }
-
-  const loading=document.getElementById('fb-loading');
-  if(loading)loading.remove();
+function tutPrev(){tutPage=Math.max(0,tutPage-1);renderTutorial();window.scrollTo(0,0);}
+function tutNext(){tutPage=Math.min(3,tutPage+1);renderTutorial();window.scrollTo(0,0);}
+function tutDone(){tutPage=0;back();}
+function tutDots(active){
+  return`<div style="display:flex;justify-content:center;gap:8px;margin:20px 0 8px">${[0,1,2,3].map(i=>`<div style="width:7px;height:7px;border-radius:50%;background:var(--ink);opacity:${i===active?1:.2}"></div>`).join('')}</div>`;
 }
+function pageTut0(){return`
+  <div style="text-align:center;padding:24px 0 16px">
+    <div style="font-size:44px;margin-bottom:10px">⚾</div>
+    <div style="font-size:17px;font-weight:700;color:var(--text);letter-spacing:.04em;margin-bottom:10px">WHAT IS GUESS BALL?</div>
+    <div style="font-size:12px;color:var(--subtext);line-height:1.7;font-weight:600">A prediction game you play live at a baseball game. Guess what happens each at-bat, earn points, and outscore your opponent by the final out.</div>
+  </div>
+  <div style="border-top:2px solid var(--border);margin:4px 0 12px;opacity:.4"></div>
+  <div style="display:flex;flex-direction:column;gap:2px">
+    <div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px dashed var(--border)"><div style="font-size:20px">🎯</div><div style="font-size:12px;color:var(--text);font-weight:600">Pick an outcome before each at-bat</div></div>
+    <div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px dashed var(--border)"><div style="font-size:20px">✅</div><div style="font-size:12px;color:var(--text);font-weight:600">Get it right → earn points</div></div>
+    <div style="display:flex;align-items:center;gap:12px;padding:10px 0"><div style="font-size:20px">🏆</div><div style="font-size:12px;color:var(--text);font-weight:600">Most points when the game ends wins</div></div>
+  </div>
+  ${tutDots(0)}
+  <button class="btn-primary" onclick="tutNext()">NEXT →</button>
+`;}
+function pageTut1(){return`
+  <div style="font-size:13px;font-weight:700;color:var(--text);letter-spacing:.06em;margin-bottom:14px">THE BASICS</div>
+  <div style="display:flex;flex-direction:column;gap:2px">
+    <div style="display:flex;align-items:flex-start;gap:12px;padding:10px 0;border-bottom:1px dashed var(--border)"><div style="font-size:20px;flex-shrink:0">👑</div><div style="font-size:12px;color:var(--text);font-weight:600;line-height:1.6"><strong>Priority player</strong> picks first. The other player cannot pick the same outcome.</div></div>
+    <div style="display:flex;align-items:flex-start;gap:12px;padding:10px 0;border-bottom:1px dashed var(--border)"><div style="font-size:20px;flex-shrink:0">⚡</div><div style="font-size:12px;color:var(--text);font-weight:600;line-height:1.6">Score a point → you <strong>steal priority</strong> next at-bat.</div></div>
+    <div style="display:flex;align-items:flex-start;gap:12px;padding:10px 0;border-bottom:1px dashed var(--border)"><div style="font-size:20px;flex-shrink:0">🔄</div><div style="font-size:12px;color:var(--text);font-weight:600;line-height:1.6">Priority defaults to the winner of your last head-to-head.</div></div>
+    <div style="display:flex;align-items:flex-start;gap:12px;padding:10px 0;border-bottom:1px dashed var(--border)"><div style="font-size:20px;flex-shrink:0">➕</div><div style="font-size:12px;color:var(--text);font-weight:600;line-height:1.6">Runs scored add <strong>+1 pt each</strong> on top of your pick points.</div></div>
+    <div style="display:flex;align-items:flex-start;gap:12px;padding:10px 0"><div style="font-size:20px;flex-shrink:0">🏁</div><div style="font-size:12px;color:var(--text);font-weight:600;line-height:1.6">Game ends when the MLB game ends.</div></div>
+  </div>
+  ${tutDots(1)}
+  <button class="btn-primary" onclick="tutNext()">NEXT →</button>
+`;}
+function pageTut2(){
+  const rows=[['STRIKEOUT','1'],['IN PLAY OUT','1'],['DOUBLE PLAY','2'],["FIELDER'S CHOICE",'1'],['BUNT','2'],['WALK / HBP','2'],['SINGLE','2'],['DOUBLE','5'],['TRIPLE','8'],['HOME RUN','6'],['STOLEN BASE','3']];
+  return`
+  <div style="font-size:13px;font-weight:700;color:var(--text);letter-spacing:.06em;margin-bottom:14px">SCORING</div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px">
+    ${rows.map(([name,pts])=>`<div style="background:var(--card);border:1.5px solid var(--border);border-radius:3px;padding:8px 10px"><div style="font-size:9px;font-weight:700;color:var(--subtext);letter-spacing:.04em;margin-bottom:2px">${name}</div><div style="font-size:15px;font-weight:700;color:var(--text)">${pts} pt${pts!=='1'?'s':''}</div></div>`).join('')}
+  </div>
+  <div style="font-size:10px;color:var(--subtext);font-weight:600;text-align:center;padding:4px 0">+ runs scored add 1 pt each</div>
+  ${tutDots(2)}
+  <button class="btn-primary" onclick="tutNext()">NEXT →</button>
+`;}
+function pageTut3(){return`
+  <div style="font-size:13px;font-weight:700;color:var(--text);letter-spacing:.06em;margin-bottom:14px">PICK 3 &amp; CONFIDENCE</div>
+  <div style="font-size:10px;font-weight:700;color:var(--subtext);letter-spacing:.08em;text-transform:uppercase;margin-bottom:8px">Pick 3</div>
+  <div style="display:flex;flex-direction:column;gap:2px;margin-bottom:14px">
+    <div style="display:flex;align-items:flex-start;gap:12px;padding:10px 0;border-bottom:1px dashed var(--border)"><div style="font-size:20px;flex-shrink:0">🎰</div><div style="font-size:12px;color:var(--text);font-weight:600;line-height:1.6">At the start of each half-inning, predict the first <strong>3 at-bat outcomes</strong> in order.</div></div>
+    <div style="display:flex;align-items:flex-start;gap:12px;padding:10px 0;border-bottom:1px dashed var(--border)"><div style="font-size:20px;flex-shrink:0">💀</div><div style="font-size:12px;color:var(--text);font-weight:600;line-height:1.6">Miss any pick → Pick 3 is <strong>busted</strong>. Pick manually from then on.</div></div>
+    <div style="display:flex;align-items:flex-start;gap:12px;padding:10px 0"><div style="font-size:20px;flex-shrink:0">🌟</div><div style="font-size:12px;color:var(--text);font-weight:600;line-height:1.6">All 3 correct → <strong>+7 bonus</strong> on top of normal points.</div></div>
+  </div>
+  <div style="border-top:2px solid var(--border);margin-bottom:14px;opacity:.3"></div>
+  <div style="font-size:10px;font-weight:700;color:var(--subtext);letter-spacing:.08em;text-transform:uppercase;margin-bottom:8px">Confidence</div>
+  <div style="display:flex;flex-direction:column;gap:2px">
+    <div style="display:flex;align-items:flex-start;gap:12px;padding:10px 0;border-bottom:1px dashed var(--border)"><div style="font-size:20px;flex-shrink:0">😤</div><div style="font-size:12px;color:var(--text);font-weight:600;line-height:1.6">Toggle on any pick. Correct → <strong>+5 pts</strong>. Wrong → <strong>−2 pts</strong>.</div></div>
+    <div style="display:flex;align-items:flex-start;gap:12px;padding:10px 0"><div style="font-size:20px;flex-shrink:0">🚫</div><div style="font-size:12px;color:var(--text);font-weight:600;line-height:1.6">Intentional walk → use the <strong>OTHER</strong> card (host only).</div></div>
+  </div>
+  ${tutDots(3)}
+  <button class="btn-primary" onclick="tutDone()">GOT IT ✓</button>
+`;}
 
-// ── RETRY QUEUE ──
-let retryQueue=[],retryTimer=null;
 function queueRetry(path,val){retryQueue.push({path,val});if(!retryTimer)retryTimer=setInterval(flushRetryQueue,15000);}
 function flushRetryQueue(){
   if(!retryQueue.length){clearInterval(retryTimer);retryTimer=null;return;}
