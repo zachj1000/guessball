@@ -132,6 +132,7 @@ select.player-input{cursor:pointer}
 .ach-popup{position:fixed;top:calc(env(safe-area-inset-top) + 70px);left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;border-radius:8px;padding:12px 18px;z-index:200;font-family:'Courier New',monospace;text-align:center;min-width:260px;max-width:320px;box-shadow:0 4px 20px rgba(0,0,0,.3);animation:slideDown .4s ease}
 @keyframes slideDown{from{opacity:0;transform:translateX(-50%) translateY(-20px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
 .ach-popup-icon{font-size:28px;margin-bottom:4px}
+.ach-popup-player{font-size:10px;color:rgba(255,255,255,.5);letter-spacing:.1em;font-weight:700;margin-bottom:1px}
 .ach-popup-title{font-size:11px;letter-spacing:.1em;opacity:.7;margin-bottom:2px}
 .ach-popup-name{font-size:15px;font-weight:700}
 .ach-popup-desc{font-size:10px;opacity:.7;margin-top:3px}
@@ -245,15 +246,16 @@ if('serviceWorker' in navigator){
       <div class="rule-row"><span>Confidence wrong</span><span class="rule-pts">−2 pts</span></div>
     </div>
     <div class="rule-section"><div class="rule-heading">Priority</div>
-      <div class="rule-row"><span>Default: winner of last matchup (P1 if no data)</span><span></span></div>
-      <div class="rule-row"><span>Non-priority scores → takes priority</span><span></span></div>
-      <div class="rule-row"><span>Priority picks first; others can't pick same</span><span></span></div>
+      <div class="rule-row"><span>Priority player picks first each at-bat</span><span></span></div>
+      <div class="rule-row"><span>Other players can't pick the same outcome</span><span></span></div>
+      <div class="rule-row"><span>Score a point → steal priority next at-bat</span><span></span></div>
+      <div class="rule-row"><span>Defaults to winner of last head-to-head</span><span></span></div>
     </div>
     <div class="rule-section"><div class="rule-heading">Pick 3</div>
-      <div class="rule-row"><span>Predict first 3 of each half-inning</span><span></span></div>
-      <div class="rule-row"><span>P2's 1st pick can't match P1's</span><span></span></div>
-      <div class="rule-row"><span>Miss any → busted, pick manually after</span><span></span></div>
-      <div class="rule-row"><span>All 3 correct → +7 bonus</span><span></span></div>
+      <div class="rule-row"><span>At the start of each half-inning, predict the first 3 outcomes in order</span><span></span></div>
+      <div class="rule-row"><span>Miss any pick → Pick 3 is busted, pick manually from then on</span><span></span></div>
+      <div class="rule-row"><span>Get all 3 correct → +7 bonus on top of normal points</span><span></span></div>
+      <div class="rule-row"><span>Stolen base or caught stealing continues the at-bat</span><span></span></div>
     </div>
   </div>
 </div>
@@ -583,7 +585,7 @@ if('serviceWorker' in navigator){
       <button class="btn-secondary" style="margin-top:0" onclick="goTo('screen-data-tools')">DATA TOOLS →</button>
       <button class="btn-danger" onclick="clearActiveGame()">CLEAR ACTIVE GAME</button>
     </div>
-    <div style="text-align:center;padding:16px 0;font-size:10px;color:var(--subtext);letter-spacing:.08em">GUESS BALL v1.6.2</div>
+    <div style="text-align:center;padding:16px 0;font-size:10px;color:var(--subtext);letter-spacing:.08em">GUESS BALL v1.6.4</div>
   </div>
 </div>
 
@@ -605,15 +607,7 @@ if('serviceWorker' in navigator){
 
 
 <!-- HISTORICAL WINS -->
-<div class="screen" id="screen-hist-wins">
-  <div class="screen-head">
-    <div class="sh-left"><button class="back-btn" onclick="back()">←</button><div class="sh-title">HISTORICAL WINS</div></div>
-  </div>
-  <div class="screen-body">
-    <div style="font-size:11px;color:var(--subtext);margin-bottom:16px;line-height:1.6">Wins from before the app. These are added to app-tracked wins on the leaderboard. Tap the combined total on the leaderboard to see the split.</div>
-    <div id="hist-wins-page-editor"></div>
-  </div>
-</div>
+
 
 <!-- SAVED PLAYERS -->
 <div class="screen" id="screen-saved-players">
@@ -826,6 +820,20 @@ const ACHIEVEMENTS=[
   {id:'streak_5',icon:'🔥',name:'5 Streak',desc:'5 correct in a row all time'},
   {id:'streak_10',icon:'🔥',name:'10 Streak',desc:'10 correct in a row all time'},
   {id:'streak_20',icon:'🔥',name:'20 Streak',desc:'20 correct in a row all time'},
+  {id:'hr_hat_trick',icon:'🎩',name:'HR Hat Trick',desc:'Correctly call 3 home runs in one game'},
+  {id:'cold_start',icon:'🧊',name:'Cold Start',desc:'Score 0 in the first inning then come back to win'},
+  {id:'cleanup_hitter',icon:'💥',name:'Cleanup Hitter',desc:'Correctly call a home run with 4+ runs scored'},
+  {id:'perfect_confidence',icon:'💎',name:'Perfect Confidence',desc:'Correct on every confidence call you make (min 1)'},
+  {id:'untouchable',icon:'🛡️',name:'Untouchable',desc:'Hold priority for 3 full innings without losing it'},
+  {id:'lightning_rod',icon:'⚡',name:'Lightning Rod',desc:'Correctly call 3 HBPs in one game'},
+  {id:'small_ball_specialist',icon:'📦',name:'Small Ball Specialist',desc:'Correctly call 3 bunts in one game'},
+  {id:'blowout',icon:'💨',name:'Blowout',desc:'Win by 30+ points'},
+  {id:'nemesis',icon:'👿',name:'Nemesis',desc:'Lose to the same opponent 5 times in a row'},
+  {id:'stolen_thunder',icon:'🌩️',name:'Stolen Thunder',desc:'Non-priority player scores on the very first at-bat'},
+  {id:'last_laugh',icon:'😂',name:'Last Laugh',desc:'Score on the very last at-bat of the game'},
+  {id:'quick_start',icon:'🚀',name:'Quick Start',desc:'Get a Pick 3 bonus in the first half-inning'},
+  {id:'dead_heat',icon:'🤝',name:'Dead Heat',desc:'Be tied in score after inning 5 or later'},
+  {id:'sniper',icon:'🎯',name:'Sniper',desc:'70%+ accuracy in a single game (min 10 picks)'},
 ];
 
 let G={
@@ -845,7 +853,7 @@ let G={
   pendingExtraOuts:0,maxDeficit:{},isTie:false,
 };
 let NAV=[];
-let leaderboard={},gameHistory=[],roster=[],h2h={},historicalWins={};
+let leaderboard={},gameHistory=[],roster=[],h2h={};
 let settings={dark:false,haptic:true,sound:true,wake:false};
 let allTimeStreak=0;
 let statsDeepIdx=0,lbExpanded={},histExpanded={},trashIdx=0,tutPage=0;
@@ -938,7 +946,7 @@ function seedHistoricalData(){
     const winner=isTie?null:sorted[0].name;
     gameHistory.push({date:g.date,players:g.players,winner:winner||'Tie',inning:9,stats:null,achievements:[],mvpBadge:null,awayTeam:g.awayTeam,homeTeam:g.homeTeam,stadium:g.stadium,awayScore:0,homeScore:0,notes:g.notes,highlightAtBat:null,historical:true});
     g.players.forEach(p=>{
-      if(!leaderboard[p.name])leaderboard[p.name]={games:0,wins:0,totalPts:0,totalPicks:0,totalCorrect:0,totalP3:0,totalConfCorrect:0,totalConfWrong:0,achievements:[],longestStreak:0};
+      if(!leaderboard[p.name])leaderboard[p.name]={games:0,wins:0,totalPts:0,totalPicks:0,totalCorrect:0,totalP3:0,totalConfCorrect:0,totalConfWrong:0,achievements:[],longestStreak:0,outcomeCounts:{},p3GameStreak:0};
       leaderboard[p.name].games++;
       leaderboard[p.name].totalPts+=p.score||0;
       if(!isTie&&p.name===winner)leaderboard[p.name].wins++;
@@ -1158,7 +1166,7 @@ function startGame(){
   G.currentPickerIdx=0;G.manualPicks={};G.confidence={};
   G.pendingResult=null;G.pendingRuns=0;G.lastDeltas={};G.lastResult=null;
   G.atBatLog=[];G.finalStats=null;G.mvpBadge=null;G.batterName='';G.gameNotes='';
-  G.gameAchievements=[];G.consecutiveCorrect={};G.consecutiveMiss={};
+  G.gameAchievements=[];G.playerAchievements={};G.consecutiveCorrect={};G.consecutiveMiss={};
   G.consecutiveConfWrong={};G.consecutiveScoring={};
   G.halfInningCorrect={};G.halfInningTotal={};G.halfInningScore={};G.halfInningPts={};G.inningPts={};
   G.confInGame={};G.p3BonusesThisGame=0;G.boolBold=false;G.maxDeficit={};G.pendingExtraOuts=0;G.stealContinuation=false;G.isTie=false;
@@ -1195,7 +1203,6 @@ function renderP3Review(){
   }).join('');
 }
 
-function getStreak(pIdx){const log=G.atBatLog.filter(e=>e.playerIdx===pIdx);let s=0;for(let i=log.length-1;i>=0;i--){if(log[i].pts>0)s++;else break;}return s;}
 
 function renderPick(){
   const queue=G.pendingPickers,pIdx=queue[G.currentPickerIdx],isLast=G.currentPickerIdx===queue.length-1;
@@ -1340,7 +1347,7 @@ function submitResult(){
       if(scored){
         G.confInGame[i].correct++;G.confInGame[i].total++;
         G.consecutiveConfWrong[i]=0;
-        if(!G.boolBold){G.boolBold=true;awardAchievement('bold',true);}
+        if(!G.boolBold){G.boolBold=true;awardAchievement('bold',true,G.players[i]);}
       } else {
         G.consecutiveConfWrong[i]++;
         G.confInGame[i].total++;
@@ -1392,19 +1399,6 @@ function submitResult(){
   }
 
   G.inningAtBat++;
-
-  // walk-off check
-  if(G.lastResult){
-    G.players.forEach((_,i)=>{
-      if(deltas[i]>0&&G.confidence[i]){
-        const prevScores=G.lastResult.scores;
-        const myPrev=prevScores[i]||0;
-        const isLosingBefore=G.players.every((_,j)=>j===i||(prevScores[j]||0)>=myPrev);
-        const nowWinning=G.players.every((_,j)=>j===i||(G.scores[j]||0)<=(G.scores[i]||0));
-        if(isLosingBefore&&nowWinning)awardAchievement('walk_off',true);
-      }
-    });
-  }
 
   checkMidGameAch(outcome,deltas,runs);
   push('screen-scoreboard');
@@ -1512,104 +1506,174 @@ function confirmEndGame(){
 function confirmNotes(){const inp=document.getElementById('notes-input');G.gameNotes=inp.value.trim();closeModalBtn('notes-modal');finishEndGame();}
 
 function checkMidGameAch(outcome,deltas,runs){
-  const aw=[];
-  if(allTimeStreak>=5)aw.push('streak_5');
-  if(allTimeStreak>=10)aw.push('streak_10');
-  if(allTimeStreak>=20)aw.push('streak_20');
-  if(outcome==='triple')aw.push('unicorn');
-  if(outcome==='hbp')aw.push('take_your_base');
-  if(outcome==='bunt')aw.push('small_ball');
+  const halfKey=G.inning+'_'+(G.isBottom?'b':'t');
 
-  G.players.forEach((_,i)=>{
+  G.players.forEach((name,i)=>{
     const cc=G.consecutiveCorrect[i]||0;
     const cm=G.consecutiveMiss[i]||0;
     const cw=G.consecutiveConfWrong[i]||0;
     const cs=G.consecutiveScoring[i]||0;
     const ci=G.confInGame[i]||{correct:0,total:0};
+    const scored=deltas[i]>0;
 
-    if(cc===5)aw.push('on_fire');
-    if(cc===7)aw.push('wave');
-    if(cc===10)aw.push('unstoppable');
-    if(cm===6)aw.push('ice_cold');
-    if(cw===3)aw.push('rough_patch');
-    if(cs===10)aw.push('hot_streak');
+    // streak-based (per player personal streak)
+    if(cc===5)awardAchievement('on_fire',true,name);
+    if(cc===7)awardAchievement('wave',true,name);
+    if(cc===10)awardAchievement('unstoppable',true,name);
+    if(cm===6)awardAchievement('ice_cold',true,name);
+    if(cw===3)awardAchievement('rough_patch',true,name);
+    if(cs===10)awardAchievement('hot_streak',true,name);
+    // all-time personal streak milestones
+    if(cc>=5)awardAchievement('streak_5',true,name);
+    if(cc>=10)awardAchievement('streak_10',true,name);
+    if(cc>=20)awardAchievement('streak_20',true,name);
 
-    if(G.confidence[i]&&deltas[i]>0&&outcome==='home_run')aw.push('called_shot');
-    if(G.confidence[i]&&deltas[i]>0&&outcome==='double_play')aw.push('big_brain');
-    if(G.confidence[i]&&deltas[i]>0&&outcome==='triple')aw.push('first_to_third');
-    if(G.confidence[i]&&deltas[i]<0&&outcome==='home_run')aw.push('hubris');
-    if(G.confidence[i]&&deltas[i]>0&&i!==G.priorityIdx)aw.push('assassin');
-    if(deltas[i]>=5)aw.push('big_spender');
+    // outcome-based — only if player correctly picked it
+    if(scored&&outcome==='triple')awardAchievement('unicorn',true,name);
+    if(scored&&outcome==='hbp')awardAchievement('take_your_base',true,name);
+    if(scored&&outcome==='bunt')awardAchievement('small_ball',true,name);
 
-    // diamond_hands: 5+ confidence calls all correct this game
-    if(ci.total>=5&&ci.correct===ci.total)aw.push('diamond_hands');
+    // confidence-based
+    if(G.confidence[i]&&scored&&outcome==='home_run')awardAchievement('called_shot',true,name);
+    if(G.confidence[i]&&scored&&outcome==='double_play')awardAchievement('big_brain',true,name);
+    if(G.confidence[i]&&scored&&outcome==='triple')awardAchievement('first_to_third',true,name);
+    if(G.confidence[i]&&!scored&&outcome==='home_run')awardAchievement('hubris',true,name);
+    if(G.confidence[i]&&scored&&i!==G.priorityIdx)awardAchievement('assassin',true,name);
+    if(scored&&!G.boolBold&&G.confidence[i]){G.boolBold=true;awardAchievement('bold',true,name);}
 
-    // reckless: 3 confidence wrong in one game (total, not consecutive)
-    if(ci.total-ci.correct>=3)aw.push('reckless');
+    // big_spender: 5+ pts in one at-bat
+    if(deltas[i]>=5)awardAchievement('big_spender',true,name);
 
-    // speed_demon: 3 stolen bases correct in one game
+    // diamond_hands: 5+ confidence all correct this game
+    if(ci.total>=5&&ci.correct===ci.total)awardAchievement('diamond_hands',true,name);
+
+    // reckless: 3+ confidence wrong in one game
+    if(ci.total-ci.correct>=3)awardAchievement('reckless',true,name);
+
+    // speed_demon: 3 stolen bases correct
     const sbCorrect=G.atBatLog.filter(e=>e.playerIdx===i&&e.correct&&e.outcome==='stolen_base').length;
-    if(sbCorrect>=3)aw.push('speed_demon');
+    if(sbCorrect>=2)awardAchievement('speed_demon',true,name);
 
-    // patient: 3 walks correct in one game
+    // patient: 3 walks correct
     const walkCorrect=G.atBatLog.filter(e=>e.playerIdx===i&&e.correct&&e.outcome==='walk').length;
-    if(walkCorrect>=3)aw.push('patient');
+    if(walkCorrect>=3)awardAchievement('patient',true,name);
 
     // hat_trick: 3 p3 bonuses in one game
     const p3log=G.atBatLog.filter(e=>e.playerIdx===i&&e.p3Bonus>0).length;
-    if(p3log>=3)aw.push('hat_trick');
+    if(p3log>=3)awardAchievement('hat_trick',true,name);
 
     // rocket: 10+ pts in a single half-inning
-    const halfKey=G.inning+'_'+(G.isBottom?'b':'t');
     const halfPts=(G.halfInningPts[halfKey]&&G.halfInningPts[halfKey][i])||0;
-    if(halfPts>=10)aw.push('rocket');
+    if(halfPts>=10)awardAchievement('rocket',true,name);
 
     // perfect_half: all picks correct in half-inning (min 3 ABs)
     const halfTotal=(G.halfInningTotal[halfKey]&&G.halfInningTotal[halfKey][i])||0;
     const halfCorrect=(G.halfInningCorrect[halfKey]&&G.halfInningCorrect[halfKey][i])||0;
-    if(halfTotal>=3&&halfCorrect===halfTotal)aw.push('perfect_half');
+    if(halfTotal>=3&&halfCorrect===halfTotal)awardAchievement('perfect_half',true,name);
 
     // comeback_kid: win after being down 10+
     if(G.maxDeficit){
       G.players.forEach((_,j)=>{
         if(j===i)return;
         const defKey=i+'_'+j;
-        if((G.maxDeficit[defKey]||0)>=10&&G.scores[i]>G.scores[j])aw.push('comeback_kid');
+        if((G.maxDeficit[defKey]||0)>=10&&G.scores[i]>G.scores[j])awardAchievement('comeback_kid',true,name);
       });
     }
-  });
 
-  // ghost: one player scores 5+, opponent scores 0 this half-inning
-  const halfKey=G.inning+'_'+(G.isBottom?'b':'t');
-  G.players.forEach((_,i)=>{
+    // ghost: scored 5+, all others scored 0 this half
     const myHalfPts=(G.halfInningPts[halfKey]&&G.halfInningPts[halfKey][i])||0;
-    if(myHalfPts>=5){
+    if(myHalfPts>=7){
       const allOthersZero=G.players.every((_,j)=>j===i||((G.halfInningPts[halfKey]&&G.halfInningPts[halfKey][j])||0)===0);
-      if(allOthersZero)aw.push('ghost');
+      if(allOthersZero)awardAchievement('ghost',true,name);
     }
+
+    // walk_off: losing before this AB, scored with confidence, now winning
+    if(scored&&G.confidence[i]&&G.lastResult){
+      const prevScores=G.lastResult.scores;
+      const myPrev=prevScores[i]||0;
+      const wasLosing=G.players.every((_,j)=>j===i||(prevScores[j]||0)>=myPrev);
+      const nowWinning=G.players.every((_,j)=>j===i||(G.scores[j]||0)<=(G.scores[i]||0));
+      if(wasLosing&&nowWinning)awardAchievement('walk_off',true,name);
+    }
+
+    // hr_hat_trick: 3 home runs correct in one game
+    const hrCorrect=G.atBatLog.filter(e=>e.playerIdx===i&&e.correct&&e.outcome==='home_run').length;
+    if(hrCorrect>=3)awardAchievement('hr_hat_trick',true,name);
+
+    // cleanup_hitter: correct call on HR with 4+ runs
+    if(scored&&outcome==='home_run'&&runs>=4)awardAchievement('cleanup_hitter',true,name);
+
+    // perfect_confidence: all confidence calls correct so far (min 1)
+    if(ci.total>=1&&ci.correct===ci.total)awardAchievement('perfect_confidence',true,name);
+
+    // lightning_rod: 3 HBPs correct in one game
+    const hbpCorrect=G.atBatLog.filter(e=>e.playerIdx===i&&e.correct&&e.outcome==='hbp').length;
+    if(hbpCorrect>=3)awardAchievement('lightning_rod',true,name);
+
+    // small_ball_specialist: 3 bunts correct in one game
+    const buntCorrect=G.atBatLog.filter(e=>e.playerIdx===i&&e.correct&&e.outcome==='bunt').length;
+    if(buntCorrect>=3)awardAchievement('small_ball_specialist',true,name);
+
+    // stolen_thunder: non-priority player scores on very first AB
+    if(scored&&i!==G.priorityIdx&&G.atBatLog.filter(e=>!e.ghost).length===1)awardAchievement('stolen_thunder',true,name);
+
+    // dead_heat: tied after inning 5+
+    if(G.inning>=5){
+      const allTied=G.players.every((_,j)=>G.scores[j]===G.scores[0]);
+      if(allTied&&G.players.length>=2)awardAchievement('dead_heat',true,name);
+    }
+
+    // quick_start: P3 bonus in first half-inning
+    const firstHalfKey='1_t';
+    const firstHalfP3=G.atBatLog.some(e=>e.playerIdx===i&&e.p3Bonus>0&&e.inning===1&&!e.isBottom);
+    if(firstHalfP3)awardAchievement('quick_start',true,name);
+
+    // untouchable: hold priority 3 full innings without losing it (approx 15 consecutive ABs)
+    if(i===G.priorityIdx&&G.priorityStreak>=15)awardAchievement('untouchable',true,name);
+
+    // sniper: 70%+ accuracy (checked ongoing but only meaningful at game end — check here for milestone)
+    // Will also check at end of game
   });
 
-  if(G.priorityStreak>=10&&!G.priorityHogTriggered){G.priorityHogTriggered=true;aw.push('priority_hog');}
-  // oracle: win priority 5 consecutive ABs
-  if(G.priorityStreak>=5)aw.push('oracle');
-  // king_of_the_hill: hold priority for 3 full innings (6 half-innings)
-  // track via priority holding across inning changes — approximate with priorityStreak>=18
-  if(G.priorityStreak>=18)aw.push('king_of_the_hill');
+  // streak achievements — per player based on their own consecutive correct picks
+  // (handled inside player loop above via consecutiveCorrect[i])
 
-  aw.forEach(id=>awardAchievement(id,true));
+  // priority-based — goes to whoever currently holds priority
+  const priorityPlayer=G.players[G.priorityIdx];
+  if(G.priorityStreak>=5)awardAchievement('oracle',true,priorityPlayer);
+  if(G.priorityStreak>=10&&!G.priorityHogTriggered){G.priorityHogTriggered=true;awardAchievement('priority_hog',true,priorityPlayer);}
+  if(G.priorityStreak>=18)awardAchievement('king_of_the_hill',true,priorityPlayer);;
 }
-function awardAchievement(id,mid){
-  if(G.gameAchievements.includes(id))return;
-  G.gameAchievements.push(id);
+
+function awardAchievement(id,mid,playerName){
+  if(!playerName)return; // must have a player
+  if(!G.playerAchievements)G.playerAchievements={};
+  if(!G.playerAchievements[playerName])G.playerAchievements[playerName]=[];
+  if(G.playerAchievements[playerName].includes(id))return;
+  G.playerAchievements[playerName].push(id);
+  // track for popup display
+  if(!G.gameAchievements.includes(id))G.gameAchievements.push(id);
   const a=ACHIEVEMENTS.find(x=>x.id===id);if(!a)return;
-  if(mid)showAchPopup(a);
+  if(mid)showAchPopup(a,playerName);
 }
-function showAchPopup(a){
+let achPopupQueue=[];let achPopupShowing=false;
+function showAchPopup(a,playerName){
+  achPopupQueue.push({a,playerName});
+  if(!achPopupShowing)processAchQueue();
+}
+function processAchQueue(){
+  if(!achPopupQueue.length){achPopupShowing=false;return;}
+  achPopupShowing=true;
+  const {a,playerName}=achPopupQueue.shift();
   haptic('ach');playSound('ach');
   const ex=document.querySelector('.ach-popup');if(ex)ex.remove();
   const el=document.createElement('div');el.className='ach-popup';
-  el.innerHTML=`<div class="ach-popup-icon">${a.icon}</div><div class="ach-popup-title">ACHIEVEMENT UNLOCKED</div><div class="ach-popup-name">${a.name}</div><div class="ach-popup-desc">${a.desc}</div>`;
-  document.body.appendChild(el);setTimeout(()=>el.remove(),3500);
+  el.innerHTML=`<div class="ach-popup-icon">${a.icon}</div><div style="flex:1"><div class="ach-popup-player">${playerName?playerName.toUpperCase():''}</div><div class="ach-popup-title">ACHIEVEMENT UNLOCKED</div><div class="ach-popup-name">${a.name}</div><div class="ach-popup-desc">${a.desc}</div></div>`;
+  document.body.appendChild(el);
+  setTimeout(()=>{
+    el.style.opacity='0';el.style.transform='translateY(-10px)';
+    setTimeout(()=>{el.remove();setTimeout(processAchQueue,200);},300);
+  },2800);
 }
 function checkMilestones(name,lb){
   const date=new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
@@ -1636,7 +1700,7 @@ function checkMilestones(name,lb){
     {id:'dp_5',c:()=>(oc.double_play||0)>=5},{id:'dp_15',c:()=>(oc.double_play||0)>=15},{id:'dp_30',c:()=>(oc.double_play||0)>=30},
     {id:'bunt_5',c:()=>(oc.bunt||0)>=5},{id:'bunt_15',c:()=>(oc.bunt||0)>=15},{id:'bunt_30',c:()=>(oc.bunt||0)>=30},
   ];
-  ms.forEach(m=>{if(m.c()&&!lb.achievements.find(a=>a.id===m.id)){lb.achievements.push({id:m.id,date});G.gameAchievements.push(m.id);const a=ACHIEVEMENTS.find(x=>x.id===m.id);if(a)showAchPopup(a);}});
+  ms.forEach(m=>{if(m.c()&&!lb.achievements.find(a=>a.id===m.id)){lb.achievements.push({id:m.id,date});awardAchievement(m.id,false,name);}});
 }
 
 function finishEndGame(){
@@ -1663,48 +1727,81 @@ function finishEndGame(){
   const winner=sorted[0],loser=sorted[sorted.length-1],margin=winner.s-loser.s;
   const date=new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
 
-  // end-game achievements
+  // end-game achievements — pass player name
   stats.forEach((p,i)=>{
-    if(G.scores[i]>=20)awardAchievement('payday',false);
-    if(p.pct>=80&&p.totalPicks>=10)awardAchievement('dead_eye',false);
+    if(G.scores[i]>=20)awardAchievement('payday',false,p.name);
+    if(p.pct>=55&&p.totalPicks>=10)awardAchievement('dead_eye',false,p.name);
     if(p.name===winner.n){
-      if(margin===1)awardAchievement('sweating',false);
-      if(margin>=20)awardAchievement('comfortable',false);
-      awardAchievement('champion',false);
+      if(margin===1)awardAchievement('sweating',false,p.name);
+      if(margin>=20)awardAchievement('comfortable',false,p.name);
+      awardAchievement('champion',false,p.name);
     }
-    if(p.name===loser.n&&margin>=20)awardAchievement('good_sport',false);
+    if(p.name===loser.n&&margin>=20)awardAchievement('good_sport',false,p.name);
   });
-  if(G.neverLostPriority)awardAchievement('perfect_game',false);
+  if(G.neverLostPriority)awardAchievement('perfect_game',false,G.players[G.priorityIdx]);
 
-  // clairvoyant: p3 bonus this game (track across games in lb)
-  // prophet: p3 in first half-inning — check atBatLog for p3Bonus in inning 1
+  // prophet: p3 bonus in first half-inning
   G.players.forEach((name,i)=>{
     const firstHalfP3=G.atBatLog.some(e=>e.playerIdx===i&&e.p3Bonus>0&&e.inning===1&&!e.isBottom);
-    if(firstHalfP3)awardAchievement('prophet',false);
+    if(firstHalfP3)awardAchievement('prophet',false,name);
   });
 
   // season_ticket: 20+ games total
   G.players.forEach(name=>{
     const lb=leaderboard[name];
-    if(lb&&lb.games>=20)awardAchievement('season_ticket',false);
+    if(lb&&lb.games>=20)awardAchievement('season_ticket',false,name);
   });
 
-  // h2h based achievements (rivalry, dominant, blood_feud, dynasty)
-  if(G.players.length===2){
+  // sniper: 70%+ accuracy (min 10 picks)
+  stats.forEach((p,i)=>{
+    if(p.pct>=70&&p.totalPicks>=10)awardAchievement('sniper',false,p.name);
+  });
+
+  // blowout: win by 30+
+  if(!isTie&&margin>=30)awardAchievement('blowout',false,winner.n);
+
+  // last_laugh: score on very last at-bat
+  if(G.atBatLog.length>0){
+    const lastAB=G.atBatLog.filter(e=>!e.ghost).slice(-1)[0];
+    if(lastAB&&lastAB.correct)awardAchievement('last_laugh',false,G.players[lastAB.playerIdx]);
+  }
+
+  // cold_start: scored 0 in first inning then won
+  G.players.forEach((name,i)=>{
+    const firstInnPts=(G.inningPts['1_'+i]||0);
+    if(firstInnPts===0&&name===winner.n)awardAchievement('cold_start',false,name);
+  });
+
+  // nemesis: lose to same opponent 5 times in a row
+  if(!isTie&&G.players.length===2){
+    const loserName=loser.n;
     const key=[G.players[0],G.players[1]].sort().join('|||');
     const rec=h2h[key];
-    if(rec){
-      if(rec.games>=25)awardAchievement('rivalry',false);
-      if(rec.games>=50)awardAchievement('blood_feud',false);
-      // dominant: winner has 70%+ win rate vs this opponent (min 10 games)
-      if(rec.games>=10){
-        const wRate=(rec.wins[winner.n]||0)/rec.games;
-        if(wRate>=0.7)awardAchievement('dominant',false);
-      }
-      // dynasty: win 5 in a row vs same opponent
-      if(rec.history&&rec.history.length>=5){
-        const last5=rec.history.slice(0,5);
-        if(last5.every(g=>g.winner===winner.n))awardAchievement('dynasty',false);
+    if(rec&&rec.history&&rec.history.length>=5){
+      const last5=rec.history.slice(0,5);
+      if(last5.every(g=>g.winner===winner.n))awardAchievement('nemesis',false,loserName);
+    }
+  }
+
+  // h2h based achievements
+  if(G.players.length>=2){
+    for(let pi=0;pi<G.players.length;pi++){
+      for(let pj=pi+1;pj<G.players.length;pj++){
+        const p1=G.players[pi],p2=G.players[pj];
+        const key=[p1,p2].sort().join('|||');
+        const rec=h2h[key];
+        if(rec){
+          if(rec.games>=25){awardAchievement('rivalry',false,p1);awardAchievement('rivalry',false,p2);}
+          if(rec.games>=50){awardAchievement('blood_feud',false,p1);awardAchievement('blood_feud',false,p2);}
+          if(rec.games>=10){
+            const wRate=(rec.wins[winner.n]||0)/rec.games;
+            if(wRate>=0.7)awardAchievement('dominant',false,winner.n);
+          }
+          if(rec.history&&rec.history.length>=5){
+            const last5=rec.history.slice(0,5);
+            if(last5.every(g=>g.winner===winner.n))awardAchievement('dynasty',false,winner.n);
+          }
+        }
       }
     }
   }
@@ -1744,11 +1841,13 @@ function finishEndGame(){
     // track correct outcome counts for milestone achievements
     if(!lb.outcomeCounts)lb.outcomeCounts={};
     plog.filter(e=>e.correct&&e.outcome).forEach(e=>{lb.outcomeCounts[e.outcome]=(lb.outcomeCounts[e.outcome]||0)+1;});
-    G.gameAchievements.forEach(id=>{if(!lb.achievements.find(a=>a.id===id))lb.achievements.push({id,date});});
+    // save only THIS player's achievements
+    const myAchs=(G.playerAchievements&&G.playerAchievements[name])||[];
+    myAchs.forEach(id=>{if(!lb.achievements.find(a=>a.id===id))lb.achievements.push({id,date});});
     // clairvoyant: p3 bonus 3 games in a row
     const hadP3ThisGame=G.atBatLog.some(e=>e.playerIdx===i&&e.p3Bonus>0);
     if(hadP3ThisGame){lb.p3GameStreak=(lb.p3GameStreak||0)+1;}else{lb.p3GameStreak=0;}
-    if((lb.p3GameStreak||0)>=3)awardAchievement('clairvoyant',false);
+    if((lb.p3GameStreak||0)>=3)awardAchievement('clairvoyant',false,name);
     checkMilestones(name,lb);
   });
 
@@ -1801,7 +1900,7 @@ function finishEndGame(){
     const[inn,pIdx]=key.split('_');
     if(pts>bestInning.pts)bestInning={player:G.players[parseInt(pIdx)],pts,inning:parseInt(inn)};
   });
-  gameHistory.unshift({date,players:G.players.map((n,i)=>({name:n,score:G.scores[i]||0})),winner:isTie?'Tie':winner.n,inning:G.inning,stats:G.finalStats,achievements:G.gameAchievements,mvpBadge:mvp,awayTeam:G.awayTeam,homeTeam:G.homeTeam,stadium:G.stadium,awayScore:G.awayScore,homeScore:G.homeScore,notes:G.gameNotes,highlightAtBat:hlAB,biggestComeback,bestHalf,bestInning});
+  gameHistory.unshift({date,players:G.players.map((n,i)=>({name:n,score:G.scores[i]||0})),winner:isTie?'Tie':winner.n,inning:G.inning,stats:G.finalStats,achievements:G.gameAchievements,playerAchievements:G.playerAchievements||{},mvpBadge:mvp,awayTeam:G.awayTeam,homeTeam:G.homeTeam,stadium:G.stadium,awayScore:G.awayScore,homeScore:G.homeScore,notes:G.gameNotes,highlightAtBat:hlAB,biggestComeback,bestHalf,bestInning});
   if(gameHistory.length>50)gameHistory=gameHistory.slice(0,50);
   saveMeta();autoBackup();lsSet('gb_achievements',leaderboard);lsDel('gb_game');
   statsDeepIdx=0;trashIdx=0;push('screen-stats');
@@ -1839,7 +1938,7 @@ function renderStatsPage(){
   if(G.players.length===2){
     const key=[G.players[0],G.players[1]].sort().join('|||');
     const rec=h2h[key];
-    if(rec){const w0=(rec.wins[G.players[0]]||0)+(historicalWins[G.players[0]]||0);const w1=(rec.wins[G.players[1]]||0)+(historicalWins[G.players[1]]||0);html+=`<div class="info-box" style="text-align:center">H2H: ${G.players[0]} ${w0} — ${w1} ${G.players[1]}</div>`;}
+    if(rec){const w0=rec.wins[G.players[0]]||0;const w1=rec.wins[G.players[1]]||0;html+=`<div class="info-box" style="text-align:center">H2H: ${G.players[0]} ${w0} — ${w1} ${G.players[1]}</div>`;}
   }
   html+=`<div class="section-label">Summary</div><div class="stats-summary">`;
   stats.forEach(p=>{html+=`<div class="stat-card${p.name===winner.name?' leader':''}"><div class="stat-label">${p.name}</div><div class="stat-value">${p.score}</div><div class="stat-sub">${p.pct}% correct</div></div>`;});
@@ -2005,20 +2104,6 @@ function toggleLb(name){
       const rows=document.querySelectorAll('#lb-rows > div');
       rows.forEach(row=>{
         if(row.textContent.includes(name)){
-          row.scrollIntoView({behavior:'smooth',block:'start'});
-        }
-      });
-    },50);
-  }
-}
-function toggleH2H(key){
-  lbExpanded['h2h_'+key]=!lbExpanded['h2h_'+key];
-  renderH2H();
-  if(lbExpanded['h2h_'+key]){
-    setTimeout(()=>{
-      const rows=document.querySelectorAll('#h2h-body > div');
-      rows.forEach(row=>{
-        if(row.innerHTML.includes(key.split('|||')[0])||row.innerHTML.includes(key.split('|||')[1])){
           row.scrollIntoView({behavior:'smooth',block:'start'});
         }
       });
@@ -2243,8 +2328,6 @@ function renderH2H(){
   }).join('');
 }
 
-function nameRivalry(key){const inp=document.getElementById('rn-'+key.replace(/[^a-z0-9]/gi,'_'));if(!inp)return;const n=inp.value.trim();if(!n)return;h2h[key].rivalryName=n;lsSet('gb_h2h',h2h);renderH2H();}
-
 function renderYearReview(){
   const el=document.getElementById('yr-body'),year=new Date().getFullYear();
   const yg=gameHistory.filter(g=>g.date&&g.date.includes(String(year)));
@@ -2276,11 +2359,7 @@ function renderSettings(){
   if(rl)rl.innerHTML=roster.length
     ?roster.map((name,i)=>`<div class="settings-row"><div class="settings-label">${name}</div><button class="btn-danger" style="width:auto;padding:6px 12px;margin:0;font-size:11px" onclick="deleteRosterPlayer(${i})">DELETE</button></div>`).join('')
     :`<div style="font-size:11px;color:var(--subtext);padding:8px 0">No saved players yet.</div>`;
-  const hw=document.getElementById('hist-wins-editor');
-  if(hw)hw.innerHTML=!roster.length?`<div style="font-size:11px;color:var(--subtext);padding:8px 0">Add players to roster first.</div>`:roster.map(name=>{
-    const n=historicalWins[name]||0;
-    return`<div class="settings-row"><div class="settings-label">${name}</div><div style="display:flex;align-items:center;gap:10px"><button onclick="adjHW('${name}',-1)" style="width:32px;height:32px;border:1.5px solid var(--border);border-radius:3px;background:var(--card);color:var(--text);font-size:18px;cursor:pointer;font-family:'Courier New',monospace">−</button><span style="font-size:18px;font-weight:700;color:var(--text);min-width:28px;text-align:center">${n}</span><button onclick="adjHW('${name}',1)" style="width:32px;height:32px;border:1.5px solid var(--border);border-radius:3px;background:var(--card);color:var(--text);font-size:18px;cursor:pointer;font-family:'Courier New',monospace">+</button></div></div>`;
-  }).join('');
+
 }
 function toggleDark(){settings.dark=!settings.dark;document.body.classList.toggle('dark',settings.dark);saveSettings();renderSettings();}
 function toggleHaptic(){settings.haptic=!settings.haptic;saveSettings();renderSettings();}
@@ -2299,7 +2378,6 @@ function deleteRosterPlayer(i){
   if(pw===null)return;
   if(pw!=='iloveyoshi'){alert('Incorrect password.');return;}
   const ent=prompt(`Type "${name}" to confirm deletion:`);if(ent===name){roster.splice(i,1);saveRoster();if(G.screen==='screen-saved-players')renderSavedPlayersPage();else renderSettings();}else if(ent!==null)alert('Name did not match.');}
-function adjHW(name,d){const cur=historicalWins[name]||0,next=cur+d;if(next<0){if(!confirm('Remove a historical win for '+name+'?'))return;}if(next<0)return;historicalWins[name]=next;lsSet('gb_hist_wins',historicalWins);if(G.screen==='screen-settings')renderSettings();else if(G.screen==='screen-hist-wins')renderHistWinsPage();}
 
 function renderSavedPlayersPage(){
   const el=document.getElementById('saved-players-page-list');
@@ -2314,21 +2392,6 @@ function addRosterPlayer2(){
   if(!name||roster.includes(name))return;
   roster.push(name);saveRoster();inp.value='';
   renderSavedPlayersPage();
-}
-
-function renderHistWinsPage(){
-  const hw=document.getElementById('hist-wins-page-editor');
-  if(!hw)return;
-  if(!roster.length){hw.innerHTML=`<div class="empty-state">NO SAVED PLAYERS<br>Add players in Settings first.</div>`;return;}
-  hw.innerHTML=roster.map(name=>{
-    const n=historicalWins[name]||0;
-    return`<div class="settings-row"><div class="settings-label">${name}</div>
-      <div style="display:flex;align-items:center;gap:10px">
-        <button onclick="adjHW('${name}',-1)" style="width:36px;height:36px;border:1.5px solid var(--border);border-radius:3px;background:var(--card);color:var(--text);font-size:20px;cursor:pointer;font-family:'Courier New',monospace">−</button>
-        <span style="font-size:22px;font-weight:700;color:var(--text);min-width:36px;text-align:center">${n}</span>
-        <button onclick="adjHW('${name}',1)" style="width:36px;height:36px;border:1.5px solid var(--border);border-radius:3px;background:var(--card);color:var(--text);font-size:20px;cursor:pointer;font-family:'Courier New',monospace">+</button>
-      </div></div>`;
-  }).join('');
 }
 
 function renderAddHistGame(){
