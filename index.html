@@ -577,6 +577,11 @@ if('serviceWorker' in navigator){
 
 
     <div class="settings-section">
+      <div class="section-label">Share</div>
+      <button class="btn-secondary" style="margin-top:0" onclick="shareGuessball()">SHARE GUESS BALL →</button>
+    </div>
+
+    <div class="settings-section">
       <div class="section-label">Year in review</div>
       <button class="btn-secondary" style="margin-top:0" onclick="goTo('screen-yr')">VIEW YEAR IN REVIEW →</button>
     </div>
@@ -585,7 +590,7 @@ if('serviceWorker' in navigator){
       <button class="btn-secondary" style="margin-top:0" onclick="goTo('screen-data-tools')">DATA TOOLS →</button>
       <button class="btn-danger" onclick="clearActiveGame()">CLEAR ACTIVE GAME</button>
     </div>
-    <div style="text-align:center;padding:16px 0;font-size:10px;color:var(--subtext);letter-spacing:.08em">GUESS BALL v1.6.8</div>
+    <div style="text-align:center;padding:16px 0;font-size:10px;color:var(--subtext);letter-spacing:.08em">GUESS BALL v1.7.0</div>
   </div>
 </div>
 
@@ -1989,6 +1994,15 @@ function renderStatsDeep(){
   if(p.highlight&&Math.abs(p.highlight.pts)>0)html+=`<div class="info-box">🌟 Highlight: <strong>${oLabel(p.highlight.outcome)}</strong> in ${p.highlight.isBottom?'Bot':'Top'} ${p.highlight.inning}</div>`;
   document.getElementById('stats-deep').innerHTML=html;
 }
+function shareGuessball(){
+  const msg='Play Guess Ball — a live baseball prediction game. Add to your home screen at zachj1000.github.io/guessball';
+  if(navigator.share){
+    navigator.share({title:'Guess Ball',text:msg}).catch(()=>{});
+  } else {
+    navigator.clipboard.writeText(msg).then(()=>alert('Link copied!')).catch(()=>alert(msg));
+  }
+}
+
 function shareStats(){
   const stats=G.finalStats;if(!stats||stats.length<2)return;
   const sorted=[...stats].sort((a,b)=>b.score-a.score);
@@ -2723,7 +2737,8 @@ async function loadData(){
   const loadEl=document.createElement('div');
   loadEl.id='fb-loading';
   loadEl.style.cssText='position:fixed;inset:0;background:var(--bg);z-index:999;display:flex;align-items:center;justify-content:center;font-family:Courier New,monospace;font-size:13px;color:var(--subtext);letter-spacing:.08em;font-weight:700';
-  loadEl.textContent='LOADING...';
+  const loadMsgs=['Mowing the outfield...','Chalking the foul lines...','Warming up the bullpen...','Filling the rosin bag...','Dragging the infield...','Polishing the trophy case...','Checking the radar gun...','Dusting off home plate...','Untangling the batting cage net...','Adjusting the scoreboard...','Tightening the cleats...','Waving runners home...','Arguing with the umpire...','Eating a hot dog...','Taking the signs from third...'];
+  loadEl.textContent=loadMsgs[Math.floor(Math.random()*loadMsgs.length)];
   document.body.appendChild(loadEl);
   try{
     if(!db)throw new Error('Firebase not available');
