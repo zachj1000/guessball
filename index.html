@@ -447,7 +447,7 @@ if('serviceWorker' in navigator){
 <div class="screen" id="screen-scoreboard">
   <div class="screen-head">
     <div class="sh-left"><button class="back-btn" onclick="back()">←</button>
-      <div><div class="sh-title">SCOREBOARD</div><div class="sh-tag" id="sb-tag"></div></div>
+      <div style="min-width:0"><div class="sh-title">SCOREBOARD</div><div class="sh-tag" id="sb-tag" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:160px"></div></div>
     </div>
     <div class="sh-right"><div class="outs-row" id="sb-outs"></div><button class="icon-btn" onclick="undoLast()">UNDO</button><button class="icon-btn" onclick="openModal('rules-modal')">RULES</button><button class="icon-btn" onclick="goTo('screen-settings')">⚙</button></div>
   </div>
@@ -585,7 +585,7 @@ if('serviceWorker' in navigator){
       <button class="btn-secondary" style="margin-top:0" onclick="goTo('screen-data-tools')">DATA TOOLS →</button>
       <button class="btn-danger" onclick="clearActiveGame()">CLEAR ACTIVE GAME</button>
     </div>
-    <div style="text-align:center;padding:16px 0;font-size:10px;color:var(--subtext);letter-spacing:.08em">GUESS BALL v1.6.4</div>
+    <div style="text-align:center;padding:16px 0;font-size:10px;color:var(--subtext);letter-spacing:.08em">GUESS BALL v1.6.6</div>
   </div>
 </div>
 
@@ -1452,6 +1452,8 @@ function openHistModal(pIdx){
   const total=log.reduce((s,e)=>s+e.pts,0);
   const ci=G.confInGame[pIdx]||{correct:0,total:0};
   const cRec=`${ci.correct}W — ${ci.total-ci.correct}L`;
+  const playerName=G.players[pIdx];
+  const gameAchs=(G.playerAchievements&&G.playerAchievements[playerName])||[];
   let html=`<div class="hist-row" style="font-weight:700;border-bottom:2px solid var(--border);padding-bottom:8px;margin-bottom:4px"><span>TOTAL</span><span class="hist-pts ${total>=0?'pos':'neg'}">${total>0?'+':''}${total} pts</span></div>`;
   const entries=Object.entries(byOutcome).sort((a,b)=>b[1].pts-a[1].pts);
   if(entries.length){html+=`<div style="font-size:9px;letter-spacing:.08em;color:var(--subtext);text-transform:uppercase;padding:8px 0 4px">Outcomes</div>`;html+=entries.map(([oc,d])=>`<div class="hist-row"><span>${oLabel(oc)} ×${d.count}</span><span class="hist-pts pos">+${d.pts} pts</span></div>`).join('');}
@@ -1603,8 +1605,7 @@ function checkMidGameAch(outcome,deltas,runs){
     // cleanup_hitter: correct call on HR with 4+ runs
     if(scored&&outcome==='home_run'&&runs>=4)awardAchievement('cleanup_hitter',true,name);
 
-    // perfect_confidence: all confidence calls correct so far (min 1)
-    if(ci.total>=1&&ci.correct===ci.total)awardAchievement('perfect_confidence',true,name);
+
 
     // lightning_rod: 3 HBPs correct in one game
     const hbpCorrect=G.atBatLog.filter(e=>e.playerIdx===i&&e.correct&&e.outcome==='hbp').length;
@@ -1755,6 +1756,12 @@ function finishEndGame(){
   // sniper: 70%+ accuracy (min 10 picks)
   stats.forEach((p,i)=>{
     if(p.pct>=70&&p.totalPicks>=10)awardAchievement('sniper',false,p.name);
+  });
+
+  // perfect_confidence: all confidence calls correct (min 3)
+  G.players.forEach((name,i)=>{
+    const ci=G.confInGame[i]||{correct:0,total:0};
+    if(ci.total>=3&&ci.correct===ci.total)awardAchievement('perfect_confidence',false,name);
   });
 
   // blowout: win by 30+
@@ -1943,7 +1950,24 @@ function renderStatsPage(){
   html+=`<div class="section-label">Summary</div><div class="stats-summary">`;
   stats.forEach(p=>{html+=`<div class="stat-card${p.name===winner.name?' leader':''}"><div class="stat-label">${p.name}</div><div class="stat-value">${p.score}</div><div class="stat-sub">${p.pct}% correct</div></div>`;});
   html+=`</div><div class="section-label">Player breakdown</div><div class="player-tab-row">${stats.map((p,i)=>`<button class="player-tab${i===statsDeepIdx?' active':''}" onclick="setStatsTab(${i})">${p.name}</button>`).join('')}</div><div id="stats-deep"></div>`;
-  if(G.gameAchievements&&G.gameAchievements.length){html+=`<div class="section-label" style="margin-top:16px">Achievements earned</div><div class="ach-icon-bar">`;G.gameAchievements.forEach(id=>{const a=ACHIEVEMENTS.find(x=>x.id===id);if(a)html+=`<div class="ach-icon" title="${a.name}">${a.icon}</div>`;});html+=`</div>`;}
+  if(G.gameAchievements&&G.gameAchievements.length){
+    html+=`<div class="section-label" style="margin-top:16px">Achievements earned</div><div style="display:flex;flex-direction:column;gap:4px">`;
+    G.gameAchievements.forEach(id=>{
+      const a=ACHIEVEMENTS.find(x=>x.id===id);if(!a)return;
+      // find who earned it
+      const earners=[];
+      G.players.forEach(name=>{if((G.playerAchievements&&G.playerAchievements[name]||[]).includes(id))earners.push(name);});
+      html+=`<div style="display:flex;align-items:flex-start;gap:8px;background:var(--card);border:1px solid var(--border);border-radius:3px;padding:6px 10px">
+        <div style="font-size:18px;flex-shrink:0">${a.icon}</div>
+        <div style="flex:1">
+          <div style="font-size:11px;font-weight:700;color:var(--text)">${a.name}</div>
+          <div style="font-size:10px;color:var(--subtext);font-weight:600">${a.desc}</div>
+          ${earners.length?`<div style="font-size:10px;font-weight:700;color:var(--ink);opacity:.6;margin-top:2px">${earners.join(' · ')}</div>`:''}
+        </div>
+      </div>`;
+    });
+    html+=`</div>`;
+  }
   html+=`<div class="section-divider"></div><button class="btn-secondary" onclick="shareStats()" style="margin-top:0">⬆ SHARE GAME CARD</button>`;
   html+=`<div class="trash-talk"><div class="trash-talk-text" id="trash-text">${generateTrash()}</div><button class="trash-reroll" onclick="rerollTrash()">↺ NEW LINE</button></div>`;
   html+=`<div class="section-divider"></div><button class="btn-primary" onclick="goHome()">BACK TO HOME →</button>`;
@@ -1962,15 +1986,87 @@ function renderStatsDeep(){
   document.getElementById('stats-deep').innerHTML=html;
 }
 function shareStats(){
-  const stats=G.finalStats;if(!stats)return;
+  const stats=G.finalStats;if(!stats||stats.length<2)return;
   const sorted=[...stats].sort((a,b)=>b.score-a.score);
-  let text=`⚾ GUESS BALL — ${new Date().toLocaleDateString()}\n`;
-  if(G.awayTeam)text+=`${G.awayTeam} ${G.awayScore} — ${G.homeScore} ${G.homeTeam}\n`;
-  if(G.stadium)text+=`📍 ${G.stadium}\n`;
-  text+=`\n`+sorted.map(p=>`${p.name}: ${p.score} pts (${p.pct}%)`).join('\n');
-  text+=`\n\nWinner: ${sorted[0].name} 🏆\n${generateTrash()}`;
-  if(navigator.share)navigator.share({title:'Guess Ball Results',text});
-  else navigator.clipboard.writeText(text).then(()=>alert('Copied!'));
+  const winner=sorted[0],loser=sorted[sorted.length-1];
+  const margin=winner.score-loser.score;
+  const isTie=!!G.isTie;
+  const date=new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+
+  // Build share card HTML
+  const achs=G.gameAchievements||[];
+  const achHTML=achs.length?`
+    <div style="border-top:1px dashed rgba(0,61,165,.2);margin:8px 0"></div>
+    <div style="font-size:7px;font-weight:700;color:#1A56C4;letter-spacing:.1em;text-transform:uppercase;margin-bottom:5px">ACHIEVEMENTS EARNED</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px">
+      ${achs.map(id=>{
+        const a=ACHIEVEMENTS.find(x=>x.id===id);if(!a)return'';
+        const earners=[];
+        stats.forEach(p=>{if((G.playerAchievements&&G.playerAchievements[p.name]||[]).includes(id))earners.push(p.name);});
+        return`<div style="display:flex;align-items:flex-start;gap:5px;background:#F0EDE3;border-radius:3px;padding:5px 6px">
+          <div style="font-size:12px;flex-shrink:0;line-height:1.3">${a.icon}</div>
+          <div>
+            <div style="font-size:8px;font-weight:700;color:#003DA5;line-height:1.2">${a.name}</div>
+            <div style="font-size:7px;color:#1A56C4;font-weight:600;line-height:1.3;margin-top:1px">${a.desc}</div>
+            ${earners.length?`<div style="font-size:7px;font-weight:700;color:#003DA5;opacity:.45;margin-top:2px">${earners.join(' · ')}</div>`:''}
+          </div>
+        </div>`;
+      }).join('')}
+    </div>`:'';
+
+  const notesHTML=G.gameNotes?`<div style="font-size:8px;color:#003DA5;font-weight:600;font-style:italic;background:#F0EDE3;border-radius:3px;padding:5px 8px;margin-bottom:8px;line-height:1.5">📝 ${G.gameNotes}</div>`:'';
+
+  const playerCard=(p,isWinner)=>`
+    <div style="background:${isWinner?'#F0EDE3':'#F7F5EE'};padding:8px 10px">
+      <div style="font-size:7px;font-weight:700;color:#1A56C4;letter-spacing:.1em;text-transform:uppercase;margin-bottom:2px">${isWinner?'Winner':'Loser'}</div>
+      <div style="font-size:11px;font-weight:700;color:#003DA5;margin-bottom:2px">${isWinner?'⚾ ':''} ${p.name}</div>
+      <div style="font-size:26px;font-weight:700;color:#003DA5;line-height:1;margin-bottom:5px">${p.score}</div>
+      <div style="display:flex;justify-content:space-between;border-top:1px dashed rgba(0,61,165,.15);padding-top:3px;margin-top:3px"><span style="font-size:7px;color:#1A56C4;font-weight:700">ACCURACY</span><span style="font-size:8px;font-weight:700;color:#003DA5">${p.pct}%</span></div>
+      <div style="display:flex;justify-content:space-between;border-top:1px dashed rgba(0,61,165,.15);padding-top:3px;margin-top:3px"><span style="font-size:7px;color:#1A56C4;font-weight:700">PICKS</span><span style="font-size:8px;font-weight:700;color:#003DA5">${p.totalPicks} · ${p.correct}✓</span></div>
+      <div style="display:flex;justify-content:space-between;border-top:1px dashed rgba(0,61,165,.15);padding-top:3px;margin-top:3px"><span style="font-size:7px;color:#1A56C4;font-weight:700">CONF</span><span style="font-size:8px;font-weight:700;color:#003DA5">${p.confCorrect}W ${p.confWrong}L</span></div>
+    </div>`;
+
+  const cardHTML=`<div style="width:320px;background:#F7F5EE;font-family:'Courier New',monospace;border-radius:4px;overflow:hidden;border:1.5px solid #003DA5">
+    <div style="background:#003DA5;padding:12px 14px 10px">
+      <div style="font-size:8px;font-weight:700;color:rgba(255,255,255,.4);letter-spacing:.12em;margin-bottom:2px">⚾ GUESS BALL</div>
+      <div style="font-size:18px;font-weight:700;color:#fff;letter-spacing:.03em">${isTie?'Tie game!':`${winner.name} wins!`}</div>
+      <div style="font-size:8px;color:rgba(255,255,255,.5);margin-top:2px;font-weight:600">${G.awayTeam&&G.homeTeam?G.awayTeam+' vs '+G.homeTeam+' · ':''}${G.stadium?G.stadium+' · ':''}${date}</div>
+    </div>
+    <div style="padding:10px 12px">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1px;background:rgba(0,61,165,.2);border:1.5px solid rgba(0,61,165,.2);border-radius:3px;overflow:hidden;margin-bottom:8px">
+        ${playerCard(winner,true)}${playerCard(loser,false)}
+      </div>
+      ${notesHTML}
+      ${achHTML}
+      <div style="font-size:7px;color:rgba(0,61,165,.35);font-weight:700;letter-spacing:.08em;text-align:center;padding-top:7px;border-top:1px dashed rgba(0,61,165,.15)">zachj1000.github.io/guessball</div>
+    </div>
+  </div>`;
+
+  // Render to canvas via html2canvas, then share
+  const wrapper=document.createElement('div');
+  wrapper.style.cssText='position:fixed;left:-9999px;top:0;';
+  wrapper.innerHTML=cardHTML;
+  document.body.appendChild(wrapper);
+
+  import('https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.esm.js').then(mod=>{
+    const h2c=mod.default;
+    h2c(wrapper.firstChild,{scale:2,backgroundColor:'#F7F5EE',logging:false}).then(canvas=>{
+      wrapper.remove();
+      canvas.toBlob(blob=>{
+        if(!blob)return;
+        const file=new File([blob],'guessball-results.png',{type:'image/png'});
+        if(navigator.canShare&&navigator.canShare({files:[file]})){
+          navigator.share({files:[file],title:'Guess Ball Results'}).catch(()=>{});
+        } else {
+          // fallback: download
+          const url=URL.createObjectURL(blob);
+          const a=document.createElement('a');a.href=url;a.download='guessball-results.png';
+          document.body.appendChild(a);a.click();document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+        }
+      },'image/png');
+    }).catch(()=>{wrapper.remove();alert('Could not generate image.');});
+  }).catch(()=>{wrapper.remove();alert('Share not available.');});
 }
 function goHome(){lsDel('gb_game');NAV=[];G.screen='screen-title';G.players=[];G.atBatLog=[];G.finalStats=null;G.mvpBadge=null;render();}
 
