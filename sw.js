@@ -1,4 +1,4 @@
-const CACHE = 'guessball-v1.6.4';
+const CACHE = 'guessball-v1.6.6';
 const ASSETS = ['/guessball/', '/guessball/index.html'];
 
 self.addEventListener('install', e => {
