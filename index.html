@@ -197,6 +197,12 @@ select.player-input{cursor:pointer}
 .yr-stat-lbl{font-size:10px;color:var(--subtext);letter-spacing:.08em;text-transform:uppercase;margin-top:4px;font-weight:700}
 .num-inp{width:56px;padding:9px;border:1.5px solid var(--border);border-radius:3px;font-family:'Courier New',monospace;font-size:16px;font-weight:700;color:var(--text);background:var(--card);text-align:center;-webkit-appearance:none}
 .ptr-hint{text-align:center;padding:10px;font-size:10px;color:var(--subtext);letter-spacing:.08em;font-weight:700;display:none}
+.ach-list-item{display:flex;align-items:flex-start;gap:10px;padding:10px 0;border-bottom:1px dashed var(--border);cursor:pointer}
+.ach-list-item.dimmed{opacity:.35}
+.ach-list-icon{font-size:22px;flex-shrink:0;margin-top:1px}
+.ach-list-name{font-size:12px;font-weight:700;color:var(--text);margin-bottom:2px}
+.ach-list-desc-text{font-size:10px;color:var(--subtext);font-weight:600;margin-bottom:4px}
+.ach-list-earners{font-size:10px;font-weight:700;color:var(--ink);opacity:.7;margin-top:3px;display:none}
 .stats-menu-card{display:flex;align-items:center;gap:12px;width:100%;padding:14px;background:var(--card);border:1.5px solid var(--border);border-radius:3px;margin-bottom:10px;cursor:pointer;text-align:left;font-family:'Courier New',monospace}
 .stats-menu-card:active{transform:scale(.98)}
 .smc-icon{width:36px;height:36px;background:var(--ink);border-radius:3px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
@@ -599,7 +605,7 @@ if('serviceWorker' in navigator){
       <button class="btn-secondary" style="margin-top:0" onclick="goTo('screen-data-tools')">DATA TOOLS →</button>
       <button class="btn-danger" onclick="clearActiveGame()">CLEAR ACTIVE GAME</button>
     </div>
-    <div style="text-align:center;padding:16px 0;font-size:10px;color:var(--subtext);letter-spacing:.08em">GUESS BALL v1.7.6</div>
+    <div style="text-align:center;padding:16px 0;font-size:10px;color:var(--subtext);letter-spacing:.08em">GUESS BALL v1.7.8</div>
   </div>
 </div>
 
@@ -2923,10 +2929,18 @@ function renderAchievementsList(){
   </div>
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
     ${achViewTab==='mine'?`<select onchange="setAchPlayer(this.value)" style="flex:1;margin-right:10px;padding:7px 10px;font-family:'Courier New',monospace;font-size:11px;font-weight:700;color:var(--text);background:var(--card);border:1.5px solid var(--border);border-radius:3px">${allPlayers.map(p=>`<option value="${p}" ${p===myName?'selected':''}>${p}</option>`).join('')}</select>`:'<div></div>'}
-    <div onclick="toggleAchHide()" style="cursor:pointer;font-size:18px;opacity:.5">${achHideUnearned?'🔒':'🔓'}</div>
+
   </div>`;
 
-  ACHIEVEMENTS.forEach(a=>{
+  // Sort: earned first, then unearned
+  const sortedAchs=[...ACHIEVEMENTS].sort((a,b)=>{
+    const aEarned=achViewTab==='all'?(groupEarned[a.id]?.length>0):myEarned.has(a.id);
+    const bEarned=achViewTab==='all'?(groupEarned[b.id]?.length>0):myEarned.has(b.id);
+    if(aEarned&&!bEarned)return -1;
+    if(!aEarned&&bEarned)return 1;
+    return 0;
+  });
+  sortedAchs.forEach(a=>{
     const earnedBy=groupEarned[a.id]||[];
     const iHaveIt=myEarned.has(a.id);
     const groupHasIt=earnedBy.length>0;
@@ -2938,24 +2952,24 @@ function renderAchievementsList(){
     }
 
     const dimmed=achViewTab==='all'?!groupHasIt:!iHaveIt;
-    const earnersText=achViewTab==='all'&&earnedBy.length?earnedBy.map(e=>`${e.name}${e.date?' · '+e.date:''}`).join('<br>'):'';
-    const myDate=achViewTab==='mine'?((leaderboard[myName]?.achievements||[]).find(x=>x.id===a.id)?.date||''):'';
+    const earnersArr=achViewTab==='all'&&earnedBy.length?earnedBy.map(e=>`${e.name}${e.date?' · '+e.date:''}`)
+      :achViewTab==='mine'&&iHaveIt?[(myName||'')+(((leaderboard[myName]?.achievements||[]).find(x=>x.id===a.id)?.date)||'')]
+      :[];
+    const earnersHTML=earnersArr.length?earnersArr.join('<br>'):'Not yet earned';
 
-    html+=`<div class="ach-list-item${dimmed?' dimmed':''}" onclick="toggleAchDet('${a.id}')">
-      <div class="ach-list-icon${dimmed?'':' earned'}">${a.icon}</div>
+    html+=`<div class="ach-list-item${dimmed?' dimmed':''}" onclick="toggleAchEarners('${a.id}')">
+      <div class="ach-list-icon">${a.icon}</div>
       <div style="flex:1">
         <div class="ach-list-name">${a.name}</div>
-        <div class="ach-list-desc" id="ad-${a.id}" style="display:none">
-          <div style="margin-top:3px">${a.desc}</div>
-          ${earnersText?`<div style="margin-top:4px;font-size:9px;color:var(--ink);font-weight:700;opacity:.7">${earnersText}</div>`:''}
-          ${myDate?`<div style="margin-top:3px;font-size:9px;color:var(--subtext)">Earned ${myDate}</div>`:''}
-        </div>
+        <div class="ach-list-desc-text">${a.desc}</div>
+        <div class="ach-list-earners" id="ae-${a.id}">${earnersHTML}</div>
       </div>
     </div>`;
   });
 
   el.innerHTML=html;
 }
+
 
 function setAchTab(tab){achViewTab=tab;renderAchievementsList();}
 function setAchPlayer(name){lsSet('gb_me',name);renderAchievementsList();}
@@ -2979,11 +2993,16 @@ function toggleAchDet(id){
   if(!el)return;
   const opening=el.style.display==='none';
   el.style.display=opening?'block':'none';
-  if(opening){
-    setTimeout(()=>{
-      el.scrollIntoView({behavior:'smooth',block:'nearest'});
-    },50);
-  }
+  if(opening){setTimeout(()=>el.scrollIntoView({behavior:'smooth',block:'nearest'}),50);}
+}
+function toggleAchEarners(id){
+  const el=document.getElementById('ae-'+id);
+  if(!el)return;
+  const opening=el.style.display==='none'||el.style.display==='';
+  // close all others
+  document.querySelectorAll('.ach-list-earners').forEach(e=>e.style.display='none');
+  el.style.display=opening?'block':'none';
+  if(opening){setTimeout(()=>el.scrollIntoView({behavior:'smooth',block:'nearest'}),50);}
 }
 
 function renderTutorial(){
