@@ -590,7 +590,7 @@ if('serviceWorker' in navigator){
       <button class="btn-secondary" style="margin-top:0" onclick="goTo('screen-data-tools')">DATA TOOLS →</button>
       <button class="btn-danger" onclick="clearActiveGame()">CLEAR ACTIVE GAME</button>
     </div>
-    <div style="text-align:center;padding:16px 0;font-size:10px;color:var(--subtext);letter-spacing:.08em">GUESS BALL v1.7.0</div>
+    <div style="text-align:center;padding:16px 0;font-size:10px;color:var(--subtext);letter-spacing:.08em">GUESS BALL v1.7.2</div>
   </div>
 </div>
 
@@ -1459,7 +1459,19 @@ function openHistModal(pIdx){
   const cRec=`${ci.correct}W — ${ci.total-ci.correct}L`;
   const playerName=G.players[pIdx];
   const gameAchs=(G.playerAchievements&&G.playerAchievements[playerName])||[];
-  let html=`<div class="hist-row" style="font-weight:700;border-bottom:2px solid var(--border);padding-bottom:8px;margin-bottom:4px"><span>TOTAL</span><span class="hist-pts ${total>=0?'pos':'neg'}">${total>0?'+':''}${total} pts</span></div>`;
+  const streak=G.consecutiveCorrect[pIdx]||0;
+  const bestAB=log.filter(e=>!e.ghost&&e.pts>0).reduce((b,e)=>e.pts>b.pts?e:b,{pts:-1,outcome:''});
+  let html=`<div class="deep-stat-grid" style="margin-bottom:10px">
+    <div class="deep-stat"><div class="deep-stat-val">${log.filter(e=>!e.ghost).length}</div><div class="deep-stat-lbl">Picks</div></div>
+    <div class="deep-stat"><div class="deep-stat-val">${correct}</div><div class="deep-stat-lbl">Correct</div></div>
+    <div class="deep-stat"><div class="deep-stat-val">${pct}%</div><div class="deep-stat-lbl">Accuracy</div></div>
+    <div class="deep-stat"><div class="deep-stat-val">${G.scores[pIdx]||0}</div><div class="deep-stat-lbl">Points</div></div>
+    <div class="deep-stat"><div class="deep-stat-val">${ci.correct}W ${ci.total-ci.correct}L</div><div class="deep-stat-lbl">Confidence</div></div>
+    <div class="deep-stat"><div class="deep-stat-val">${p3}</div><div class="deep-stat-lbl">P3 Bonuses</div></div>
+    <div class="deep-stat"><div class="deep-stat-val">${streak}</div><div class="deep-stat-lbl">Cur. Streak</div></div>
+    ${bestAB.pts>0?`<div class="deep-stat"><div class="deep-stat-val" style="font-size:11px">${oLabel(bestAB.outcome)}</div><div class="deep-stat-lbl">Best AB</div></div>`:'<div class="deep-stat"></div>'}
+  </div>
+  <div class="hist-row" style="font-weight:700;border-bottom:2px solid var(--border);padding-bottom:8px;margin-bottom:4px"><span>TOTAL</span><span class="hist-pts ${total>=0?'pos':'neg'}">${total>0?'+':''}${total} pts</span></div>`;
   const entries=Object.entries(byOutcome).sort((a,b)=>b[1].pts-a[1].pts);
   if(entries.length){html+=`<div style="font-size:9px;letter-spacing:.08em;color:var(--subtext);text-transform:uppercase;padding:8px 0 4px">Outcomes</div>`;html+=entries.map(([oc,d])=>`<div class="hist-row"><span>${oLabel(oc)} ×${d.count}</span><span class="hist-pts pos">+${d.pts} pts</span></div>`).join('');}
   if(ccPts||cwPts||p3Pts){html+=`<div style="font-size:9px;letter-spacing:.08em;color:var(--subtext);text-transform:uppercase;padding:8px 0 4px">Bonuses</div>`;if(p3Pts)html+=`<div class="hist-row"><span>Pick 3 bonus</span><span class="hist-pts pos">+${p3Pts} pts</span></div>`;if(ccPts)html+=`<div class="hist-row"><span>Confidence correct</span><span class="hist-pts pos">+${ccPts} pts</span></div>`;if(cwPts)html+=`<div class="hist-row"><span>Confidence wrong</span><span class="hist-pts neg">−${cwPts} pts</span></div>`;}
@@ -1678,12 +1690,18 @@ function processAchQueue(){
   haptic('ach');playSound('ach');
   const ex=document.querySelector('.ach-popup');if(ex)ex.remove();
   const el=document.createElement('div');el.className='ach-popup';
-  el.innerHTML=`<div class="ach-popup-icon">${a.icon}</div><div style="flex:1"><div class="ach-popup-player">${playerName?playerName.toUpperCase():''}</div><div class="ach-popup-title">ACHIEVEMENT UNLOCKED</div><div class="ach-popup-name">${a.name}</div><div class="ach-popup-desc">${a.desc}</div></div>`;
+  el.innerHTML=`<div class="ach-popup-icon">${a.icon}</div><div style="flex:1"><div class="ach-popup-player">${playerName?playerName.toUpperCase():''}</div><div class="ach-popup-title">ACHIEVEMENT UNLOCKED</div><div class="ach-popup-name">${a.name}</div><div class="ach-popup-desc">${a.desc}</div></div><div class="ach-popup-arrow" id="ach-arrow" style="opacity:0;font-size:18px;color:rgba(255,255,255,.7);align-self:flex-end;margin-bottom:2px">→</div>`;
+  el.onclick=()=>{
+    if(!el.dataset.ready)return;
+    el.style.opacity='0';el.style.transform='translateY(-10px)';
+    setTimeout(()=>{el.remove();setTimeout(processAchQueue,200);},280);
+  };
   document.body.appendChild(el);
   setTimeout(()=>{
-    el.style.opacity='0';el.style.transform='translateY(-10px)';
-    setTimeout(()=>{el.remove();setTimeout(processAchQueue,200);},300);
-  },2800);
+    el.dataset.ready='1';
+    const arrow=document.getElementById('ach-arrow');
+    if(arrow){arrow.style.transition='opacity 0.3s';arrow.style.opacity='1';}
+  },1500);
 }
 function checkMilestones(name,lb){
   const date=new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
@@ -1959,19 +1977,17 @@ function renderStatsPage(){
   html+=`<div class="section-label">Summary</div><div class="stats-summary">`;
   stats.forEach(p=>{html+=`<div class="stat-card${p.name===winner.name?' leader':''}"><div class="stat-label">${p.name}</div><div class="stat-value">${p.score}</div><div class="stat-sub">${p.pct}% correct</div></div>`;});
   html+=`</div><div class="section-label">Player breakdown</div><div class="player-tab-row">${stats.map((p,i)=>`<button class="player-tab${i===statsDeepIdx?' active':''}" onclick="setStatsTab(${i})">${p.name}</button>`).join('')}</div><div id="stats-deep"></div>`;
-  if(G.gameAchievements&&G.gameAchievements.length){
+  // achievements filtered to selected player
+  const playerAchs=(G.playerAchievements&&G.playerAchievements[playerName])||[];
+  if(playerAchs.length){
     html+=`<div class="section-label" style="margin-top:16px">Achievements earned</div><div style="display:flex;flex-direction:column;gap:4px">`;
-    G.gameAchievements.forEach(id=>{
+    playerAchs.forEach(id=>{
       const a=ACHIEVEMENTS.find(x=>x.id===id);if(!a)return;
-      // find who earned it
-      const earners=[];
-      G.players.forEach(name=>{if((G.playerAchievements&&G.playerAchievements[name]||[]).includes(id))earners.push(name);});
       html+=`<div style="display:flex;align-items:flex-start;gap:8px;background:var(--card);border:1px solid var(--border);border-radius:3px;padding:6px 10px">
         <div style="font-size:18px;flex-shrink:0">${a.icon}</div>
         <div style="flex:1">
           <div style="font-size:11px;font-weight:700;color:var(--text)">${a.name}</div>
           <div style="font-size:10px;color:var(--subtext);font-weight:600">${a.desc}</div>
-          ${earners.length?`<div style="font-size:10px;font-weight:700;color:var(--ink);opacity:.6;margin-top:2px">${earners.join(' · ')}</div>`:''}
         </div>
       </div>`;
     });
@@ -2189,7 +2205,7 @@ function renderLeaderboard(){
           <div class="deep-stat"><div class="deep-stat-val">${s.totalConfCorrect||0}</div><div class="deep-stat-lbl">Conf. correct</div></div>
           <div class="deep-stat"><div class="deep-stat-val">${s.longestStreak||0}</div><div class="deep-stat-lbl">Best streak</div></div>
         </div>
-        ${achs.length?`<div class="section-label">Achievements</div><div class="ach-icon-bar">${achs.map(a=>{const ach=ACHIEVEMENTS.find(x=>x.id===a.id);return ach?`<div class="ach-icon" title="${ach.name}">${ach.icon}</div>`:''}).join('')}</div>`:''}
+        ${achs.length?`<div class="section-label">Achievements</div><div class="ach-icon-bar" id="ach-bar-${name.replace(/\s/g,'_')}" style="display:flex;flex-direction:row;overflow-x:auto;gap:6px;padding:4px 0 6px;scrollbar-width:none;-webkit-overflow-scrolling:touch">${achs.map(a=>{const ach=ACHIEVEMENTS.find(x=>x.id===a.id);if(!ach)return'';return`<div onclick="toggleAchExpand(this,'${name.replace(/'/g,"\'")}','${a.id}')" style="flex-shrink:0;cursor:pointer;background:var(--card);border:1.5px solid var(--border);border-radius:3px;padding:4px 7px;display:flex;align-items:center;gap:5px;transition:all 0.2s"><span style="font-size:16px">${ach.icon}</span><span class="ach-expand-text" style="display:none;font-size:9px;font-weight:700;color:var(--text);max-width:120px;line-height:1.3">${ach.name}<br><span style="font-weight:600;color:var(--subtext)">${ach.desc}</span></span></div>`;}).join('')}</div>`:''}
       </div>`:''}
     </div>`;
   }).join('');
@@ -2208,6 +2224,16 @@ function emptyStateHTML(title, sub){
     <div style="font-size:12px;font-weight:700;color:var(--subtext);letter-spacing:.06em;text-transform:uppercase;margin-bottom:4px">${title}</div>
     <div style="font-size:10px;color:var(--subtext);font-weight:600;opacity:.7">${sub}</div>
   </div>`;
+}
+
+function toggleAchExpand(el,name,id){
+  const txt=el.querySelector('.ach-expand-text');
+  if(!txt)return;
+  const isOpen=txt.style.display!=='none';
+  // close all others in this bar
+  const bar=document.getElementById('ach-bar-'+name.replace(/\s/g,'_'));
+  if(bar)bar.querySelectorAll('.ach-expand-text').forEach(t=>t.style.display='none');
+  txt.style.display=isOpen?'none':'inline';
 }
 
 function toggleLb(name){
@@ -2263,9 +2289,6 @@ function toggleHist(idx){
 }
 function deleteHistGame(idx){
   const g=gameHistory[idx];
-  const pw=prompt('Enter password to delete this game:');
-  if(pw===null)return;
-  if(pw!=='iloveyoshi'){alert('Incorrect password.');return;}
   if(!confirm('Delete this game ('+g.date+', '+g.winner+' wins)? This cannot be undone.'))return;
 
   // roll back leaderboard stats
@@ -2488,9 +2511,6 @@ function saveH2H(){fbSet('h2h',h2h);lsSet('gb_h2h',h2h);}
 function addRosterPlayer(){const inp=document.getElementById('new-player-inp');const name=inp.value.trim();if(!name||roster.includes(name))return;roster.push(name);saveRoster();inp.value='';renderSettings();}
 function deleteRosterPlayer(i){
   const name=roster[i];
-  const pw=prompt('Enter password to delete '+name+':');
-  if(pw===null)return;
-  if(pw!=='iloveyoshi'){alert('Incorrect password.');return;}
   const ent=prompt(`Type "${name}" to confirm deletion:`);if(ent===name){roster.splice(i,1);saveRoster();if(G.screen==='screen-saved-players')renderSavedPlayersPage();else renderSettings();}else if(ent!==null)alert('Name did not match.');}
 
 function renderSavedPlayersPage(){
@@ -2646,6 +2666,19 @@ function renderAchievementsList(){
   });
   document.getElementById('ach-list-body').innerHTML=html;
 }
+function showAchTooltip(e,name,desc){
+  e.stopPropagation();
+  const ex=document.querySelector('.ach-tooltip');if(ex)ex.remove();
+  const tip=document.createElement('div');tip.className='ach-tooltip';
+  tip.innerHTML=`<div style="font-size:11px;font-weight:700;color:var(--text);margin-bottom:2px">${name}</div><div style="font-size:10px;color:var(--subtext);font-weight:600">${desc}</div>`;
+  tip.style.cssText='position:fixed;background:var(--card);border:1.5px solid var(--border);border-radius:4px;padding:8px 10px;max-width:200px;z-index:999;box-shadow:0 2px 12px rgba(0,0,0,.15)';
+  const r=e.target.getBoundingClientRect();
+  tip.style.left=Math.min(r.left,window.innerWidth-210)+'px';
+  tip.style.top=(r.bottom+6)+'px';
+  document.body.appendChild(tip);
+  setTimeout(()=>document.addEventListener('click',()=>tip.remove(),{once:true}),50);
+}
+
 function toggleAchDet(id){
   const el=document.getElementById('ad-'+id);
   if(!el)return;
