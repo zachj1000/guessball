@@ -599,7 +599,7 @@ if('serviceWorker' in navigator){
       <button class="btn-secondary" style="margin-top:0" onclick="goTo('screen-data-tools')">DATA TOOLS →</button>
       <button class="btn-danger" onclick="clearActiveGame()">CLEAR ACTIVE GAME</button>
     </div>
-    <div style="text-align:center;padding:16px 0;font-size:10px;color:var(--subtext);letter-spacing:.08em">GUESS BALL v1.7.4</div>
+    <div style="text-align:center;padding:16px 0;font-size:10px;color:var(--subtext);letter-spacing:.08em">GUESS BALL v1.7.6</div>
   </div>
 </div>
 
@@ -735,7 +735,7 @@ function clone(x){return JSON.parse(JSON.stringify(x));}
 function inningLabel(n,bot){return(bot?'▼ Bot':'▲ Top')+' '+n;}
 
 const ACHIEVEMENTS=[
-  {id:'dead_eye',icon:'🎯',name:'Dead Eye',desc:'80%+ accuracy in a single game (min 10 picks)'},
+  {id:'dead_eye',icon:'🎯',name:'Dead Eye',desc:'55%+ accuracy in a single game (min 10 picks)'},
   {id:'on_fire',icon:'🔥',name:'On Fire',desc:'5 correct picks in a row'},
   {id:'wave',icon:'🌊',name:'Wave',desc:'7 correct picks in a row'},
   {id:'unstoppable',icon:'💯',name:'Unstoppable',desc:'10 correct picks in a row'},
@@ -752,7 +752,7 @@ const ACHIEVEMENTS=[
   {id:'hubris',icon:'🤡',name:'Hubris',desc:'Call confidence on home run and be wrong'},
   {id:'hat_trick',icon:'🎰',name:'Hat Trick',desc:'Complete Pick 3 bonus 3 times in one game'},
   {id:'clairvoyant',icon:'🔮',name:'Clairvoyant',desc:'Complete Pick 3 bonus 3 games in a row'},
-  {id:'prophet',icon:'✨',name:'Prophet',desc:'Pick 3 in first half-inning of 5 different games'},
+  {id:'prophet',icon:'✨',name:'Prophet',desc:'Get a Pick 3 bonus in the very first half-inning of a game'},
   {id:'unicorn',icon:'🌈',name:'Unicorn',desc:'Correctly pick a triple'},
   {id:'take_your_base',icon:'🦶',name:'Take Your Base',desc:'Correctly pick HBP'},
   {id:'speed_demon',icon:'💨',name:'Speed Demon',desc:'Correctly pick stolen base 3 times in one game'},
@@ -768,16 +768,16 @@ const ACHIEVEMENTS=[
   {id:'rivalry',icon:'🩸',name:'Rivalry',desc:'Play 25 games against the same opponent'},
   {id:'dominant',icon:'📊',name:'Dominant',desc:'Win 70%+ vs one opponent (min 10 games)'},
   {id:'blood_feud',icon:'⚔️',name:'Blood Feud',desc:'Play 50 games against the same opponent'},
-  {id:'champion',icon:'🏆',name:'Champion',desc:'Win your first game'},
+  {id:'champion',icon:'🏆',name:'Champion',desc:'Win a game'},
   {id:'perfect_game',icon:'🎳',name:'Perfect Game',desc:'Win without ever losing priority'},
   {id:'comeback_kid',icon:'📈',name:'Comeback Kid',desc:'Win after being down 10+ points'},
   {id:'good_sport',icon:'🤝',name:'Good Sport',desc:'Lose by 20+ points'},
   {id:'comfortable',icon:'😎',name:'Comfortable',desc:'Win by 20+ points'},
   {id:'sweating',icon:'🫣',name:'Sweating',desc:'Win by 1 point'},
-  {id:'walk_off',icon:'🎬',name:'Walk Off',desc:'Correctly pick last at-bat with confidence'},
+  {id:'walk_off',icon:'🎬',name:'Walk Off',desc:'Be losing, score with confidence, and take the lead'},
   {id:'dynasty',icon:'🔱',name:'Dynasty',desc:'Win 5 games in a row against same opponent'},
   {id:'season_ticket',icon:'🏟️',name:'Season Ticket',desc:'Play 20+ games total'},
-  {id:'ghost',icon:'👻',name:'Ghost',desc:'Opponent scores 0 in a half-inning you scored 5+'},
+  {id:'ghost',icon:'👻',name:'Ghost',desc:'Opponent scores 0 in a half-inning you scored 7+'},
   {id:'win_1',icon:'🥉',name:'First Blood',desc:'Win your first game'},
   {id:'win_5',icon:'🥈',name:'5 Wins',desc:'Win 5 games all time'},
   {id:'win_10',icon:'🥇',name:'10 Wins',desc:'Win 10 games all time'},
@@ -831,13 +831,13 @@ const ACHIEVEMENTS=[
   {id:'conf_10',icon:'💪',name:'10 Conf. Correct',desc:'10 confidence correct all time'},
   {id:'conf_25',icon:'💪',name:'25 Conf. Correct',desc:'25 confidence correct all time'},
   {id:'conf_50',icon:'💪',name:'50 Conf. Correct',desc:'50 confidence correct all time'},
-  {id:'streak_5',icon:'🔥',name:'5 Streak',desc:'5 correct in a row all time'},
-  {id:'streak_10',icon:'🔥',name:'10 Streak',desc:'10 correct in a row all time'},
-  {id:'streak_20',icon:'🔥',name:'20 Streak',desc:'20 correct in a row all time'},
+  {id:'streak_5',icon:'🔥',name:'5 Streak',desc:'5 correct picks in a row in one game'},
+  {id:'streak_10',icon:'🔥',name:'10 Streak',desc:'10 correct picks in a row in one game'},
+  {id:'streak_20',icon:'🔥',name:'20 Streak',desc:'20 correct picks in a row in one game'},
   {id:'hr_hat_trick',icon:'🎩',name:'HR Hat Trick',desc:'Correctly call 3 home runs in one game'},
   {id:'cold_start',icon:'🧊',name:'Cold Start',desc:'Score 0 in the first inning then come back to win'},
   {id:'cleanup_hitter',icon:'💥',name:'Cleanup Hitter',desc:'Correctly call a home run with 4+ runs scored'},
-  {id:'perfect_confidence',icon:'💎',name:'Perfect Confidence',desc:'Correct on every confidence call you make (min 1)'},
+  {id:'perfect_confidence',icon:'💎',name:'Perfect Confidence',desc:'Correct on every confidence call you make (min 3)'},
   {id:'untouchable',icon:'🛡️',name:'Untouchable',desc:'Hold priority for 3 full innings without losing it'},
   {id:'lightning_rod',icon:'⚡',name:'Lightning Rod',desc:'Correctly call 3 HBPs in one game'},
   {id:'small_ball_specialist',icon:'📦',name:'Small Ball Specialist',desc:'Correctly call 3 bunts in one game'},
@@ -2092,6 +2092,11 @@ async function joinGroup(code){
 
   // Reload data from group Firebase
   await loadGroupData();
+  // Ask who they are if not set
+  if(!lsGet('gb_me')){
+    const me=prompt('What is your name in this group? (used for "My Achievements")');
+    if(me)lsSet('gb_me',me.trim());
+  }
   render();
   alert('Joined '+groupName+'!');
 }
@@ -2182,6 +2187,10 @@ async function createGroup(name){
     await db.ref('groups/'+code+'/meta').set({name,created:new Date().toISOString()});
     currentGroup={code,name,isRoot:false};
     lsSet('gb_group',currentGroup);
+    if(!lsGet('gb_me')){
+      const me=prompt('What is your name? (used for "My Achievements")');
+      if(me)lsSet('gb_me',me.trim());
+    }
     await mergeSoloDataToGroup();
     render();
     alert('Group created! Your code is: '+code+'\n\nShare this code with friends to join.');
@@ -2421,7 +2430,7 @@ function renderLeaderboard(){
           <div class="deep-stat"><div class="deep-stat-val">${s.totalConfCorrect||0}</div><div class="deep-stat-lbl">Conf. correct</div></div>
           <div class="deep-stat"><div class="deep-stat-val">${s.longestStreak||0}</div><div class="deep-stat-lbl">Best streak</div></div>
         </div>
-        ${achs.length?`<div class="section-label">Achievements</div><div class="ach-icon-bar" id="ach-bar-${name.replace(/\s/g,'_')}" style="display:flex;flex-direction:row;overflow-x:auto;gap:6px;padding:4px 0 6px;scrollbar-width:none;-webkit-overflow-scrolling:touch">${achs.map(a=>{const ach=ACHIEVEMENTS.find(x=>x.id===a.id);if(!ach)return'';return`<div onclick="toggleAchExpand(this,'${name.replace(/'/g,"\'")}','${a.id}')" style="flex-shrink:0;cursor:pointer;background:var(--card);border:1.5px solid var(--border);border-radius:3px;padding:4px 7px;display:flex;align-items:center;gap:5px;transition:all 0.2s"><span style="font-size:16px">${ach.icon}</span><span class="ach-expand-text" style="display:none;font-size:9px;font-weight:700;color:var(--text);max-width:120px;line-height:1.3">${ach.name}<br><span style="font-weight:600;color:var(--subtext)">${ach.desc}</span></span></div>`;}).join('')}</div>`:''}
+        ${achs.length?`<div class="section-label">Achievements</div><div id="ach-bar-${name}" style="display:flex;flex-direction:row;overflow-x:auto;gap:6px;padding:4px 0 6px;scrollbar-width:none;-webkit-overflow-scrolling:touch">${buildAchBar(achs,name)}</div>`:''  }
       </div>`:''}
     </div>`;
   }).join('');
@@ -2442,12 +2451,25 @@ function emptyStateHTML(title, sub){
   </div>`;
 }
 
-function toggleAchExpand(el,name,id){
+function buildAchBar(achs,name){
+  return achs.map(a=>{
+    const id=typeof a==='string'?a:(a.id||'');
+    const ach=ACHIEVEMENTS.find(x=>x.id===id);
+    if(!ach)return'';
+    const safeName=name.replace(/'/g,"\\'");
+    return'<div onclick="toggleAchExpand(this,\''+safeName+'\',\''+id+'\',event)" style="flex-shrink:0;cursor:pointer;background:var(--card);border:1.5px solid var(--border);border-radius:3px;padding:4px 7px;display:flex;align-items:center;gap:5px">'
+      +'<span style="font-size:16px">'+ach.icon+'</span>'
+      +'<span class="ach-expand-text" style="display:none;font-size:9px;font-weight:700;color:var(--text);max-width:120px;line-height:1.3">'+ach.name+'<br><span style="font-weight:600;color:var(--subtext)">'+ach.desc+'</span></span>'
+      +'</div>';
+  }).join('');
+}
+
+function toggleAchExpand(el,name,id,e){
+  if(e)e.stopPropagation();
   const txt=el.querySelector('.ach-expand-text');
   if(!txt)return;
   const isOpen=txt.style.display!=='none';
-  // close all others in this bar
-  const bar=document.getElementById('ach-bar-'+name.replace(/\s/g,'_'));
+  const bar=document.getElementById('ach-bar-'+name);
   if(bar)bar.querySelectorAll('.ach-expand-text').forEach(t=>t.style.display='none');
   txt.style.display=isOpen?'none':'inline';
 }
@@ -2868,7 +2890,7 @@ function saveHistoricalGame(){
 }
 
 function renderAchievementsList(){
-  const el=document.getElementById('achievements-body');if(!el)return;
+  const el=document.getElementById('ach-list-body');if(!el)return;
   // Build who-has-what from leaderboard
   const groupEarned={};
   Object.entries(leaderboard||{}).forEach(([name,lb])=>{
@@ -2877,15 +2899,30 @@ function renderAchievementsList(){
       groupEarned[a.id].push({name,date:a.date});
     });
   });
-  // My achievements
-  const myName=roster[0]||null; // best guess - could be improved
+  // Build combined player list - local roster first, then group
+  const localRoster=lsGet('gb_roster')||[];
+  const allPlayers=[...new Set([...localRoster,...Object.keys(leaderboard||{})])];
+
+  // Default to player with most games in local leaderboard
+  const storedMe=lsGet('gb_me');
+  let myName=storedMe||null;
+  if(!myName&&allPlayers.length){
+    let maxGames=0;
+    allPlayers.forEach(name=>{
+      const lb=leaderboard[name];
+      const g=(lb?.games||0);
+      if(g>maxGames){maxGames=g;myName=name;}
+    });
+  }
+
   const myEarned=new Set(Object.keys(groupEarned).filter(id=>groupEarned[id].some(e=>e.name===myName)));
 
   let html=`<div style="display:flex;gap:0;margin-bottom:14px;border:1.5px solid var(--border);border-radius:3px;overflow:hidden">
     <button onclick="setAchTab('all')" style="flex:1;padding:10px;font-family:'Courier New',monospace;font-size:11px;font-weight:700;letter-spacing:.06em;border:none;cursor:pointer;background:${achViewTab==='all'?'var(--ink)':'var(--card)'};color:${achViewTab==='all'?'#fff':'var(--text)'}">ALL</button>
     <button onclick="setAchTab('mine')" style="flex:1;padding:10px;font-family:'Courier New',monospace;font-size:11px;font-weight:700;letter-spacing:.06em;border:none;cursor:pointer;background:${achViewTab==='mine'?'var(--ink)':'var(--card)'};color:${achViewTab==='mine'?'#fff':'var(--text)'}">MINE</button>
   </div>
-  <div style="display:flex;justify-content:flex-end;margin-bottom:10px">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+    ${achViewTab==='mine'?`<select onchange="setAchPlayer(this.value)" style="flex:1;margin-right:10px;padding:7px 10px;font-family:'Courier New',monospace;font-size:11px;font-weight:700;color:var(--text);background:var(--card);border:1.5px solid var(--border);border-radius:3px">${allPlayers.map(p=>`<option value="${p}" ${p===myName?'selected':''}>${p}</option>`).join('')}</select>`:'<div></div>'}
     <div onclick="toggleAchHide()" style="cursor:pointer;font-size:18px;opacity:.5">${achHideUnearned?'🔒':'🔓'}</div>
   </div>`;
 
@@ -2921,7 +2958,21 @@ function renderAchievementsList(){
 }
 
 function setAchTab(tab){achViewTab=tab;renderAchievementsList();}
+function setAchPlayer(name){lsSet('gb_me',name);renderAchievementsList();}
 function toggleAchHide(){achHideUnearned=!achHideUnearned;renderAchievementsList();}
+
+function showAchTooltip(e,name,desc){
+  e.stopPropagation();
+  const ex=document.querySelector('.ach-tooltip');if(ex)ex.remove();
+  const tip=document.createElement('div');tip.className='ach-tooltip';
+  tip.innerHTML='<div style="font-size:11px;font-weight:700;color:var(--text);margin-bottom:2px">'+name+'</div><div style="font-size:10px;color:var(--subtext);font-weight:600">'+desc+'</div>';
+  tip.style.cssText='position:fixed;background:var(--card);border:1.5px solid var(--border);border-radius:4px;padding:8px 10px;max-width:200px;z-index:999;box-shadow:0 2px 12px rgba(0,0,0,.15)';
+  const r=e.target.getBoundingClientRect();
+  tip.style.left=Math.min(r.left,window.innerWidth-210)+'px';
+  tip.style.top=(r.bottom+6)+'px';
+  document.body.appendChild(tip);
+  setTimeout(()=>document.addEventListener('click',()=>tip.remove(),{once:true}),50);
+}
 
 function toggleAchDet(id){
   const el=document.getElementById('ad-'+id);
