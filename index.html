@@ -326,6 +326,7 @@ if('serviceWorker' in navigator){
       <button class="menu-btn primary" onclick="newGameFromTitle()"><span>NEW GAME</span><span>→</span></button>
       <button class="menu-btn" onclick="goTo('screen-stats-menu')"><span>STATS</span><span>→</span></button>
       <button class="menu-btn" onclick="goTo('screen-achievements')"><span>ACHIEVEMENTS</span><span>→</span></button>
+      <button class="menu-btn" onclick="goTo('screen-groups')"><span>GROUPS</span><span>→</span></button>
       <button class="menu-btn" onclick="goTo('screen-settings')"><span>SETTINGS</span><span>→</span></button>
       <button class="menu-btn" onclick="goTo('screen-tutorial')"><span>HOW TO PLAY</span><span>→</span></button>
     </div>
@@ -552,6 +553,14 @@ if('serviceWorker' in navigator){
   <div class="screen-body" id="yr-body"></div>
 </div>
 
+<!-- GROUPS -->
+<div class="screen" id="screen-groups">
+  <div class="screen-head">
+    <div class="sh-left"><button class="back-btn" onclick="back()">←</button><div class="sh-title">GROUPS</div></div>
+  </div>
+  <div class="screen-body" id="groups-body"></div>
+</div>
+
 <!-- SETTINGS -->
 <div class="screen" id="screen-settings">
   <div class="screen-head">
@@ -590,7 +599,7 @@ if('serviceWorker' in navigator){
       <button class="btn-secondary" style="margin-top:0" onclick="goTo('screen-data-tools')">DATA TOOLS →</button>
       <button class="btn-danger" onclick="clearActiveGame()">CLEAR ACTIVE GAME</button>
     </div>
-    <div style="text-align:center;padding:16px 0;font-size:10px;color:var(--subtext);letter-spacing:.08em">GUESS BALL v1.7.2</div>
+    <div style="text-align:center;padding:16px 0;font-size:10px;color:var(--subtext);letter-spacing:.08em">GUESS BALL v1.7.4</div>
   </div>
 </div>
 
@@ -862,6 +871,8 @@ let leaderboard={},gameHistory=[],roster=[],h2h={};
 let settings={dark:false,haptic:true,sound:true,wake:false};
 let allTimeStreak=0;
 let statsDeepIdx=0,lbExpanded={},histExpanded={},trashIdx=0,tutPage=0;
+let currentGroup=null; // {code, name, isRoot} or null if solo
+let achViewTab='all',achHideUnearned=false;
 let wakeLock=null;
 
 function lsGet(k){try{const v=localStorage.getItem(k);return v?JSON.parse(v):null;}catch(e){return null;}}
@@ -1065,6 +1076,7 @@ function render(dir){
   if(G.screen==='screen-h2h')renderH2H();
   if(G.screen==='screen-yr')renderYearReview();
   if(G.screen==='screen-settings')renderSettings();
+  if(G.screen==='screen-groups')renderGroups();
   if(G.screen==='screen-saved-players')renderSavedPlayersPage();
   if(G.screen==='screen-hist-wins')renderHistWinsPage();
   if(G.screen==='screen-add-hist-game')renderAddHistGame();
@@ -1131,12 +1143,12 @@ function renderSetup(){
     <div class="input-row">
       <select class="player-input" style="flex:1" onchange="onPlayerSelect(${i},this.value)">
         <option value="">PLAYER ${i+1}</option>
-        ${roster.map(r=>`<option value="${r}" ${p===r?'selected':''}>${r}</option>`).join('')}
+        ${(()=>{const local=lsGet('gb_roster')||[];const combined=[...new Set([...local,...roster])];return combined.map(r=>`<option value="${r}" ${p===r?'selected':''}>${r}</option>`).join('');})()}
         <option value="__custom__">Type name...</option>
       </select>
       ${G.players.length>2?`<button class="btn-secondary" style="width:auto;padding:10px 12px;margin:0" onclick="removePlayer(${i})">✕</button>`:''}
     </div>
-    <div id="ci-${i}" style="display:${p&&!roster.includes(p)?'block':'none'};margin-bottom:8px">
+    <div id="ci-${i}" style="display:${p&&!(()=>{const local=lsGet('gb_roster')||[];return [...new Set([...local,...roster])].includes(p);})()&&p?'block':'none'};margin-bottom:8px">
       <input class="player-input" placeholder="TYPE NAME" value="${p&&!roster.includes(p)?p:''}" oninput="G.players[${i}]=this.value;checkStart()">
     </div>`).join('');
   document.getElementById('add-player-wrap').innerHTML=G.players.length<3?`<button class="btn-secondary" onclick="addPlayer()">+ ADD PLAYER</button>`:'';
@@ -2010,6 +2022,210 @@ function renderStatsDeep(){
   if(p.highlight&&Math.abs(p.highlight.pts)>0)html+=`<div class="info-box">🌟 Highlight: <strong>${oLabel(p.highlight.outcome)}</strong> in ${p.highlight.isBottom?'Bot':'Top'} ${p.highlight.inning}</div>`;
   document.getElementById('stats-deep').innerHTML=html;
 }
+// ── GROUP FUNCTIONS ──
+function getGroupRef(path){
+  if(!currentGroup)return null;
+  if(currentGroup.isRoot)return db?db.ref(path):null;
+  return db?db.ref('groups/'+currentGroup.code+'/'+path):null;
+}
+
+function renderGroups(){
+  const body=document.getElementById('groups-body');
+  if(!body)return;
+  if(currentGroup){
+    body.innerHTML=`
+      <div style="text-align:center;padding:20px 0 16px">
+        <div style="font-size:36px;margin-bottom:8px">⚾</div>
+        <div style="font-size:18px;font-weight:700;color:var(--text);letter-spacing:.04em;margin-bottom:4px">${currentGroup.name}</div>
+        <div style="font-size:11px;color:var(--subtext);font-weight:600;letter-spacing:.08em;margin-bottom:4px">GROUP CODE</div>
+        <div style="font-size:22px;font-weight:700;color:var(--ink);letter-spacing:.12em;margin-bottom:20px">${currentGroup.code}</div>
+      </div>
+      <button class="btn-primary" onclick="inviteToGroup()" style="margin-bottom:10px">INVITE TO GROUP →</button>
+      <button class="btn-secondary" onclick="changeGroup()" style="margin-bottom:10px">CHANGE GROUP →</button>
+      <button class="btn-danger" onclick="leaveGroup()" style="margin-top:4px">LEAVE GROUP</button>`;
+  } else {
+    body.innerHTML=`
+      <div style="text-align:center;padding:24px 0 20px">
+        <div style="font-size:36px;margin-bottom:10px">👥</div>
+        <div style="font-size:16px;font-weight:700;color:var(--text);letter-spacing:.04em;margin-bottom:8px">PLAY WITH FRIENDS</div>
+        <div style="font-size:12px;color:var(--subtext);font-weight:600;line-height:1.6;margin-bottom:24px">Join a group to share stats,<br>leaderboards and achievements<br>with your friends and family.</div>
+      </div>
+      <button class="btn-primary" onclick="showJoinGroup()" style="margin-bottom:10px">JOIN GROUP →</button>
+      <button class="btn-secondary" onclick="showCreateGroup()">CREATE GROUP →</button>`;
+  }
+}
+
+function showJoinGroup(){
+  const code=prompt('Enter group code:');
+  if(!code)return;
+  joinGroup(code.trim().toUpperCase());
+}
+
+async function joinGroup(code){
+  if(!db){alert('No connection available.');return;}
+  // Check if this is the root group
+  let isRoot=false;
+  try{
+    const rootCode=await db.ref('config/rootGroupCode').once('value').then(s=>s.val());
+    if(rootCode&&code===rootCode.toUpperCase()){isRoot=true;}
+  }catch(e){}
+
+  // Get group name
+  let groupName=code;
+  try{
+    if(isRoot){
+      const n=await db.ref('config/rootGroupName').once('value').then(s=>s.val());
+      if(n)groupName=n;
+    } else {
+      const n=await db.ref('groups/'+code+'/meta/name').once('value').then(s=>s.val());
+      if(!n){alert('Group not found. Check the code and try again.');return;}
+      groupName=n;
+    }
+  }catch(e){alert('Could not connect. Try again.');return;}
+
+  // Save group to localStorage
+  currentGroup={code,name:groupName,isRoot};
+  lsSet('gb_group',currentGroup);
+
+  // Merge solo data into group
+  await mergeSoloDataToGroup();
+
+  // Reload data from group Firebase
+  await loadGroupData();
+  render();
+  alert('Joined '+groupName+'!');
+}
+
+async function mergeSoloDataToGroup(){
+  if(!currentGroup||!db)return;
+  const soloHistory=lsGet('gb_hist')||[];
+  const soloLb=lsGet('gb_lb')||{};
+  const soloRoster=lsGet('gb_roster')||[];
+  if(!soloHistory.length&&!Object.keys(soloLb).length)return;
+
+  try{
+    const ref=getGroupRef('');
+    // Merge leaderboard - skip names that already exist in group
+    const groupLb=await ref.child('leaderboard').once('value').then(s=>s.val())||{};
+    const mergedLb={...groupLb};
+    Object.entries(soloLb).forEach(([name,stats])=>{
+      if(mergedLb[name]){
+        // Merge stats
+        mergedLb[name].games=(mergedLb[name].games||0)+(stats.games||0);
+        mergedLb[name].wins=(mergedLb[name].wins||0)+(stats.wins||0);
+        mergedLb[name].totalPts=(mergedLb[name].totalPts||0)+(stats.totalPts||0);
+        mergedLb[name].totalPicks=(mergedLb[name].totalPicks||0)+(stats.totalPicks||0);
+        mergedLb[name].totalCorrect=(mergedLb[name].totalCorrect||0)+(stats.totalCorrect||0);
+        mergedLb[name].totalP3=(mergedLb[name].totalP3||0)+(stats.totalP3||0);
+        mergedLb[name].totalConfCorrect=(mergedLb[name].totalConfCorrect||0)+(stats.totalConfCorrect||0);
+        mergedLb[name].totalConfWrong=(mergedLb[name].totalConfWrong||0)+(stats.totalConfWrong||0);
+        mergedLb[name].longestStreak=Math.max(mergedLb[name].longestStreak||0,stats.longestStreak||0);
+        // Merge achievements (no duplicates)
+        const existing=(mergedLb[name].achievements||[]).map(a=>a.id);
+        (stats.achievements||[]).forEach(a=>{if(!existing.includes(a.id))mergedLb[name].achievements.push(a);});
+      } else {
+        mergedLb[name]=stats;
+      }
+    });
+    await ref.child('leaderboard').set(mergedLb);
+
+    // Merge game history
+    const groupHist=await ref.child('gameHistory').once('value').then(s=>s.val())||{};
+    const existingIds=new Set(Object.values(groupHist).map(g=>g.date+'_'+g.players?.map(p=>p.name).join('_')));
+    const mergedHist={...groupHist};
+    soloHistory.forEach((g,i)=>{
+      const key=g.date+'_'+g.players?.map(p=>p.name).join('_');
+      if(!existingIds.has(key)){mergedHist['solo_'+Date.now()+'_'+i]=g;}
+    });
+    await ref.child('gameHistory').set(mergedHist);
+
+    // Merge roster
+    const groupRoster=await ref.child('roster').once('value').then(s=>s.val())||[];
+    const mergedRoster=[...new Set([...groupRoster,...soloRoster])];
+    await ref.child('roster').set(mergedRoster);
+
+  }catch(e){console.warn('Merge failed:',e);}
+}
+
+async function loadGroupData(){
+  if(!currentGroup||!db)return;
+  try{
+    const ref=getGroupRef('');
+    const[lb,hist,rst,h2hData]=await Promise.all([
+      ref.child('leaderboard').once('value').then(s=>s.val()),
+      ref.child('gameHistory').once('value').then(s=>s.val()),
+      ref.child('roster').once('value').then(s=>s.val()),
+      ref.child('h2h').once('value').then(s=>s.val()),
+    ]);
+    leaderboard=lb||{};
+    gameHistory=hist?Object.values(hist):[];
+    roster=rst?(Array.isArray(rst)?rst:Object.values(rst)):[];
+    h2h=h2hData||{};
+    lsSet('gb_lb',leaderboard);lsSet('gb_hist',gameHistory);lsSet('gb_roster',roster);lsSet('gb_h2h',h2h);
+  }catch(e){console.warn('loadGroupData failed:',e);}
+}
+
+function showCreateGroup(){
+  const name=prompt('Enter a name for your group:');
+  if(!name)return;
+  createGroup(name.trim());
+}
+
+async function createGroup(name){
+  if(!db){alert('No connection available.');return;}
+  // Generate unique 6-char code
+  const chars='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let code='';
+  for(let i=0;i<6;i++)code+=chars[Math.floor(Math.random()*chars.length)];
+
+  try{
+    await db.ref('groups/'+code+'/meta').set({name,created:new Date().toISOString()});
+    currentGroup={code,name,isRoot:false};
+    lsSet('gb_group',currentGroup);
+    await mergeSoloDataToGroup();
+    render();
+    alert('Group created! Your code is: '+code+'\n\nShare this code with friends to join.');
+  }catch(e){alert('Could not create group. Try again.');}
+}
+
+function inviteToGroup(){
+  if(!currentGroup)return;
+  const msg='Join my Guess Ball group "'+currentGroup.name+'"!\nGroup code: '+currentGroup.code+'\n\nDownload at zachj1000.github.io/guessball and tap Groups → Join Group';
+  if(navigator.share){navigator.share({title:'Join my Guess Ball group',text:msg}).catch(()=>{});}
+  else{navigator.clipboard.writeText(msg).then(()=>alert('Invite copied!')).catch(()=>alert(msg));}
+}
+
+function changeGroup(){
+  if(!confirm('Leave current group and join a different one?'))return;
+  currentGroup=null;lsSet('gb_group',null);
+  renderGroups();
+  setTimeout(()=>showJoinGroup(),100);
+}
+
+function leaveGroup(){
+  if(!confirm('Leave '+currentGroup.name+'? Your data will stay in the group but you will switch to solo mode.'))return;
+  currentGroup=null;lsSet('gb_group',null);
+  // Reload solo localStorage data
+  leaderboard=lsGet('gb_lb')||{};
+  gameHistory=lsGet('gb_hist')||[];
+  roster=lsGet('gb_roster')||[];
+  h2h=lsGet('gb_h2h')||{};
+  render();
+}
+
+// ── DELETE WITH FIREBASE PASSWORD ──
+async function checkDeletePassword(){
+  // Only enforce password for root group
+  if(!currentGroup||!currentGroup.isRoot)return true;
+  const entered=prompt('Enter password to delete:');
+  if(!entered)return false;
+  try{
+    const stored=await db.ref('config/deletePassword').once('value').then(s=>s.val());
+    if(stored&&entered===stored)return true;
+    alert('Incorrect password.');return false;
+  }catch(e){alert('Could not verify password.');return false;}
+}
+
 function shareGuessball(){
   const msg='Play Guess Ball — a live baseball prediction game. Add to your home screen at zachj1000.github.io/guessball';
   if(navigator.share){
@@ -2287,8 +2503,9 @@ function toggleHist(idx){
     },50);
   }
 }
-function deleteHistGame(idx){
+async function deleteHistGame(idx){
   const g=gameHistory[idx];
+  if(!await checkDeletePassword())return;
   if(!confirm('Delete this game ('+g.date+', '+g.winner+' wins)? This cannot be undone.'))return;
 
   // roll back leaderboard stats
@@ -2509,8 +2726,9 @@ function saveRoster(){
 }
 function saveH2H(){fbSet('h2h',h2h);lsSet('gb_h2h',h2h);}
 function addRosterPlayer(){const inp=document.getElementById('new-player-inp');const name=inp.value.trim();if(!name||roster.includes(name))return;roster.push(name);saveRoster();inp.value='';renderSettings();}
-function deleteRosterPlayer(i){
+async function deleteRosterPlayer(i){
   const name=roster[i];
+  if(!await checkDeletePassword())return;
   const ent=prompt(`Type "${name}" to confirm deletion:`);if(ent===name){roster.splice(i,1);saveRoster();if(G.screen==='screen-saved-players')renderSavedPlayersPage();else renderSettings();}else if(ent!==null)alert('Name did not match.');}
 
 function renderSavedPlayersPage(){
@@ -2650,34 +2868,60 @@ function saveHistoricalGame(){
 }
 
 function renderAchievementsList(){
-  const emap={};
-  Object.entries(leaderboard).forEach(([name,s])=>{(s.achievements||[]).forEach(a=>{if(!emap[a.id])emap[a.id]=[];emap[a.id].push({player:name,date:a.date});});});
-  let html='';
+  const el=document.getElementById('achievements-body');if(!el)return;
+  // Build who-has-what from leaderboard
+  const groupEarned={};
+  Object.entries(leaderboard||{}).forEach(([name,lb])=>{
+    (lb.achievements||[]).forEach(a=>{
+      if(!groupEarned[a.id])groupEarned[a.id]=[];
+      groupEarned[a.id].push({name,date:a.date});
+    });
+  });
+  // My achievements
+  const myName=roster[0]||null; // best guess - could be improved
+  const myEarned=new Set(Object.keys(groupEarned).filter(id=>groupEarned[id].some(e=>e.name===myName)));
+
+  let html=`<div style="display:flex;gap:0;margin-bottom:14px;border:1.5px solid var(--border);border-radius:3px;overflow:hidden">
+    <button onclick="setAchTab('all')" style="flex:1;padding:10px;font-family:'Courier New',monospace;font-size:11px;font-weight:700;letter-spacing:.06em;border:none;cursor:pointer;background:${achViewTab==='all'?'var(--ink)':'var(--card)'};color:${achViewTab==='all'?'#fff':'var(--text)'}">ALL</button>
+    <button onclick="setAchTab('mine')" style="flex:1;padding:10px;font-family:'Courier New',monospace;font-size:11px;font-weight:700;letter-spacing:.06em;border:none;cursor:pointer;background:${achViewTab==='mine'?'var(--ink)':'var(--card)'};color:${achViewTab==='mine'?'#fff':'var(--text)'}">MINE</button>
+  </div>
+  <div style="display:flex;justify-content:flex-end;margin-bottom:10px">
+    <div onclick="toggleAchHide()" style="cursor:pointer;font-size:18px;opacity:.5">${achHideUnearned?'🔒':'🔓'}</div>
+  </div>`;
+
   ACHIEVEMENTS.forEach(a=>{
-    const earners=emap[a.id]||[],earned=earners.length>0;
-    html+=`<div class="ach-list-row" onclick="toggleAchDet('${a.id}')">
-      <div class="ach-list-icon${earned?'':' ach-icon-locked'}">${a.icon}</div>
-      <div style="flex:1"><div class="ach-list-name" style="font-weight:700;${earned?'':'color:var(--subtext)'}">${a.name}</div><div class="ach-list-desc" style="font-weight:600;color:var(--subtext)">${a.desc}</div>${earned?`<div class="ach-list-earned">✓ Earned</div>`:''}</div>
-      <div style="font-size:12px;color:var(--subtext)">▼</div>
-    </div>
-    <div id="ad-${a.id}" style="display:none;padding:6px 12px 10px;background:var(--xpale);border-radius:3px;margin-bottom:6px;font-size:11px;color:var(--subtext)">
-      ${earned?earners.map(e=>`<div style="padding:2px 0">${e.player} — ${e.date}</div>`).join(''):'<div style="opacity:.5">Not yet earned</div>'}
+    const earnedBy=groupEarned[a.id]||[];
+    const iHaveIt=myEarned.has(a.id);
+    const groupHasIt=earnedBy.length>0;
+
+    if(achViewTab==='mine'&&!iHaveIt)return;
+    if(achHideUnearned){
+      if(achViewTab==='all'&&!groupHasIt)return;
+      if(achViewTab==='mine'&&!iHaveIt)return;
+    }
+
+    const dimmed=achViewTab==='all'?!groupHasIt:!iHaveIt;
+    const earnersText=achViewTab==='all'&&earnedBy.length?earnedBy.map(e=>`${e.name}${e.date?' · '+e.date:''}`).join('<br>'):'';
+    const myDate=achViewTab==='mine'?((leaderboard[myName]?.achievements||[]).find(x=>x.id===a.id)?.date||''):'';
+
+    html+=`<div class="ach-list-item${dimmed?' dimmed':''}" onclick="toggleAchDet('${a.id}')">
+      <div class="ach-list-icon${dimmed?'':' earned'}">${a.icon}</div>
+      <div style="flex:1">
+        <div class="ach-list-name">${a.name}</div>
+        <div class="ach-list-desc" id="ad-${a.id}" style="display:none">
+          <div style="margin-top:3px">${a.desc}</div>
+          ${earnersText?`<div style="margin-top:4px;font-size:9px;color:var(--ink);font-weight:700;opacity:.7">${earnersText}</div>`:''}
+          ${myDate?`<div style="margin-top:3px;font-size:9px;color:var(--subtext)">Earned ${myDate}</div>`:''}
+        </div>
+      </div>
     </div>`;
   });
-  document.getElementById('ach-list-body').innerHTML=html;
+
+  el.innerHTML=html;
 }
-function showAchTooltip(e,name,desc){
-  e.stopPropagation();
-  const ex=document.querySelector('.ach-tooltip');if(ex)ex.remove();
-  const tip=document.createElement('div');tip.className='ach-tooltip';
-  tip.innerHTML=`<div style="font-size:11px;font-weight:700;color:var(--text);margin-bottom:2px">${name}</div><div style="font-size:10px;color:var(--subtext);font-weight:600">${desc}</div>`;
-  tip.style.cssText='position:fixed;background:var(--card);border:1.5px solid var(--border);border-radius:4px;padding:8px 10px;max-width:200px;z-index:999;box-shadow:0 2px 12px rgba(0,0,0,.15)';
-  const r=e.target.getBoundingClientRect();
-  tip.style.left=Math.min(r.left,window.innerWidth-210)+'px';
-  tip.style.top=(r.bottom+6)+'px';
-  document.body.appendChild(tip);
-  setTimeout(()=>document.addEventListener('click',()=>tip.remove(),{once:true}),50);
-}
+
+function setAchTab(tab){achViewTab=tab;renderAchievementsList();}
+function toggleAchHide(){achHideUnearned=!achHideUnearned;renderAchievementsList();}
 
 function toggleAchDet(id){
   const el=document.getElementById('ad-'+id);
@@ -2765,6 +3009,7 @@ async function loadData(){
   settings=lsGet('gb_settings')||{dark:false,haptic:true,sound:true,wake:false,hideHistorical:false};
   if(settings.dark)document.body.classList.add('dark');
   allTimeStreak=lsGet('gb_streak')||0;
+  currentGroup=lsGet('gb_group')||null;
   const saved=lsGet('gb_game');
   if(saved&&saved.players&&saved.players.length)G=saved;
   const loadEl=document.createElement('div');
