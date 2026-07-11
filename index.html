@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Guess Ball">
@@ -586,8 +586,8 @@ if('serviceWorker' in navigator){
       <button class="btn-secondary" style="margin-top:0" onclick="goTo('screen-saved-players')">MANAGE SAVED PLAYERS →</button>
     </div>
     <div class="settings-section">
-      <div class="section-label">Historical games (pre-app)</div>
-      <button class="btn-secondary" style="margin-top:0" onclick="goTo('screen-add-hist-game')">ADD HISTORICAL GAME →</button>
+      <div class="section-label">Offline games (pre-app)</div>
+      <button class="btn-secondary" style="margin-top:0" onclick="goTo('screen-add-hist-game')">ADD OFFLINE GAME →</button>
     </div>
 
 
@@ -605,7 +605,7 @@ if('serviceWorker' in navigator){
       <button class="btn-secondary" style="margin-top:0" onclick="goTo('screen-data-tools')">DATA TOOLS →</button>
       <button class="btn-danger" onclick="clearActiveGame()">CLEAR ACTIVE GAME</button>
     </div>
-    <div style="text-align:center;padding:16px 0;font-size:10px;color:var(--subtext);letter-spacing:.08em">GUESS BALL v1.7.8</div>
+    <div style="text-align:center;padding:16px 0;font-size:10px;color:var(--subtext);letter-spacing:.08em">GUESS BALL v1.8.0</div>
   </div>
 </div>
 
@@ -645,10 +645,10 @@ if('serviceWorker' in navigator){
   </div>
 </div>
 
-<!-- ADD HISTORICAL GAME -->
+<!-- ADD OFFLINE GAME -->
 <div class="screen" id="screen-add-hist-game">
   <div class="screen-head">
-    <div class="sh-left"><button class="back-btn" onclick="back()">←</button><div class="sh-title">ADD HISTORICAL GAME</div></div>
+    <div class="sh-left"><button class="back-btn" onclick="back()">←</button><div class="sh-title">ADD OFFLINE GAME</div></div>
   </div>
   <div class="screen-body">
     <div style="font-size:11px;color:var(--subtext);margin-bottom:16px;line-height:1.6">Enter a past game. Winners are inferred from scores and count toward leaderboard standings.</div>
@@ -672,7 +672,7 @@ if('serviceWorker' in navigator){
     <div class="section-label">Game note (optional)</div>
     <input class="player-input" id="hg-notes" placeholder="e.g. Kershaw pitched 7 innings..." style="margin-bottom:16px">
 
-    <button class="btn-primary" id="hg-save-btn" onclick="saveHistoricalGame()">SAVE GAME →</button>
+    <button class="btn-primary" id="hg-save-btn" onclick="saveHistoricalGame()">SAVE OFFLINE GAME →</button>
     <div id="hg-error" style="font-size:11px;color:var(--negative);margin-top:8px;text-align:center"></div>
   </div>
 </div>
@@ -765,11 +765,11 @@ const ACHIEVEMENTS=[
   {id:'small_ball',icon:'⚾',name:'Small Ball',desc:'Correctly pick a bunt'},
   {id:'patient',icon:'🚶',name:'Patient',desc:'Correctly pick 3 walks in one game'},
   {id:'king_of_the_hill',icon:'👑',name:'King of the Hill',desc:'Hold priority for 3 full innings'},
-  {id:'oracle',icon:'🔭',name:'Oracle',desc:'Win priority on 5 consecutive at-bats'},
+  {id:'oracle',icon:'🔭',name:'Oracle',desc:'Hold priority for 5 consecutive at-bats'},
   {id:'priority_hog',icon:'🐷',name:'Priority Hog',desc:'Hold priority for 10+ consecutive at-bats'},
   {id:'payday',icon:'💰',name:'Payday',desc:'Score 20+ pts in a single game'},
   {id:'rocket',icon:'🚀',name:'Rocket',desc:'Score 10+ pts in a single half-inning'},
-  {id:'big_spender',icon:'💸',name:'Big Spender',desc:'Earn 5+ pts on a single at-bat'},
+  {id:'big_spender',icon:'💸',name:'Big Winner',desc:'Earn 5+ pts on a single at-bat'},
   {id:'hot_streak',icon:'🌡️',name:'Hot Streak',desc:'Score points in 10 consecutive at-bats'},
   {id:'rivalry',icon:'🩸',name:'Rivalry',desc:'Play 25 games against the same opponent'},
   {id:'dominant',icon:'📊',name:'Dominant',desc:'Win 70%+ vs one opponent (min 10 games)'},
@@ -780,7 +780,7 @@ const ACHIEVEMENTS=[
   {id:'good_sport',icon:'🤝',name:'Good Sport',desc:'Lose by 20+ points'},
   {id:'comfortable',icon:'😎',name:'Comfortable',desc:'Win by 20+ points'},
   {id:'sweating',icon:'🫣',name:'Sweating',desc:'Win by 1 point'},
-  {id:'walk_off',icon:'🎬',name:'Walk Off',desc:'Be losing, score with confidence, and take the lead'},
+  {id:'walk_off',icon:'🎬',name:'Walk Off',desc:'Be losing and score on the very last play of the game to win'},
   {id:'dynasty',icon:'🔱',name:'Dynasty',desc:'Win 5 games in a row against same opponent'},
   {id:'season_ticket',icon:'🏟️',name:'Season Ticket',desc:'Play 20+ games total'},
   {id:'ghost',icon:'👻',name:'Ghost',desc:'Opponent scores 0 in a half-inning you scored 7+'},
@@ -854,6 +854,8 @@ const ACHIEVEMENTS=[
   {id:'quick_start',icon:'🚀',name:'Quick Start',desc:'Get a Pick 3 bonus in the first half-inning'},
   {id:'dead_heat',icon:'🤝',name:'Dead Heat',desc:'Be tied in score after inning 5 or later'},
   {id:'sniper',icon:'🎯',name:'Sniper',desc:'70%+ accuracy in a single game (min 10 picks)'},
+  {id:'reckless_win',icon:'🎲',name:'Reckless Win',desc:'Get 3+ confidence calls wrong in a game and still win'},
+  {id:'first_p3',icon:'🌟',name:'First Pick 3',desc:'Get your first ever Pick 3 bonus'},
 ];
 
 let G={
@@ -1628,14 +1630,7 @@ function checkMidGameAch(outcome,deltas,runs){
       if(allOthersZero)awardAchievement('ghost',true,name);
     }
 
-    // walk_off: losing before this AB, scored with confidence, now winning
-    if(scored&&G.confidence[i]&&G.lastResult){
-      const prevScores=G.lastResult.scores;
-      const myPrev=prevScores[i]||0;
-      const wasLosing=G.players.every((_,j)=>j===i||(prevScores[j]||0)>=myPrev);
-      const nowWinning=G.players.every((_,j)=>j===i||(G.scores[j]||0)<=(G.scores[i]||0));
-      if(wasLosing&&nowWinning)awardAchievement('walk_off',true,name);
-    }
+
 
     // hr_hat_trick: 3 home runs correct in one game
     const hrCorrect=G.atBatLog.filter(e=>e.playerIdx===i&&e.correct&&e.outcome==='home_run').length;
@@ -1744,7 +1739,7 @@ function checkMilestones(name,lb){
     {id:'hbp_5',c:()=>(oc.hbp||0)>=5},{id:'hbp_15',c:()=>(oc.hbp||0)>=15},{id:'hbp_30',c:()=>(oc.hbp||0)>=30},
     {id:'sb_5',c:()=>(oc.stolen_base||0)>=5},{id:'sb_15',c:()=>(oc.stolen_base||0)>=15},{id:'sb_30',c:()=>(oc.stolen_base||0)>=30},
     {id:'dp_5',c:()=>(oc.double_play||0)>=5},{id:'dp_15',c:()=>(oc.double_play||0)>=15},{id:'dp_30',c:()=>(oc.double_play||0)>=30},
-    {id:'bunt_5',c:()=>(oc.bunt||0)>=5},{id:'bunt_15',c:()=>(oc.bunt||0)>=15},{id:'bunt_30',c:()=>(oc.bunt||0)>=30},
+    {id:'bunt_5',c:()=>(oc.bunt||0)>=5},{id:'bunt_15',c:()=>(oc.bunt||0)>=15},{id:'bunt_30',c:()=>(oc.bunt||0)>=30},{id:'first_p3',c:()=>lb.totalP3>=1},
   ];
   ms.forEach(m=>{if(m.c()&&!lb.achievements.find(a=>a.id===m.id)){lb.achievements.push({id:m.id,date});awardAchievement(m.id,false,name);}});
 }
@@ -1811,11 +1806,28 @@ function finishEndGame(){
 
   // blowout: win by 30+
   if(!isTie&&margin>=30)awardAchievement('blowout',false,winner.n);
+  // reckless_win
+  G.players.forEach((name,i)=>{
+    if(name===winner.n&&!isTie){
+      const ci=G.confInGame[i]||{correct:0,total:0};
+      if(ci.total-ci.correct>=3)awardAchievement('reckless_win',false,name);
+    }
+  });
 
   // last_laugh: score on very last at-bat
   if(G.atBatLog.length>0){
     const lastAB=G.atBatLog.filter(e=>!e.ghost).slice(-1)[0];
     if(lastAB&&lastAB.correct)awardAchievement('last_laugh',false,G.players[lastAB.playerIdx]);
+    // walk_off: was losing before last AB, scored on it, won the game
+    if(!isTie&&lastAB&&lastAB.correct){
+      const winnerIdx=G.players.indexOf(winner.n);
+      if(lastAB.playerIdx===winnerIdx){
+        const lastPts=lastAB.pts||0;
+        const winnerScoreBefore=(G.scores[winnerIdx]||0)-lastPts;
+        const wasLosing=G.players.every((_,j)=>j===winnerIdx||(G.scores[j]||0)>=winnerScoreBefore);
+        if(wasLosing)awardAchievement('walk_off',false,winner.n);
+      }
+    }
   }
 
   // cold_start: scored 0 in first inning then won
@@ -3006,17 +3018,17 @@ function toggleAchEarners(id){
 }
 
 function renderTutorial(){
-  const pages=[pageTut0,pageTut1,pageTut2,pageTut3];
+  const pages=[pageTut0,pageTut1,pageTut2,pageTut3,pageTut4];
   const body=document.getElementById('tut-body');
   if(body)body.innerHTML=pages[tutPage]();
   const backBtn=document.getElementById('tut-back-btn');
   if(backBtn)backBtn.onclick=tutPage===0?()=>back():()=>tutPrev();
 }
 function tutPrev(){tutPage=Math.max(0,tutPage-1);renderTutorial();window.scrollTo(0,0);}
-function tutNext(){tutPage=Math.min(3,tutPage+1);renderTutorial();window.scrollTo(0,0);}
+function tutNext(){tutPage=Math.min(4,tutPage+1);renderTutorial();window.scrollTo(0,0);}
 function tutDone(){tutPage=0;back();}
 function tutDots(active){
-  return`<div style="display:flex;justify-content:center;gap:8px;margin:20px 0 8px">${[0,1,2,3].map(i=>`<div style="width:7px;height:7px;border-radius:50%;background:var(--ink);opacity:${i===active?1:.2}"></div>`).join('')}</div>`;
+  return`<div style="display:flex;justify-content:center;gap:8px;margin:20px 0 8px">${[0,1,2,3,4].map(i=>`<div style="width:7px;height:7px;border-radius:50%;background:var(--ink);opacity:${i===active?1:.2}"></div>`).join('')}</div>`;
 }
 function pageTut0(){return`
   <div style="text-align:center;padding:24px 0 16px">
@@ -3071,7 +3083,7 @@ function pageTut3(){return`
     <div style="display:flex;align-items:flex-start;gap:12px;padding:10px 0"><div style="font-size:20px;flex-shrink:0">🚫</div><div style="font-size:12px;color:var(--text);font-weight:600;line-height:1.6">Intentional walk → use the <strong>OTHER</strong> card (host only).</div></div>
   </div>
   ${tutDots(3)}
-  <button class="btn-primary" onclick="tutDone()">GOT IT ✓</button>
+  <button class="btn-primary" onclick="tutNext()">NEXT →</button>
 `;}
 
 let retryQueue=[],retryTimer=null;
@@ -3114,6 +3126,20 @@ async function loadData(){
   if(loading)loading.remove();
 }
 
+function pageTut4(){return`
+  <div style="text-align:center;padding:20px 0 14px">
+    <div style="font-size:36px;margin-bottom:10px">👥</div>
+    <div style="font-size:15px;font-weight:700;color:var(--text);letter-spacing:.04em;margin-bottom:10px">SAVING YOUR STATS</div>
+  </div>
+  <div style="display:flex;flex-direction:column;gap:2px">
+    <div style="display:flex;align-items:flex-start;gap:12px;padding:10px 0;border-bottom:1px dashed var(--border)"><div style="font-size:20px;flex-shrink:0">📱</div><div style="font-size:12px;color:var(--text);font-weight:600;line-height:1.6">No group = stats save on this device only. No leaderboard, no sharing.</div></div>
+    <div style="display:flex;align-items:flex-start;gap:12px;padding:10px 0;border-bottom:1px dashed var(--border)"><div style="font-size:20px;flex-shrink:0">👥</div><div style="font-size:12px;color:var(--text);font-weight:600;line-height:1.6">Join or create a group from the home screen to share stats with friends.</div></div>
+    <div style="display:flex;align-items:flex-start;gap:12px;padding:10px 0"><div style="font-size:20px;flex-shrink:0">✅</div><div style="font-size:12px;color:var(--text);font-weight:600;line-height:1.6">Always tap <strong>END GAME</strong> when done — stats only save when you end the game.</div></div>
+  </div>
+  ${tutDots(4)}
+  <button class="btn-primary" onclick="tutDone()">GOT IT ✓</button>
+`;}
+
 function queueRetry(path,val){retryQueue.push({path,val});if(!retryTimer)retryTimer=setInterval(flushRetryQueue,15000);}
 function flushRetryQueue(){
   if(!retryQueue.length){clearInterval(retryTimer);retryTimer=null;return;}
@@ -3125,6 +3151,11 @@ function flushRetryQueue(){
 let lastSyncedAt=null;
 function updateSyncStatus(ok){if(ok)lastSyncedAt=new Date();lsSet('gb_last_synced',lastSyncedAt?lastSyncedAt.toISOString():null);if(G.screen==='screen-data-tools')renderSyncStatus();}
 function renderSyncStatus(){
+  if(!currentGroup){
+    const box=document.getElementById('sync-status-box');
+    if(box){box.textContent='Solo mode — join a group to enable cloud sync';box.style.borderColor='var(--subtext)';}
+    return;
+  }
   const box=document.getElementById('sync-status-box'),tsBox=document.getElementById('last-synced-box');
   if(!box)return;
   if(!db){box.textContent='Firebase not available — offline mode';box.style.borderColor='var(--negative)';return;}
