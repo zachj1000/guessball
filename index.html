@@ -1687,14 +1687,7 @@ function checkMidGameAch(outcome,deltas,runs){
     const halfCorrect=(G.halfInningCorrect[halfKey]&&G.halfInningCorrect[halfKey][i])||0;
     if(halfTotal>=3&&halfCorrect===halfTotal)awardAchievement('perfect_half',true,name);
 
-    // comeback_kid: win after being down 10+
-    if(G.maxDeficit){
-      G.players.forEach((_,j)=>{
-        if(j===i)return;
-        const defKey=i+'_'+j;
-        if((G.maxDeficit[defKey]||0)>=10&&G.scores[i]>G.scores[j])awardAchievement('comeback_kid',true,name);
-      });
-    }
+
 
     // ghost: scored 5+, all others scored 0 this half
     const myHalfPts=(G.halfInningPts[halfKey]&&G.halfInningPts[halfKey][i])||0;
@@ -1879,6 +1872,18 @@ function finishEndGame(){
 
   // blowout: win by 30+
   if(!isTie&&margin>=30)awardAchievement('blowout',false,winner.n);
+
+  // comeback_kid: won the game after being down 10+
+  if(!isTie){
+    G.players.forEach((name,i)=>{
+      if(name!==winner.n)return;
+      G.players.forEach((_,j)=>{
+        if(j===i)return;
+        const defKey=i+'_'+j;
+        if((G.maxDeficit&&G.maxDeficit[defKey]||0)>=10)awardAchievement('comeback_kid',false,name);
+      });
+    });
+  }
   // reckless_win
   G.players.forEach((name,i)=>{
     if(name===winner.n&&!isTie){
@@ -2081,6 +2086,7 @@ function renderStatsPage(){
   stats.forEach(p=>{html+=`<div class="stat-card${p.name===winner.name?' leader':''}"><div class="stat-label">${p.name}</div><div class="stat-value">${p.score}</div><div class="stat-sub">${p.pct}% correct</div></div>`;});
   html+=`</div><div class="section-label">Player breakdown</div><div class="player-tab-row">${stats.map((p,i)=>`<button class="player-tab${i===statsDeepIdx?' active':''}" onclick="setStatsTab(${i})">${p.name}</button>`).join('')}</div><div id="stats-deep"></div>`;
   // achievements filtered to selected player
+  const playerName=G.players[statsDeepIdx]||null;
   const playerAchs=(G.playerAchievements&&G.playerAchievements[playerName])||[];
   if(playerAchs.length){
     html+=`<div class="section-label" style="margin-top:16px">Achievements earned</div><div style="display:flex;flex-direction:column;gap:4px">`;
