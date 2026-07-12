@@ -10,6 +10,15 @@
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+.large-font .score-name{font-size:16px!important}
+.large-font .score-pts{font-size:28px!important}
+.large-font .menu-btn span:first-child{font-size:15px!important}
+.large-font .btn-primary,.large-font .btn-secondary,.large-font .btn-danger{font-size:14px!important}
+.large-font .oc-lbl{font-size:12px!important}
+.large-font .sh-title{font-size:16px!important}
+.large-font .section-label{font-size:11px!important}
+.large-font .settings-label{font-size:14px!important}
+.large-font .pick-banner-name{font-size:16px!important}
 :root{
   --bg:#F7F5EE;--bg2:#F0EDE3;--ink:#003DA5;--ink2:#002B7F;--ink3:#1A56C4;
   --pale:#D6E4F7;--xpale:#EBF1FB;--border:#003DA5;--text:#003DA5;--subtext:#1A56C4;
@@ -463,6 +472,7 @@ if('serviceWorker' in navigator){
     <div class="section-label">Standings <span style="font-size:9px;color:var(--subtext)">— tap for breakdown</span></div>
     <div id="sb-scores"></div>
     <div id="sb-p3-notes"></div>
+    <div id="sb-history"></div>
     <div class="section-divider"></div>
     <button class="btn-primary" id="sb-next-btn" onclick="nextAtBat()">NEXT AT-BAT →</button>
     <button class="btn-secondary" id="sb-half-btn" onclick="nextHalfInning()">NEW HALF-INNING</button>
@@ -576,6 +586,7 @@ if('serviceWorker' in navigator){
     <div class="settings-section">
       <div class="section-label">Display</div>
       <div class="settings-row"><div><div class="settings-label">Dark mode</div><div class="settings-sub">Deep navy background</div></div><button class="toggle" id="dark-toggle" onclick="toggleDark()"></button></div>
+      <div class="settings-row"><div><div class="settings-label">Large font</div><div class="settings-sub">Bigger text throughout app</div></div><button class="toggle${settings.largeFont?' on':''}" id="font-toggle" onclick="toggleFontSize()"></button></div>
       <div class="settings-row"><div><div class="settings-label">Haptics</div><div class="settings-sub">Vibration on picks</div></div><button class="toggle" id="haptic-toggle" onclick="toggleHaptic()"></button></div>
       <div class="settings-row"><div><div class="settings-label">Sound effects</div><div class="settings-sub">Crowd cheer + achievement jingle</div></div><button class="toggle" id="sound-toggle" onclick="toggleSound()"></button></div>
       <div class="settings-row"><div><div class="settings-label">Keep screen awake</div><div class="settings-sub">Prevent auto-lock during games</div></div><button class="toggle" id="wake-toggle" onclick="toggleWake()"></button></div>
@@ -605,7 +616,7 @@ if('serviceWorker' in navigator){
       <button class="btn-secondary" style="margin-top:0" onclick="goTo('screen-data-tools')">DATA TOOLS →</button>
       <button class="btn-danger" onclick="clearActiveGame()">CLEAR ACTIVE GAME</button>
     </div>
-    <div style="text-align:center;padding:16px 0;font-size:10px;color:var(--subtext);letter-spacing:.08em">GUESS BALL v1.8.2</div>
+    <div style="text-align:center;padding:16px 0;font-size:10px;color:var(--subtext);letter-spacing:.08em">GUESS BALL v1.8.4</div>
   </div>
 </div>
 
@@ -1479,6 +1490,54 @@ function renderScoreboard(){
   const nb=document.getElementById('sb-next-btn'),hb=document.getElementById('sb-half-btn');
   if(G.outs>=3){if(nb)nb.style.display='none';if(hb)hb.textContent='NEXT HALF-INNING →';}
   else{if(nb)nb.style.display='block';if(hb)hb.textContent='NEW HALF-INNING';}
+
+  // Pick history log - collapsible
+  const hist=document.getElementById('sb-history');
+  if(hist){
+    const log=G.atBatLog.filter(e=>!e.ghost);
+    if(log.length>0){
+      const isOpen=hist.dataset.open==='1';
+      const last=log[log.length-1];
+      const lastStr=last?`${G.players[last.playerIdx]||'?'} → ${oLabel(last.outcome||last.pick)} ${last.correct?(last.pts>0?'+'+last.pts+'pts':'✓'):'✗'}`:'';
+      let hhtml=`<div style="margin-top:14px;border-top:1.5px solid var(--border);padding-top:10px">
+        <div onclick="togglePickHistory()" style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;padding-bottom:${isOpen?'8px':'4px'}">
+          <div>
+            <div class="section-label">PICK HISTORY (${log.length})</div>
+            ${!isOpen&&last?`<div style="font-size:11px;font-weight:700;color:${last.correct?'var(--positive)':'var(--negative)'};margin-top:2px">${lastStr}</div>`:''}
+          </div>
+          <div style="font-size:12px;color:var(--subtext)">${isOpen?'▲':'▼'}</div>
+        </div>`;
+      if(isOpen){
+        [...log].reverse().forEach(e=>{
+          const name=G.players[e.playerIdx]||'?';
+          const inningStr=(e.isBottom?'Bot ':'Top ')+e.inning;
+          const correct=e.correct;
+          const pts=e.pts||0;
+          hhtml+=`<div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px dashed var(--border)">
+            <div style="flex:1">
+              <div style="font-size:10px;font-weight:700;color:var(--subtext);letter-spacing:.04em">${inningStr}</div>
+              <div style="font-size:12px;font-weight:700;color:var(--text)">${name} → ${oLabel(e.outcome||e.pick)}</div>
+              ${e.conf?`<div style="font-size:9px;color:var(--subtext);font-weight:600">WITH CONFIDENCE</div>`:''}
+            </div>
+            <div style="font-size:14px;font-weight:700;color:${correct?'var(--positive)':'var(--negative)'}">
+              ${correct?(pts>0?'+'+pts+'pts':'✓'):'✗'}
+            </div>
+          </div>`;
+        });
+      }
+      hhtml+=`</div>`;
+      hist.innerHTML=hhtml;
+    } else {
+      hist.innerHTML='';
+    }
+  }
+}
+
+function togglePickHistory(){
+  const hist=document.getElementById('sb-history');
+  if(!hist)return;
+  hist.dataset.open=hist.dataset.open==='1'?'0':'1';
+  renderScoreboard();
 }
 
 function openHistModal(pIdx){
@@ -2788,6 +2847,12 @@ function renderSettings(){
     :`<div style="font-size:11px;color:var(--subtext);padding:8px 0">No saved players yet.</div>`;
 
 }
+function toggleFontSize(){
+  settings.largeFont=!settings.largeFont;
+  document.body.classList.toggle('large-font',settings.largeFont);
+  lsSet('gb_settings',settings);
+  renderSettings();
+}
 function toggleDark(){settings.dark=!settings.dark;document.body.classList.toggle('dark',settings.dark);saveSettings();renderSettings();}
 function toggleHaptic(){settings.haptic=!settings.haptic;saveSettings();renderSettings();}
 function toggleSound(){settings.sound=!settings.sound;saveSettings();renderSettings();}
@@ -3121,8 +3186,9 @@ function pageTut3(){return`
 
 let retryQueue=[],retryTimer=null;
 async function loadData(){
-  settings=lsGet('gb_settings')||{dark:false,haptic:true,sound:true,wake:false,hideHistorical:false};
-  if(settings.dark)document.body.classList.add('dark');
+  settings=lsGet('gb_settings')||{dark:false,haptic:true,sound:true,wake:false,hideHistorical:false,largeFont:false};
+  if(settings.dark)document.body.classList.add('dark');if(settings.largeFont)document.body.classList.add('large-font');
+  if(settings.largeFont)document.body.classList.add('large-font');
   allTimeStreak=lsGet('gb_streak')||0;
   currentGroup=lsGet('gb_group')||null;
   const saved=lsGet('gb_game');
