@@ -237,22 +237,20 @@ if('serviceWorker' in navigator){
 <div class="modal-overlay hidden" id="rules-modal" onclick="closeModal('rules-modal',event)">
   <div class="modal-sheet">
     <div class="modal-title"><span>SCORING RULES</span><button class="modal-close" onclick="closeModalBtn('rules-modal')">✕</button></div>
-    <div class="rule-section"><div class="rule-heading">Outs</div>
-      <div class="rule-row"><span>Strikeout / In Play Out</span><span class="rule-pts">1 pt</span></div>
-      <div class="rule-row"><span>Double play</span><span class="rule-pts">2 pts</span></div>
-      <div class="rule-row"><span>Fielder's choice</span><span class="rule-pts">1 pt</span></div>
-    </div>
-    <div class="rule-section"><div class="rule-heading">Hits</div>
-      <div class="rule-row"><span>Single</span><span class="rule-pts">2 pts</span></div>
-      <div class="rule-row"><span>Double</span><span class="rule-pts">5 pts</span></div>
-      <div class="rule-row"><span>Triple</span><span class="rule-pts">8 pts</span></div>
-      <div class="rule-row"><span>Home run</span><span class="rule-pts">6 pts</span></div>
-      <div class="rule-row"><span>Bunt</span><span class="rule-pts">2 pts</span></div>
-    </div>
-    <div class="rule-section"><div class="rule-heading">Other</div>
-      <div class="rule-row"><span>Walk / HBP</span><span class="rule-pts">2 pts</span></div>
-      <div class="rule-row"><span>Stolen base</span><span class="rule-pts">3 pts</span></div>
-      <div class="rule-row"><span>Each run scored</span><span class="rule-pts">+1 pt</span></div>
+    <div class="rule-section"><div class="rule-heading">Scoring</div>
+      <div class="rule-row" style="font-size:9px;opacity:.5;padding-bottom:2px"><span>OUTCOME</span><span style="display:flex;gap:14px"><span>PTS</span><span>FREQ</span></span></div>
+      <div class="rule-row"><span>Strikeout</span><span style="display:flex;gap:14px"><span class="rule-pts">1 pt</span><span style="opacity:.45;font-size:10px">~23%</span></span></div>
+      <div class="rule-row"><span>In Play Out</span><span style="display:flex;gap:14px"><span class="rule-pts">1 pt</span><span style="opacity:.45;font-size:10px">~28%</span></span></div>
+      <div class="rule-row"><span>Single</span><span style="display:flex;gap:14px"><span class="rule-pts">2 pts</span><span style="opacity:.45;font-size:10px">~15%</span></span></div>
+      <div class="rule-row"><span>Fielder's Choice</span><span style="display:flex;gap:14px"><span class="rule-pts">2 pts</span><span style="opacity:.45;font-size:10px">~3%</span></span></div>
+      <div class="rule-row"><span>Walk / HBP</span><span style="display:flex;gap:14px"><span class="rule-pts">3 pts</span><span style="opacity:.45;font-size:10px">~9%</span></span></div>
+      <div class="rule-row"><span>Double Play</span><span style="display:flex;gap:14px"><span class="rule-pts">3 pts</span><span style="opacity:.45;font-size:10px">~3%</span></span></div>
+      <div class="rule-row"><span>Double</span><span style="display:flex;gap:14px"><span class="rule-pts">5 pts</span><span style="opacity:.45;font-size:10px">~5%</span></span></div>
+      <div class="rule-row"><span>Bunt</span><span style="display:flex;gap:14px"><span class="rule-pts">4 pts</span><span style="opacity:.45;font-size:10px">~1%</span></span></div>
+      <div class="rule-row"><span>Stolen Base</span><span style="display:flex;gap:14px"><span class="rule-pts">4 pts</span><span style="opacity:.45;font-size:10px">~1.5%</span></span></div>
+      <div class="rule-row"><span>Home Run</span><span style="display:flex;gap:14px"><span class="rule-pts">7 pts</span><span style="opacity:.45;font-size:10px">~3%</span></span></div>
+      <div class="rule-row"><span>Triple</span><span style="display:flex;gap:14px"><span class="rule-pts">10 pts</span><span style="opacity:.45;font-size:10px">~0.5%</span></span></div>
+      <div class="rule-row"><span>Each run scored</span><span style="display:flex;gap:14px"><span class="rule-pts">+1 pt</span><span style="opacity:.45;font-size:10px">—</span></span></div>
       <div class="rule-row"><span>Intentional walk → use OTHER card</span><span></span></div>
     </div>
     <div class="rule-section"><div class="rule-heading">Bonuses</div>
@@ -586,7 +584,7 @@ if('serviceWorker' in navigator){
     <div class="settings-section">
       <div class="section-label">Display</div>
       <div class="settings-row"><div><div class="settings-label">Dark mode</div><div class="settings-sub">Deep navy background</div></div><button class="toggle" id="dark-toggle" onclick="toggleDark()"></button></div>
-      <div class="settings-row"><div><div class="settings-label">Large font</div><div class="settings-sub">Bigger text throughout app</div></div><button class="toggle${settings.largeFont?' on':''}" id="font-toggle" onclick="toggleFontSize()"></button></div>
+      <div class="settings-row"><div><div class="settings-label">Large font</div><div class="settings-sub">Bigger text throughout app</div></div><button class="toggle" id="font-toggle" onclick="toggleFontSize()"></button></div>
       <div class="settings-row"><div><div class="settings-label">Haptics</div><div class="settings-sub">Vibration on picks</div></div><button class="toggle" id="haptic-toggle" onclick="toggleHaptic()"></button></div>
       <div class="settings-row"><div><div class="settings-label">Sound effects</div><div class="settings-sub">Crowd cheer + achievement jingle</div></div><button class="toggle" id="sound-toggle" onclick="toggleSound()"></button></div>
       <div class="settings-row"><div><div class="settings-label">Keep screen awake</div><div class="settings-sub">Prevent auto-lock during games</div></div><button class="toggle" id="wake-toggle" onclick="toggleWake()"></button></div>
@@ -616,7 +614,7 @@ if('serviceWorker' in navigator){
       <button class="btn-secondary" style="margin-top:0" onclick="goTo('screen-data-tools')">DATA TOOLS →</button>
       <button class="btn-danger" onclick="clearActiveGame()">CLEAR ACTIVE GAME</button>
     </div>
-    <div style="text-align:center;padding:16px 0;font-size:10px;color:var(--subtext);letter-spacing:.08em">GUESS BALL v1.8.4</div>
+    <div style="text-align:center;padding:16px 0;font-size:10px;color:var(--subtext);letter-spacing:.08em">GUESS BALL v1.8.6</div>
   </div>
 </div>
 
@@ -734,11 +732,11 @@ const MLB_NAMES=Object.keys(MLB_TEAMS).sort();
 
 const PLAYER_OUTCOMES=[
   {id:'strikeout',label:'STRIKEOUT',pts:1},{id:'in_play_out',label:'IN PLAY OUT',pts:1},
-  {id:'double_play',label:'DOUBLE PLAY',pts:2},{id:'fielders_choice',label:"FIELDER'S CHOICE",pts:1},
-  {id:'bunt',label:'BUNT',pts:2},{id:'walk',label:'WALK',pts:2},{id:'hbp',label:'HBP',pts:2},
+  {id:'double_play',label:'DOUBLE PLAY',pts:3},{id:'fielders_choice',label:"FIELDER'S CHOICE",pts:2},
+  {id:'bunt',label:'BUNT',pts:4},{id:'walk',label:'WALK',pts:3},{id:'hbp',label:'HBP',pts:3},
   {id:'single',label:'SINGLE',pts:2},{id:'double',label:'DOUBLE',pts:5},
-  {id:'triple',label:'TRIPLE',pts:8},{id:'home_run',label:'HOME RUN',pts:6},
-  {id:'stolen_base',label:'STOLEN BASE',pts:3},
+  {id:'triple',label:'TRIPLE',pts:10},{id:'home_run',label:'HOME RUN',pts:7},
+  {id:'stolen_base',label:'STOLEN BASE',pts:4},
 ];
 const RESULT_OUTCOMES=[...PLAYER_OUTCOMES,
   {id:'caught_stealing',label:'CAUGHT STEALING',pts:0},{id:'other',label:'OTHER',pts:0},
@@ -2837,6 +2835,7 @@ function renderYearReview(){
 
 function renderSettings(){
   document.getElementById('dark-toggle').className='toggle'+(settings.dark?' on':'');
+  document.getElementById('font-toggle').className='toggle'+(settings.largeFont?' on':'');
   document.getElementById('haptic-toggle').className='toggle'+(settings.haptic?' on':'');
   document.getElementById('sound-toggle').className='toggle'+(settings.sound?' on':'');
   document.getElementById('wake-toggle').className='toggle'+(settings.wake?' on':'');
@@ -3156,7 +3155,7 @@ function pageTut1(){return`
   <button class="btn-primary" onclick="tutNext()">NEXT →</button>
 `;}
 function pageTut2(){
-  const rows=[['STRIKEOUT','1'],['IN PLAY OUT','1'],['DOUBLE PLAY','2'],["FIELDER'S CHOICE",'1'],['BUNT','2'],['WALK / HBP','2'],['SINGLE','2'],['DOUBLE','5'],['TRIPLE','8'],['HOME RUN','6'],['STOLEN BASE','3']];
+  const rows=[['STRIKEOUT','1'],['IN PLAY OUT','1'],['DOUBLE PLAY','3'],["FIELDER'S CHOICE",'2'],['BUNT','4'],['WALK / HBP','3'],['SINGLE','2'],['DOUBLE','5'],['TRIPLE','10'],['HOME RUN','7'],['STOLEN BASE','4']];
   return`
   <div style="font-size:13px;font-weight:700;color:var(--text);letter-spacing:.06em;margin-bottom:14px">SCORING</div>
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px">
