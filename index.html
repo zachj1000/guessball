@@ -605,7 +605,7 @@ if('serviceWorker' in navigator){
       <button class="btn-secondary" style="margin-top:0" onclick="goTo('screen-data-tools')">DATA TOOLS →</button>
       <button class="btn-danger" onclick="clearActiveGame()">CLEAR ACTIVE GAME</button>
     </div>
-    <div style="text-align:center;padding:16px 0;font-size:10px;color:var(--subtext);letter-spacing:.08em">GUESS BALL v1.8.0</div>
+    <div style="text-align:center;padding:16px 0;font-size:10px;color:var(--subtext);letter-spacing:.08em">GUESS BALL v1.8.2</div>
   </div>
 </div>
 
@@ -1091,6 +1091,22 @@ function render(dir){
   if(G.screen==='screen-achievements')renderAchievementsList();
   if(G.screen==='screen-data-tools'){renderSyncStatus();};
   if(G.screen==='screen-tutorial'){renderTutorial();}
+  // swipe back on non-game screens
+  if(G.screen==='screen-setup')setTimeout(()=>initSwipeBack('screen-setup'),50);
+  if(G.screen==='screen-stats')setTimeout(()=>initSwipeBack('screen-stats'),50);
+  if(G.screen==='screen-stats-menu')setTimeout(()=>initSwipeBack('screen-stats-menu'),50);
+  if(G.screen==='screen-leaderboard')setTimeout(()=>initSwipeBack('screen-leaderboard'),50);
+  if(G.screen==='screen-history')setTimeout(()=>initSwipeBack('screen-history'),50);
+  if(G.screen==='screen-hof')setTimeout(()=>initSwipeBack('screen-hof'),50);
+  if(G.screen==='screen-h2h')setTimeout(()=>initSwipeBack('screen-h2h'),50);
+  if(G.screen==='screen-yr')setTimeout(()=>initSwipeBack('screen-yr'),50);
+  if(G.screen==='screen-groups')setTimeout(()=>initSwipeBack('screen-groups'),50);
+  if(G.screen==='screen-settings')setTimeout(()=>initSwipeBack('screen-settings'),50);
+  if(G.screen==='screen-achievements')setTimeout(()=>initSwipeBack('screen-achievements'),50);
+  if(G.screen==='screen-tutorial')setTimeout(()=>initSwipeBack('screen-tutorial'),50);
+  if(G.screen==='screen-saved-players')setTimeout(()=>initSwipeBack('screen-saved-players'),50);
+  if(G.screen==='screen-add-hist-game')setTimeout(()=>initSwipeBack('screen-add-hist-game'),50);
+  if(G.screen==='screen-data-tools')setTimeout(()=>initSwipeBack('screen-data-tools'),50);
 }
 
 function renderTitle(){
@@ -2368,6 +2384,23 @@ function initPullToRefresh(screenId, refreshFn){
     }
     startY=0;
   },{ passive:true });
+}
+
+// Swipe right to go back on non-game screens
+function initSwipeBack(screenId){
+  const el=document.getElementById(screenId);
+  if(!el)return;
+  let startX=0,startY=0;
+  el.addEventListener('touchstart',e=>{
+    startX=e.touches[0].clientX;
+    startY=e.touches[0].clientY;
+  },{passive:true});
+  el.addEventListener('touchend',e=>{
+    const dx=e.changedTouches[0].clientX-startX;
+    const dy=Math.abs(e.changedTouches[0].clientY-startY);
+    // swipe right: dx>60, mostly horizontal (dx > dy*2), started near left edge
+    if(dx>60&&dy<dx*0.6&&startX<60)back();
+  },{passive:true});
 }
 
 function renderLeaderboard(){
