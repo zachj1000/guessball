@@ -339,7 +339,7 @@ if('serviceWorker' in navigator){
       <button class="menu-btn primary" onclick="newGameFromTitle()"><span>NEW GAME</span><span>→</span></button>
       <button class="menu-btn" onclick="goTo('screen-stats-menu')"><span>STATS</span><span>→</span></button>
       <button class="menu-btn" onclick="goTo('screen-achievements')"><span>ACHIEVEMENTS</span><span>→</span></button>
-      <button class="menu-btn" onclick="goTo('screen-groups')"><span>GROUPS</span><span>→</span></button>
+      <button class="menu-btn" onclick="goTo('screen-groups')"><span>CLUBS</span><span>→</span></button>
       <button class="menu-btn" onclick="goTo('screen-settings')"><span>SETTINGS</span><span>→</span></button>
       <button class="menu-btn" onclick="goTo('screen-tutorial')"><span>HOW TO PLAY</span><span>→</span></button>
     </div>
@@ -567,10 +567,10 @@ if('serviceWorker' in navigator){
   <div class="screen-body" id="yr-body"></div>
 </div>
 
-<!-- GROUPS -->
+<!-- CLUBS -->
 <div class="screen" id="screen-groups">
   <div class="screen-head">
-    <div class="sh-left"><button class="back-btn" onclick="back()">←</button><div class="sh-title">GROUPS</div></div>
+    <div class="sh-left"><button class="back-btn" onclick="back()">←</button><div class="sh-title">CLUBS</div></div>
   </div>
   <div class="screen-body" id="groups-body"></div>
 </div>
@@ -614,7 +614,7 @@ if('serviceWorker' in navigator){
       <button class="btn-secondary" style="margin-top:0" onclick="goTo('screen-data-tools')">DATA TOOLS →</button>
       <button class="btn-danger" onclick="clearActiveGame()">CLEAR ACTIVE GAME</button>
     </div>
-    <div style="text-align:center;padding:16px 0;font-size:10px;color:var(--subtext);letter-spacing:.08em">GUESS BALL v1.8.6</div>
+    <div style="text-align:center;padding:16px 0;font-size:10px;color:var(--subtext);letter-spacing:.08em">GUESS BALL v1.8.8</div>
   </div>
 </div>
 
@@ -1496,7 +1496,7 @@ function renderScoreboard(){
     if(log.length>0){
       const isOpen=hist.dataset.open==='1';
       const last=log[log.length-1];
-      const lastStr=last?`${G.players[last.playerIdx]||'?'} → ${oLabel(last.outcome||last.pick)} ${last.correct?(last.pts>0?'+'+last.pts+'pts':'✓'):'✗'}`:'';
+      const lastStr=last?`${G.players[last.playerIdx]||'?'} picked ${oLabel(last.pick||last.outcome)} ${last.correct?(last.pts>0?'+'+last.pts+'pts':'✓'):'✗'}`:'';
       let hhtml=`<div style="margin-top:14px;border-top:1.5px solid var(--border);padding-top:10px">
         <div onclick="togglePickHistory()" style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;padding-bottom:${isOpen?'8px':'4px'}">
           <div>
@@ -1506,20 +1506,30 @@ function renderScoreboard(){
           <div style="font-size:12px;color:var(--subtext)">${isOpen?'▲':'▼'}</div>
         </div>`;
       if(isOpen){
-        [...log].reverse().forEach(e=>{
-          const name=G.players[e.playerIdx]||'?';
-          const inningStr=(e.isBottom?'Bot ':'Top ')+e.inning;
-          const correct=e.correct;
-          const pts=e.pts||0;
-          hhtml+=`<div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px dashed var(--border)">
-            <div style="flex:1">
-              <div style="font-size:10px;font-weight:700;color:var(--subtext);letter-spacing:.04em">${inningStr}</div>
-              <div style="font-size:12px;font-weight:700;color:var(--text)">${name} → ${oLabel(e.outcome||e.pick)}</div>
-              ${e.conf?`<div style="font-size:9px;color:var(--subtext);font-weight:600">WITH CONFIDENCE</div>`:''}
-            </div>
-            <div style="font-size:14px;font-weight:700;color:${correct?'var(--positive)':'var(--negative)'}">
-              ${correct?(pts>0?'+'+pts+'pts':'✓'):'✗'}
-            </div>
+        // Group by at-bat index
+        const abMap={};
+        log.forEach(e=>{
+          const key=e.inning+'_'+(e.isBottom?'b':'t')+'_'+e.atBat;
+          if(!abMap[key])abMap[key]={inning:e.inning,isBottom:e.isBottom,atBat:e.atBat,picks:[]};
+          abMap[key].picks.push(e);
+        });
+        Object.values(abMap).reverse().forEach(ab=>{
+          const inningStr=(ab.isBottom?'Bot ':'Top ')+ab.inning;
+          hhtml+=`<div style="padding:7px 0;border-bottom:1px dashed var(--border)">
+            <div style="font-size:9px;font-weight:700;color:var(--subtext);letter-spacing:.06em;margin-bottom:4px">${inningStr} · AB ${ab.atBat}</div>
+            ${ab.picks.map(e=>{
+              const pName=G.players[e.playerIdx]||'?';
+              const pickLabel=oLabel(e.pick||e.outcome);
+              const correct=e.correct;
+              const pts=e.pts||0;
+              return`<div style="display:flex;align-items:center;justify-content:space-between;padding:2px 0">
+                <div style="font-size:11px;font-weight:700;color:var(--text)">${pName}</div>
+                <div style="display:flex;align-items:center;gap:8px">
+                  <div style="font-size:11px;font-weight:700;color:${correct?'var(--positive)':'var(--negative)'}">${pickLabel}</div>
+                  <div style="font-size:10px;font-weight:700;color:${correct?'var(--positive)':'var(--negative)'}">${correct?(pts>0?'+'+pts+'pts':'✓'):'✗'}</div>
+                </div>
+              </div>`;
+            }).join('')}
           </div>`;
         });
       }
@@ -1752,6 +1762,8 @@ function awardAchievement(id,mid,playerName){
   if(!G.playerAchievements[playerName])G.playerAchievements[playerName]=[];
   if(G.playerAchievements[playerName].includes(id))return;
   G.playerAchievements[playerName].push(id);
+  // immediately backup to localStorage
+  lsSet('gb_ach_backup',G.playerAchievements);
   // track for popup display
   if(!G.gameAchievements.includes(id))G.gameAchievements.push(id);
   const a=ACHIEVEMENTS.find(x=>x.id===id);if(!a)return;
@@ -1983,9 +1995,13 @@ function finishEndGame(){
     // track correct outcome counts for milestone achievements
     if(!lb.outcomeCounts)lb.outcomeCounts={};
     plog.filter(e=>e.correct&&e.outcome).forEach(e=>{lb.outcomeCounts[e.outcome]=(lb.outcomeCounts[e.outcome]||0)+1;});
-    // save only THIS player's achievements
-    const myAchs=(G.playerAchievements&&G.playerAchievements[name])||[];
-    myAchs.forEach(id=>{if(!lb.achievements.find(a=>a.id===id))lb.achievements.push({id,date});});
+    // save only THIS player's achievements - use backup as fallback
+    const achBackup=lsGet('gb_ach_backup')||{};
+    const liveAchs=(G.playerAchievements&&G.playerAchievements[name])||[];
+    const backupAchs=achBackup[name]||[];
+    // union of both - never lose achievements
+    const allMyAchs=[...new Set([...liveAchs,...backupAchs])];
+    allMyAchs.forEach(id=>{if(!lb.achievements.find(a=>a.id===id))lb.achievements.push({id,date});});
     // clairvoyant: p3 bonus 3 games in a row
     const hadP3ThisGame=G.atBatLog.some(e=>e.playerIdx===i&&e.p3Bonus>0);
     if(hadP3ThisGame){lb.p3GameStreak=(lb.p3GameStreak||0)+1;}else{lb.p3GameStreak=0;}
@@ -2044,7 +2060,7 @@ function finishEndGame(){
   });
   gameHistory.unshift({date,players:G.players.map((n,i)=>({name:n,score:G.scores[i]||0})),winner:isTie?'Tie':winner.n,inning:G.inning,stats:G.finalStats,achievements:G.gameAchievements,playerAchievements:G.playerAchievements||{},mvpBadge:mvp,awayTeam:G.awayTeam,homeTeam:G.homeTeam,stadium:G.stadium,awayScore:G.awayScore,homeScore:G.homeScore,notes:G.gameNotes,highlightAtBat:hlAB,biggestComeback,bestHalf,bestInning});
   if(gameHistory.length>50)gameHistory=gameHistory.slice(0,50);
-  saveMeta();autoBackup();lsSet('gb_achievements',leaderboard);lsDel('gb_game');
+  saveMeta();autoBackup();lsSet('gb_achievements',leaderboard);lsDel('gb_game');lsDel('gb_ach_backup');
   statsDeepIdx=0;trashIdx=0;push('screen-stats');
 }
 
@@ -2134,26 +2150,26 @@ function renderGroups(){
       <div style="text-align:center;padding:20px 0 16px">
         <div style="font-size:36px;margin-bottom:8px">⚾</div>
         <div style="font-size:18px;font-weight:700;color:var(--text);letter-spacing:.04em;margin-bottom:4px">${currentGroup.name}</div>
-        <div style="font-size:11px;color:var(--subtext);font-weight:600;letter-spacing:.08em;margin-bottom:4px">GROUP CODE</div>
+        <div style="font-size:11px;color:var(--subtext);font-weight:600;letter-spacing:.08em;margin-bottom:4px">CLUB CODE</div>
         <div style="font-size:22px;font-weight:700;color:var(--ink);letter-spacing:.12em;margin-bottom:20px">${currentGroup.code}</div>
       </div>
-      <button class="btn-primary" onclick="inviteToGroup()" style="margin-bottom:10px">INVITE TO GROUP →</button>
-      <button class="btn-secondary" onclick="changeGroup()" style="margin-bottom:10px">CHANGE GROUP →</button>
-      <button class="btn-danger" onclick="leaveGroup()" style="margin-top:4px">LEAVE GROUP</button>`;
+      <button class="btn-primary" onclick="inviteToGroup()" style="margin-bottom:10px">INVITE TO CLUB →</button>
+      <button class="btn-secondary" onclick="changeGroup()" style="margin-bottom:10px">CHANGE CLUB →</button>
+      <button class="btn-danger" onclick="leaveGroup()" style="margin-top:4px">LEAVE CLUB</button>`;
   } else {
     body.innerHTML=`
       <div style="text-align:center;padding:24px 0 20px">
         <div style="font-size:36px;margin-bottom:10px">👥</div>
         <div style="font-size:16px;font-weight:700;color:var(--text);letter-spacing:.04em;margin-bottom:8px">PLAY WITH FRIENDS</div>
-        <div style="font-size:12px;color:var(--subtext);font-weight:600;line-height:1.6;margin-bottom:24px">Join a group to share stats,<br>leaderboards and achievements<br>with your friends and family.</div>
+        <div style="font-size:12px;color:var(--subtext);font-weight:600;line-height:1.6;margin-bottom:24px">Join a club to share stats,<br>leaderboards and achievements<br>with your friends and family.</div>
       </div>
-      <button class="btn-primary" onclick="showJoinGroup()" style="margin-bottom:10px">JOIN GROUP →</button>
-      <button class="btn-secondary" onclick="showCreateGroup()">CREATE GROUP →</button>`;
+      <button class="btn-primary" onclick="showJoinGroup()" style="margin-bottom:10px">JOIN CLUB →</button>
+      <button class="btn-secondary" onclick="showCreateGroup()">CREATE CLUB →</button>`;
   }
 }
 
 function showJoinGroup(){
-  const code=prompt('Enter group code:');
+  const code=prompt('Enter club code:');
   if(!code)return;
   joinGroup(code.trim().toUpperCase());
 }
@@ -2167,7 +2183,7 @@ async function joinGroup(code){
     if(rootCode&&code===rootCode.toUpperCase()){isRoot=true;}
   }catch(e){}
 
-  // Get group name
+  // Get club name
   let groupName=code;
   try{
     if(isRoot){
@@ -2191,7 +2207,7 @@ async function joinGroup(code){
   await loadGroupData();
   // Ask who they are if not set
   if(!lsGet('gb_me')){
-    const me=prompt('What is your name in this group? (used for "My Achievements")');
+    const me=prompt('What is your name in this club? (used for "My Achievements")');
     if(me)lsSet('gb_me',me.trim());
   }
   render();
@@ -2296,8 +2312,8 @@ async function createGroup(name){
 
 function inviteToGroup(){
   if(!currentGroup)return;
-  const msg='Join my Guess Ball group "'+currentGroup.name+'"!\nGroup code: '+currentGroup.code+'\n\nDownload at zachj1000.github.io/guessball and tap Groups → Join Group';
-  if(navigator.share){navigator.share({title:'Join my Guess Ball group',text:msg}).catch(()=>{});}
+  const msg='Join my Guess Ball club "'+currentGroup.name+'"!\nClub code: '+currentGroup.code+'\n\nDownload at zachj1000.github.io/guessball and tap Clubs → Join Group';
+  if(navigator.share){navigator.share({title:'Join my Guess Ball club',text:msg}).catch(()=>{});}
   else{navigator.clipboard.writeText(msg).then(()=>alert('Invite copied!')).catch(()=>alert(msg));}
 }
 
@@ -3212,7 +3228,20 @@ async function loadData(){
       db.ref('roster').once('value').then(s=>s.val()),
       db.ref('h2h').once('value').then(s=>s.val()),
     ]);
-    leaderboard=lb||{};
+    const remoteLb=lb||{};
+    // merge achievements - always keep more achievements, never fewer
+    const localLb=lsGet('gb_lb')||{};
+    leaderboard=remoteLb;
+    Object.entries(localLb).forEach(([name,localData])=>{
+      if(!leaderboard[name])leaderboard[name]=localData;
+      else {
+        const remoteAchs=(leaderboard[name].achievements||[]).map(a=>a.id||a);
+        const localAchs=(localData.achievements||[]).map(a=>a.id||a);
+        const merged=[...leaderboard[name].achievements||[]];
+        localAchs.forEach(id=>{if(!remoteAchs.includes(id))merged.push({id,date:''});});
+        leaderboard[name].achievements=merged;
+      }
+    });
     gameHistory=hist?Object.values(hist):[];
     roster=rst?(Array.isArray(rst)?rst:Object.values(rst)):[];
     h2h=h2hData||{};
@@ -3237,7 +3266,7 @@ function pageTut4(){return`
   </div>
   <div style="display:flex;flex-direction:column;gap:2px">
     <div style="display:flex;align-items:flex-start;gap:12px;padding:10px 0;border-bottom:1px dashed var(--border)"><div style="font-size:20px;flex-shrink:0">📱</div><div style="font-size:12px;color:var(--text);font-weight:600;line-height:1.6">No group = stats save on this device only. No leaderboard, no sharing.</div></div>
-    <div style="display:flex;align-items:flex-start;gap:12px;padding:10px 0;border-bottom:1px dashed var(--border)"><div style="font-size:20px;flex-shrink:0">👥</div><div style="font-size:12px;color:var(--text);font-weight:600;line-height:1.6">Join or create a group from the home screen to share stats with friends.</div></div>
+    <div style="display:flex;align-items:flex-start;gap:12px;padding:10px 0;border-bottom:1px dashed var(--border)"><div style="font-size:20px;flex-shrink:0">👥</div><div style="font-size:12px;color:var(--text);font-weight:600;line-height:1.6">Join or create a club from the home screen to share stats with friends.</div></div>
     <div style="display:flex;align-items:flex-start;gap:12px;padding:10px 0"><div style="font-size:20px;flex-shrink:0">✅</div><div style="font-size:12px;color:var(--text);font-weight:600;line-height:1.6">Always tap <strong>END GAME</strong> when done — stats only save when you end the game.</div></div>
   </div>
   ${tutDots(4)}
