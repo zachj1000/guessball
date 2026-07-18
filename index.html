@@ -614,7 +614,7 @@ if('serviceWorker' in navigator){
       <button class="btn-secondary" style="margin-top:0" onclick="goTo('screen-data-tools')">DATA TOOLS →</button>
       <button class="btn-danger" onclick="clearActiveGame()">CLEAR ACTIVE GAME</button>
     </div>
-    <div style="text-align:center;padding:16px 0;font-size:10px;color:var(--subtext);letter-spacing:.08em">GUESS BALL v1.8.8</div>
+    <div style="text-align:center;padding:16px 0;font-size:10px;color:var(--subtext);letter-spacing:.08em">GUESS BALL v1.9.0</div>
   </div>
 </div>
 
@@ -922,7 +922,7 @@ function showFBSuccess(msg){
   b.textContent=msg;document.body.appendChild(b);setTimeout(()=>b.remove(),5000);
 }
 function fbSet(path,val){
-  if(!db)return Promise.resolve();
+  if(!db||!currentGroup)return Promise.resolve();
   return db.ref(path).set(val).catch(e=>{console.error('fbSet failed',path,e.message);showFBError('Save failed: '+e.message);});
 }
 function fbGet(path){
@@ -1005,6 +1005,8 @@ function setupRealtimeListeners(){
 function saveGame(){lsSet('gb_game',G);}
 function saveMeta(){
   const histObj={};gameHistory.forEach((g,i)=>{histObj[i]=g;});
+  lsSet('gb_lb',leaderboard);lsSet('gb_hist',gameHistory);
+  if(!currentGroup||!db)return;
   if(db){
     Promise.all([
       db.ref('leaderboard').set(leaderboard),
@@ -2881,9 +2883,11 @@ function toggleWake(){settings.wake=!settings.wake;saveSettings();renderSettings
 function toggleHideHistorical(){settings.hideHistorical=!settings.hideHistorical;saveSettings();renderSettings();}
 function saveRoster(){
   const rObj={};roster.forEach((r,i)=>{rObj[i]=r;});
-  fbSet('roster',rObj);lsSet('gb_roster',roster);
+  lsSet('gb_roster',roster);
+  if(!currentGroup||!db)return;
+  fbSet('roster',rObj);
 }
-function saveH2H(){fbSet('h2h',h2h);lsSet('gb_h2h',h2h);}
+function saveH2H(){lsSet('gb_h2h',h2h);if(!currentGroup||!db)return;fbSet('h2h',h2h);}
 function addRosterPlayer(){const inp=document.getElementById('new-player-inp');const name=inp.value.trim();if(!name||roster.includes(name))return;roster.push(name);saveRoster();inp.value='';renderSettings();}
 async function deleteRosterPlayer(i){
   const name=roster[i];
@@ -3209,11 +3213,18 @@ let retryQueue=[],retryTimer=null;
 async function loadData(){
   settings=lsGet('gb_settings')||{dark:false,haptic:true,sound:true,wake:false,hideHistorical:false,largeFont:false};
   if(settings.dark)document.body.classList.add('dark');if(settings.largeFont)document.body.classList.add('large-font');
-  if(settings.largeFont)document.body.classList.add('large-font');
   allTimeStreak=lsGet('gb_streak')||0;
   currentGroup=lsGet('gb_group')||null;
   const saved=lsGet('gb_game');
   if(saved&&saved.players&&saved.players.length)G=saved;
+  // solo users never touch Firebase
+  if(!currentGroup){
+    leaderboard=lsGet('gb_lb')||{};
+    gameHistory=lsGet('gb_hist')||[];
+    roster=lsGet('gb_roster')||[];
+    h2h=lsGet('gb_h2h')||{};
+    return;
+  }
   const loadEl=document.createElement('div');
   loadEl.id='fb-loading';
   loadEl.style.cssText='position:fixed;inset:0;background:var(--bg);z-index:999;display:flex;align-items:center;justify-content:center;font-family:Courier New,monospace;font-size:13px;color:var(--subtext);letter-spacing:.08em;font-weight:700';
