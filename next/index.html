@@ -59,7 +59,7 @@ a { color: var(--link); text-decoration: none; -webkit-tap-highlight-color: tran
 .page { position: absolute; inset: 0; overflow-y: auto; -webkit-overflow-scrolling: touch;
         padding: calc(var(--safe-top) + 14px) 20px calc(var(--safe-bot) + 24px); display: flex; flex-direction: column; gap: 14px; }
 .page > * { flex-shrink: 0; }
-.page.tabbed { --bar: max(12px, calc(var(--safe-bot) - 13px)); padding-bottom: calc(var(--bar) + 110px);
+.page.tabbed { --bar: max(12px, calc(var(--safe-bot) - 11px)); padding-bottom: calc(var(--bar) + 110px);
   -webkit-mask-image: linear-gradient(180deg, #000 0, #000 calc(100% - var(--bar) - 94px), transparent calc(100% - var(--bar) - 66px));
           mask-image: linear-gradient(180deg, #000 0, #000 calc(100% - var(--bar) - 94px), transparent calc(100% - var(--bar) - 66px)); }
 .fixedpage { position: absolute; inset: 0; padding: calc(var(--safe-top) + 14px) 20px calc(var(--safe-bot) + 20px); display: flex; flex-direction: column; gap: 14px; overflow-y: auto; }
@@ -104,7 +104,7 @@ a { color: var(--link); text-decoration: none; -webkit-tap-highlight-color: tran
 .bubble::before { content: ""; position: absolute; top: -6px; left: 14px; border: 6px solid transparent; border-top: 0; border-bottom-color: #2C2C31; }
 
 /* ── Tab bar (floating glass capsule) ── */
-.tabbar { z-index: 10; position: absolute; left: 16px; right: 16px; bottom: max(12px, calc(var(--safe-bot) - 13px)); height: 64px; padding: 6px; display: flex; gap: 4px; border-radius: 32px;
+.tabbar { z-index: 10; position: absolute; left: 16px; right: 16px; bottom: max(12px, calc(var(--safe-bot) - 11px)); height: 64px; padding: 6px; display: flex; gap: 4px; border-radius: 32px;
   background: var(--nav); -webkit-backdrop-filter: blur(24px) saturate(160%); backdrop-filter: blur(24px) saturate(160%);
   border: 1px solid rgba(255,255,255,.10); box-shadow: 0 10px 30px rgba(0,0,0,.45); }
 .tabbar button { flex: 1; height: 52px; border-radius: 26px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
@@ -120,7 +120,7 @@ a { color: var(--link); text-decoration: none; -webkit-tap-highlight-color: tran
 .sheet-x { position: absolute; right: 14px; top: 10px; width: 30px; height: 30px; border-radius: 15px; background: var(--card2); color: var(--text2); font-size: 14px; display: flex; align-items: center; justify-content: center; }
 .grab { margin-top: 2px; align-self: center; width: 38px; height: 5px; border-radius: 3px; background: var(--grab); }
 .sheet .list { background: var(--sheetcard); }
-.toast { position: absolute; left: 20px; right: 20px; bottom: calc(max(12px, calc(var(--safe-bot) - 13px)) + 76px); z-index: 30; background: #2C2C31; color: var(--text); border-radius: 16px;
+.toast { position: absolute; left: 20px; right: 20px; bottom: calc(max(12px, calc(var(--safe-bot) - 11px)) + 76px); z-index: 30; background: #2C2C31; color: var(--text); border-radius: 16px;
          padding: 12px 16px; font-size: 15px; font-weight: 600; box-shadow: 0 10px 30px rgba(0,0,0,.5); }
 .toast.bad { color: var(--orange); }
 .spinner { width: 22px; height: 22px; }
@@ -1536,7 +1536,7 @@ const FilingCabinet = (() => {
 //  that returns HTML. Buttons carry data-act="…" and the matching
 //  function in ACT runs when tapped, then the screen redraws.
 // ════════════════════════════════════════════════════════════════
-const VERSION = '2.0 · test build 2.3';
+const VERSION = '2.0 · test build 2.4';
 const RULES_JSON = {
   "rules": {
     "v2": {
@@ -2300,6 +2300,7 @@ function wire() {
   let drag = null;
   el.addEventListener('touchstart', e => {
     const sh = e.target.closest('.sheet'); if (!sh || e.target.closest('input,textarea')) return;
+    sh.style.animation = 'none';   // the slide-in animation would otherwise pin the sheet in place
     drag = { sh, y: e.touches[0].clientY, top: sh.scrollTop <= 0, dy: 0 };
   }, { passive: true });
   el.addEventListener('touchmove', e => {
@@ -2310,7 +2311,7 @@ function wire() {
   el.addEventListener('touchend', () => {
     if (!drag) return;
     const d = drag; drag = null;
-    if (d.top && d.dy > 90) { S.sheet = null; render(); }
+    if (d.top && d.dy > 90) { d.sh.style.transition = 'transform .18s ease-in'; d.sh.style.transform = 'translateY(100%)'; setTimeout(() => { S.sheet = null; render(); }, 170); }
     else { d.sh.style.transition = 'transform .2s'; d.sh.style.transform = ''; }
   });
   window.addEventListener('online', () => { S.offlineFirst = false; if (S.screen === 'signin') render(); });
@@ -2820,7 +2821,7 @@ SCREENS.game = () => {
 function liveBar() {
   if (!S.g || S.g.s.ended) return '';
   const s = S.g.s, g = S.g.game;
-  return `<button class="press" ${act('resume')} style="position:absolute;z-index:11;left:16px;right:16px;bottom:calc(max(12px, calc(var(--safe-bot) - 13px)) + 72px);height:48px;border-radius:24px;background:#26262A;border:1px solid rgba(255,255,255,.08);display:flex;align-items:center;gap:10px;padding:0 16px;box-shadow:0 8px 24px rgba(0,0,0,.5)">
+  return `<button class="press" ${act('resume')} style="position:absolute;z-index:11;left:16px;right:16px;bottom:calc(max(12px, calc(var(--safe-bot) - 11px)) + 72px);height:48px;border-radius:24px;background:#26262A;border:1px solid rgba(255,255,255,.08);display:flex;align-items:center;gap:10px;padding:0 16px;box-shadow:0 8px 24px rgba(0,0,0,.5)">
     <span class="live" style="width:8px;height:8px;border-radius:4px;background:var(--live)"></span><span class="cond" style="font-size:15px;font-weight:800;letter-spacing:.8px;color:var(--livetext)">LIVE</span>
     <span class="cond" style="font-size:15px;font-weight:700;color:var(--text2)">${halfName(s)}</span>
     <span style="flex-grow:1;text-align:left;font-size:14px;font-weight:600;overflow:hidden;white-space:nowrap;text-overflow:ellipsis">${g.players.map((p, i) => esc(p.name) + ' ' + s.scores[i]).join(' · ')}</span>
