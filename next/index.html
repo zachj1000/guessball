@@ -58,7 +58,8 @@ a { color: var(--link); text-decoration: none; -webkit-tap-highlight-color: tran
 .screen { position: absolute; inset: 0; display: flex; flex-direction: column; }
 .page { position: absolute; inset: 0; overflow-y: auto; -webkit-overflow-scrolling: touch;
         padding: calc(var(--safe-top) + 14px) 20px calc(var(--safe-bot) + 24px); display: flex; flex-direction: column; gap: 14px; }
-.page > * { flex-shrink: 0; }
+.page > * { flex-shrink: 0; min-width: 0; }
+.page, .fixedpage, .sheet { overflow-x: hidden; }
 .page.tabbed { --bar: max(12px, calc(var(--safe-bot) - 11px)); padding-bottom: calc(var(--bar) + 110px);
   -webkit-mask-image: linear-gradient(180deg, #000 0, #000 calc(100% - var(--bar) - 94px), transparent calc(100% - var(--bar) - 66px));
           mask-image: linear-gradient(180deg, #000 0, #000 calc(100% - var(--bar) - 94px), transparent calc(100% - var(--bar) - 66px)); }
@@ -115,7 +116,8 @@ a { color: var(--link); text-decoration: none; -webkit-tap-highlight-color: tran
 .scrim { position: absolute; inset: 0; background: var(--scrim); z-index: 20; }
 .sheet { position: absolute; left: 0; right: 0; bottom: 0; max-height: 88%; overflow-y: auto; z-index: 21; background: var(--sheet); border-radius: 28px 28px 0 0;
          padding: 10px 20px calc(var(--safe-bot) + 24px); display: flex; flex-direction: column; gap: 12px; }
-.sheet > * { flex-shrink: 0; }
+.sheet > * { flex-shrink: 0; min-width: 0; max-width: 100%; }
+.sheet [style*="grid"] > * { min-width: 0; overflow: hidden; }
 .sheet-top { position: sticky; top: -10px; z-index: 2; margin: -10px -20px 0; padding: 10px 14px 4px; display: flex; justify-content: center; background: var(--sheet); }
 .sheet-x { position: absolute; right: 14px; top: 10px; width: 30px; height: 30px; border-radius: 15px; background: var(--card2); color: var(--text2); font-size: 14px; display: flex; align-items: center; justify-content: center; }
 .grab { margin-top: 2px; align-self: center; width: 38px; height: 5px; border-radius: 3px; background: var(--grab); }
@@ -1536,7 +1538,7 @@ const FilingCabinet = (() => {
 //  that returns HTML. Buttons carry data-act="…" and the matching
 //  function in ACT runs when tapped, then the screen redraws.
 // ════════════════════════════════════════════════════════════════
-const VERSION = '2.0 · test build 2.4';
+const VERSION = '2.0 · test build 3';
 const RULES_JSON = {
   "rules": {
     "v2": {
@@ -1770,8 +1772,8 @@ SCREENS.setupName = () => {
 function teamList(selected, a) {
   const q = S.q.trim().toLowerCase();
   const list = TEAM_NAMES.filter(t => !q || t.toLowerCase().includes(q) || TEAMS[t].toLowerCase().includes(q));
-  return `<label class="field search">${ICON.search}<input data-model="q" data-rerender="1" value="${attr(S.q)}" placeholder="Search teams" aria-label="Search teams"></label>
-  <div class="list">${list.map(t => {
+  return `<label class="field search">${ICON.search}<input data-model="q" data-region="list" value="${attr(S.q)}" placeholder="Search teams" aria-label="Search teams"></label>
+  <div class="list" data-region="list">${list.map(t => {
     const on = t === selected;
     return `<button class="row press" ${act(a, t)} style="min-height:48px"><span style="flex-grow:1;font-size:16px;font-weight:${on ? 700 : 500}">${esc(t)}</span>
       <span style="width:22px;height:22px;border-radius:11px;border:2px solid ${on ? 'var(--accent)' : '#4A4A52'};background:${on ? 'var(--accent)' : 'transparent'};display:flex;align-items:center;justify-content:center">${on ? ICON.check('#fff') : ''}</span></button>`;
@@ -1907,7 +1909,6 @@ const later = (tab, title, what) => () => `<div class="page tabbed">
   <div class="topbar"><h1 class="cond h1" style="font-size:34px">${title}</h1></div>${tab === 'stats' || tab === 'club' ? scopeChip() : ''}
   <div class="card" style="padding:18px;display:flex;flex-direction:column;gap:6px"><span class="cond" style="font-size:20px;font-weight:800;letter-spacing:.6px;color:var(--text2)">COMING IN A LATER TEST</span>
   <span style="font-size:15px;line-height:1.45;color:var(--text2)">${what}</span></div></div>${tabbar(tab)}${liveBar()}`;
-SCREENS.stats = later('stats', 'STATS', 'Standings, history, records and head-to-head arrive in test build 3.');
 SCREENS.awards = later('awards', 'AWARDS', 'All 81 awards, with your progress, arrive in test build 4.');
 SCREENS.club = later('club', 'CLUB', 'Roster, requests, guests and club settings arrive in test build 5. For now, switch clubs from the chip above.');
 
@@ -1935,9 +1936,9 @@ SCREENS.findClub = () => {
   const list = S.found.filter(c => !q || c.name.toLowerCase().includes(q));
   return `<div class="page">
   <div class="topbar">${backBtn()}<h1 class="cond h1">FIND A CLUB</h1></div>
-  <label class="field search">${ICON.search}<input data-model="q" data-rerender="1" value="${attr(S.q)}" placeholder="Search clubs by name" aria-label="Search clubs"></label>
+  <label class="field search">${ICON.search}<input data-model="q" data-region="list" value="${attr(S.q)}" placeholder="Search clubs by name" aria-label="Search clubs"></label>
   ${S.foundLoading ? `<div class="card" style="padding:24px;display:flex;justify-content:center">${ICON.spinner}</div>` :
-  `<div class="list">${list.map(c => {
+  `<div class="list" data-region="list">${list.map(c => {
     const st = mine[c.code];
     const cta = st === 'member' ? 'OPEN' : st === 'pending' ? 'PENDING' : c.public ? 'JOIN' : 'REQUEST';
     const primary = cta === 'JOIN';
@@ -2051,7 +2052,7 @@ SCREENS.admin = () => `<div class="page">
   <div class="list">
     <button class="row press" ${act('exportAll')}><div style="flex-grow:1;display:flex;flex-direction:column;gap:2px;padding:8px 0"><span style="font-size:16px;font-weight:600">Export all data</span><span class="courier meta">Downloads everything in Firebase as one file</span></div>${ICON.chev}</button>
     <button class="row press" ${act('copyRules')}><div style="flex-grow:1;display:flex;flex-direction:column;gap:2px;padding:8px 0"><span style="font-size:16px;font-weight:600">Copy security rules</span><span class="courier meta">Paste into Firebase → Realtime Database → Rules</span></div>${ICON.chev}</button>
-    <button class="row press" ${act('toast', 'Deleting games arrives with History in test build 3.')}><div style="flex-grow:1;display:flex;flex-direction:column;gap:2px;padding:8px 0"><span style="font-size:16px;font-weight:600">Delete a game</span><span class="courier meta">Any club · stats and awards recalculate</span></div>${ICON.chev}</button>
+    <button class="row press" ${act('adminDelete')}><div style="flex-grow:1;display:flex;flex-direction:column;gap:2px;padding:8px 0"><span style="font-size:16px;font-weight:600">Delete a game</span><span class="courier meta">Any club · stats and awards recalculate</span></div>${ICON.chev}</button>
   </div></div>`;
 
 const SHEETS = { switcher: switcherSheet, request: requestSheet, nickname: nicknameSheet, team: teamSheet, delete: deleteSheet };
@@ -2071,6 +2072,14 @@ function render() {
     + (S.toast ? `<div class="toast fade ${S.toast.bad ? 'bad' : ''}">${esc(S.toast.text)}</div>` : '');
   const p2 = el.querySelector('.page, .fixedpage'); if (p2 && keep) p2.scrollTop = keep;
   if (focus) { const i = el.querySelector(`[data-model="${focus}"]`); if (i) { i.focus(); try { i.setSelectionRange(caret, caret); } catch (e) { /* ok */ } } }
+  syncEnables();
+}
+// Redraw one marked part of the screen (a search's result list) without touching the text box you're typing in
+function renderRegion(name) {
+  const tmp = document.createElement('div');
+  tmp.innerHTML = `<div class="screen">${(SCREENS[S.screen] || SCREENS.home)()}</div>` + (S.sheet ? `<div class="sheet">${SHEETS[S.sheet.name]()}</div>` : '');
+  const fresh = tmp.querySelector(`[data-region="${name}"]:not(input)`), live = $app().querySelector(`[data-region="${name}"]:not(input)`);
+  if (fresh && live) live.innerHTML = fresh.innerHTML; else render();
   syncEnables();
 }
 const getPath = p => p.split('.').reduce((o, k) => (o ? o[k] : undefined), S);
@@ -2113,8 +2122,8 @@ async function loadHome() {
   S.home = cached ? { ...cached, loading: true } : { loading: true, rows: [], recent: [], games: 0 };
   render();
   try {
-    const games = await withTimeout(FCab.loadGames(S.scope === 'mine' ? { mine: true } : { club: S.scope }), 15000);
-    const done = games.filter(g => g.ended !== false);
+    const done = await loadScopeGames(true);
+    if (!done) throw new Error('offline');
     const hist = Statistician.history(done);
     const recent = hist.length ? hist[0].games.concat(hist[1] ? hist[1].games : []).slice(0, 2) : [];
     S.home = { loading: false, rows: Statistician.standings(done).slice(0, 3), recent, games: done.length };
@@ -2161,7 +2170,7 @@ const ACT = {
   toast: t => toast(t),
   closeSheet: () => { S.sheet = null; render(); },
   openSheet: (name, arg) => { const [n, a] = name.split(':'); S.sheet = { name: n, arg: a !== undefined ? a : arg }; S.q = ''; render(); },
-  tab: t => { S.stack = []; go(t === 'games' ? 'home' : t, {}, false); },
+  tab: t => { S.stack = []; go(t === 'games' ? 'home' : t, {}, false); if (t === 'stats' && FCab) loadScopeGames(true); },
   signIn: async () => {
     if (!navigator.onLine) { S.offlineFirst = true; render(); return; }
     S.busy = true; render();
@@ -2295,7 +2304,9 @@ function wire() {
     const i = e.target; if (!i.dataset || !i.dataset.model) return;
     setPath(i.dataset.model, i.value);
     const c = el.querySelector(`[data-count="${i.dataset.model}"]`); if (c) c.textContent = `${i.value.length}/16`;
-    if (i.dataset.rerender) render(); else syncEnables();
+    if (i.dataset.region) { clearTimeout(wire.t); wire.t = setTimeout(() => renderRegion(i.dataset.region), 90); }
+    else if (i.dataset.rerender) render();
+    else syncEnables();
   });
   let drag = null;
   el.addEventListener('touchstart', e => {
@@ -2305,13 +2316,14 @@ function wire() {
   }, { passive: true });
   el.addEventListener('touchmove', e => {
     if (!drag) return;
-    drag.dy = e.touches[0].clientY - drag.y;
+    const y = e.touches[0].clientY; drag.v = y - (drag.last == null ? drag.y : drag.last); drag.last = y;
+    drag.dy = y - drag.y;
     if (drag.top && drag.dy > 0 && drag.sh.scrollTop <= 0) { drag.sh.style.transform = `translateY(${drag.dy}px)`; drag.sh.style.transition = 'none'; }
   }, { passive: true });
   el.addEventListener('touchend', () => {
     if (!drag) return;
     const d = drag; drag = null;
-    if (d.top && d.dy > 90) { d.sh.style.transition = 'transform .18s ease-in'; d.sh.style.transform = 'translateY(100%)'; setTimeout(() => { S.sheet = null; render(); }, 170); }
+    if (d.top && d.dy > 90 && (d.v || 0) >= 0) { d.sh.style.transition = 'transform .18s ease-in'; d.sh.style.transform = 'translateY(100%)'; setTimeout(() => { S.sheet = null; render(); }, 170); }
     else { d.sh.style.transition = 'transform .2s'; d.sh.style.transform = ''; }
   });
   window.addEventListener('online', () => { S.offlineFirst = false; if (S.screen === 'signin') render(); });
@@ -2449,11 +2461,11 @@ SCREENS.newGame = () => {
 </div>`;
 };
 function pickTeamSheet() {
-  const side = S.sheet.arg, cur = S.screen === 'newGame' ? S.ng[side] : S.g.game[side], q = S.q.trim().toLowerCase();
+  const side = S.sheet.arg, cur = S.screen === 'game' ? S.g.game[side] : S.ng[side], q = S.q.trim().toLowerCase();
   const list = TEAM_NAMES.filter(t => !q || t.toLowerCase().includes(q) || TEAMS[t].toLowerCase().includes(q));
   return `<div style="display:flex;align-items:center;justify-content:space-between"><h2 class="cond" style="margin:0;font-size:28px;font-weight:800">${side === 'home' ? 'HOME' : 'AWAY'} TEAM</h2>
     <button class="press cond" ${act('closeSheet')} style="color:var(--link);font-size:17px;font-weight:800">DONE</button></div>
-  <label class="field search" style="background:var(--sheetcard)">${ICON.search}<input data-model="q" data-rerender="1" value="${attr(S.q)}" placeholder="Search MLB teams"></label>
+  <label class="field search" style="background:var(--sheetcard)">${ICON.search}<input data-model="q" data-region="teams" value="${attr(S.q)}" placeholder="Search MLB teams"></label>
   <div class="list">
     <button class="row press" ${act('ngCustom', side)} style="min-height:56px">${ICON.plus}<div style="display:flex;flex-direction:column"><span style="font-size:16px;font-weight:600">Type a team name</span><span class="courier meta">Minor league, college, high school, overseas</span></div></button>
     ${S.draft.custom === side ? `<div class="fade" style="display:flex;flex-direction:column;gap:8px;padding:4px 0 12px">
@@ -2462,16 +2474,16 @@ function pickTeamSheet() {
       <button class="press cond small-btn" style="height:40px;background:var(--accent);color:#fff" ${act('ngCustomSave', side)} data-enable="draft.cTeam">USE THIS TEAM</button></div>` : ''}
   </div>
   <span class="cond label">MLB</span>
-  <div class="list">${list.map(t => `<button class="row press" ${act('ngTeam', side + '|' + t)} style="min-height:54px"><div style="flex-grow:1;display:flex;flex-direction:column">
+  <div class="list" data-region="teams">${list.map(t => `<button class="row press" ${act('ngTeam', side + '|' + t)} style="min-height:54px"><div style="flex-grow:1;display:flex;flex-direction:column">
     <span style="font-size:16px;font-weight:${t === cur ? 700 : 500}">${esc(t)}</span><span class="courier meta">${esc(TEAMS[t])}</span></div>${ICON.check(t === cur ? 'var(--accent)' : 'transparent')}</button>`).join('')}</div>`;
 }
 function parkSheet() {
-  const T = S.screen === 'newGame' ? S.ng : S.g.game;
+  const T = S.screen === 'game' ? S.g.game : S.ng;
   return `<h2 class="cond" style="margin:0;font-size:28px;font-weight:800">BALLPARK</h2>
   <span style="font-size:15px;line-height:1.45;color:var(--text2)">Playing somewhere other than the home team's park (spring training, a neutral site)? Type it here.</span>
   <label class="field" style="background:var(--inner)"><input data-model="draft.park" value="${attr(S.draft.park != null ? S.draft.park : (T.park || ''))}" placeholder="${attr(TEAMS[T.home] || 'Ballpark')}" maxlength="40"></label>
   <button class="big-btn cond press" ${act('ngPark')}>SAVE</button>
-  ${S.screen === 'newGame' && S.ng.park ? `<button class="press cond mid-btn" ${act('ngParkReset')}>USE THE HOME TEAM'S PARK</button>` : ''}`;
+  ${S.screen !== 'game' && S.ng.park ? `<button class="press cond mid-btn" ${act('ngParkReset')}>USE THE HOME TEAM'S PARK</button>` : ''}`;
 }
 function addPlayerSheet() {
   const q = S.q.trim(), ql = q.toLowerCase();
@@ -2483,12 +2495,13 @@ function addPlayerSheet() {
     <span style="width:32px;height:32px;border-radius:16px;${isGuest ? 'border:1.5px solid var(--text4)' : 'background:var(--card3)'};display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;flex-shrink:0">${esc(m.name[0].toUpperCase())}</span>
     <span style="flex-grow:1;font-size:17px;font-weight:600">${esc(m.name)}</span>${isGuest ? '<span class="cond tag">GUEST</span>' : ''}</button>`;
   return `<h2 class="cond" style="margin:0;font-size:28px;font-weight:800">ADD A PLAYER</h2>
-  <label class="field search" style="background:var(--sheetcard)">${ICON.search}<input data-model="q" data-rerender="1" value="${attr(S.q)}" placeholder="Search or type a guest name" maxlength="16"></label>
+  <label class="field search" style="background:var(--sheetcard)">${ICON.search}<input data-model="q" data-region="people" value="${attr(S.q)}" placeholder="Search or type a guest name" maxlength="16"></label>
+  <div data-region="people" style="display:flex;flex-direction:column;gap:12px">
   ${S.ngRoster == null ? `<div style="display:flex;justify-content:center;padding:12px">${ICON.spinner}</div>` : ''}
   ${members.length ? `<span class="cond label">${esc(S.scope === 'mine' ? 'YOUR CLUBS' : scopeName() + ' ROSTER')}</span><div class="list">${members.map(m => row(m, false)).join('')}</div>` : ''}
   ${guests.length ? `<span class="cond label">GUESTS</span><div class="list">${guests.map(m => row(m, true)).join('')}</div>` : ''}
   ${q && !exact ? `<button class="press mid-btn" style="background:var(--sheetcard);color:var(--link);font-family:inherit;font-size:17px;font-weight:600;letter-spacing:0" ${act('ngNewGuest')}>${ICON.plus} Add “${esc(q)}” as a guest</button>` :
-    (!q ? `<span class="courier meta" style="padding:0 4px;line-height:1.5">Type a name above to add a new guest. Guests keep all their games and can claim them when they make an account.</span>` : '')}`;
+    (!q ? `<span class="courier meta" style="padding:0 4px;line-height:1.5">Type a name above to add a new guest. Guests keep all their games and can claim them when they make an account.</span>` : '')}</div>`;
 }
 
 // ════════════ Pick 3 ════════════
@@ -2933,33 +2946,33 @@ Object.assign(ACT, {
   },
   ngPriority: i => { S.ng.priority = +i; buzz(); render(); },
   ngRemove: i => { S.ng.players.splice(+i, 1); if (S.ng.priority >= S.ng.players.length) S.ng.priority = 0; render(); },
-  ngAdd: pid => { const m = S.ngRoster.find(x => x.pid === pid); S.ng.players.push({ id: m.pid, name: m.name, guest: !!m.guest }); S.sheet = null; S.q = ''; buzz(); render(); },
+  ngAdd: pid => { const m = S.ngRoster.find(x => x.pid === pid); S.ng.players.push({ id: m.pid, name: m.name, guest: !!m.guest, score: '' }); S.sheet = null; S.q = ''; buzz(); render(); },
   ngNewGuest: async () => {
     const name = S.q.trim(); if (!name) return;
     if (S.ng.players.some(p => p.name.toLowerCase() === name.toLowerCase())) return toast(`${name} is already playing`, true);
     try {
       const club = S.scope === 'mine' ? null : S.scope;
       const pid = await FCab.addGuest(name, club);
-      S.ng.players.push({ id: pid, name, guest: true }); (S.ngRoster || []).push({ pid, name, guest: true });
+      S.ng.players.push({ id: pid, name, guest: true, score: '' }); (S.ngRoster || []).push({ pid, name, guest: true });
       S.sheet = null; S.q = ''; render();
     } catch (e) { toast(e.message, true); }
   },
   ngTeam: arg => {
     const [side, t] = arg.split('|');
-    const target = S.screen === 'newGame' ? S.ng : null;
+    const target = S.screen !== 'game' ? S.ng : null;
     if (target) { target[side] = t; if (side === 'home') target.park = ''; S.sheet = null; S.q = ''; render(); }
     else { const f = { [side]: t }; if (side === 'home') f.park = TEAMS[t]; FCab.updateGameInfo(S.g.game, f); S.sheet = { name: 'matchup' }; S.q = ''; render(); }
   },
   ngCustom: side => { S.draft.custom = S.draft.custom === side ? null : side; render(); },
   ngCustomSave: side => {
     const t = (S.draft.cTeam || '').trim(), park = (S.draft.cPark || '').trim();
-    if (S.screen === 'newGame') { S.ng[side] = t; if (side === 'home' && park) S.ng.park = park; }
+    if (S.screen !== 'game') { S.ng[side] = t; if (side === 'home' && park) S.ng.park = park; }
     else { const f = { [side]: t }; if (side === 'home' && park) f.park = park; FCab.updateGameInfo(S.g.game, f); }
-    S.draft = {}; S.sheet = S.screen === 'newGame' ? null : { name: 'matchup' }; render();
+    S.draft = {}; S.sheet = S.screen !== 'game' ? null : { name: 'matchup' }; render();
   },
   ngPark: () => {
     const p = (S.draft.park || '').trim();
-    if (S.screen === 'newGame') { S.ng.park = p; S.sheet = null; } else { FCab.updateGameInfo(S.g.game, { park: p }); S.sheet = { name: 'matchup' }; }
+    if (S.screen !== 'game') { S.ng.park = p; S.sheet = null; } else { FCab.updateGameInfo(S.g.game, { park: p }); S.sheet = { name: 'matchup' }; }
     S.draft = {}; render();
   },
   ngParkReset: () => { S.ng.park = ''; S.sheet = null; render(); },
@@ -3078,6 +3091,429 @@ function afterP3Choice() {
     saveEvent({ type: 'pick3', picks }).then(() => { S.g.pending.p3 = {}; render(); }).catch(e => { S.g.pending.p3 = {}; toast(e.message, true); render(); });
     return;
   }
+  render();
+}
+
+// ════════════════════════════════════════════════════════════════
+//  SECTION 5c — STATS, PAST GAMES, ADDING GAMES, SHARE CARDS
+//  Everything here is worked out by the Statistician from the games
+//  of the selected club (or All my games) every time it's shown.
+// ════════════════════════════════════════════════════════════════
+const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const niceDate = (iso, withDay) => { const [y, m, d] = iso.split('-').map(Number); const dt = new Date(y, m - 1, d);
+  return (withDay ? dt.toLocaleDateString('en-US', { weekday: 'short' }) + ', ' : '') + `${MON[m - 1]} ${d}, ${y}`; };
+const pctText = v => (v == null ? '—' : Math.round(v * 100) + '%');
+const H2H_A = '#2F6FE4', H2H_B = '#C9392E';
+
+// ── The games for the selected club (shared by Home and Stats) ──
+function scopeGames() { return (S.data && S.data.key === S.scope) ? S.data.games : null; }
+async function loadScopeGames(force) {
+  const key = S.scope, cacheKey = 'gb_games_' + S.user.uid + '_' + key;
+  if (!force && S.data && S.data.key === key && S.data.games) return S.data.games;
+  if (!S.data || S.data.key !== key) S.data = { key, games: Store.json(cacheKey, null), loading: true };
+  render();
+  try {
+    const games = (await withTimeout(FCab.loadGames(key === 'mine' ? { mine: true } : { club: key }), 15000)).filter(g => g.ended !== false);
+    if (S.scope !== key) return null;
+    S.data = { key, games, loading: false };
+    try { Store.put(cacheKey, games); } catch (e) { /* phone storage full: fine, just not saved */ }
+  } catch (e) { S.data.loading = false; if (!S.data.games) toast('Couldn’t load games — check your connection', true); }
+  render();
+  return S.data.games;
+}
+
+// ════════════ Stats tab ════════════
+const STAT_TABS = ['STANDINGS', 'HISTORY', 'RECORDS', 'H2H'];
+SCREENS.stats = () => {
+  const tab = S.statTab || 'STANDINGS';
+  const games = scopeGames();
+  let body;
+  if (!games) body = `<div class="card" style="padding:28px;display:flex;justify-content:center">${ICON.spinner}</div>`;
+  else if (!games.length) body = `<div class="card" style="padding:18px;display:flex;flex-direction:column;gap:8px"><span class="cond" style="font-size:22px;font-weight:800">NO GAMES YET</span>
+    <span style="font-size:15px;line-height:1.45;color:var(--text2)">Finished games for ${esc(scopeName().toLowerCase().replace(/\b\w/g, c => c.toUpperCase()))} show up here.</span>
+    <button class="press cond small-btn" style="align-self:flex-start;height:40px;border-radius:20px;margin-top:4px" ${act('addGame')}>${ICON.plus} ADD A PAST GAME</button></div>`;
+  else body = { STANDINGS: statsStandings, HISTORY: statsHistory, RECORDS: statsRecords, H2H: statsH2H }[tab](games);
+  return `<div class="page tabbed">
+  <div style="display:flex;align-items:center;justify-content:space-between"><h1 class="cond" style="margin:0;font-size:34px;font-weight:800;letter-spacing:.4px">STATS</h1>
+    <button class="press cond" ${act('openSwitcher')} style="height:34px;padding:0 12px;border-radius:17px;background:var(--card);font-size:17px;font-weight:700;letter-spacing:.6px;display:flex;align-items:center;gap:6px;max-width:60%;overflow:hidden;white-space:nowrap">${esc(scopeName())} ${ICON.down}</button></div>
+  <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:2px;padding:3px;border-radius:12px;background:var(--card)">${STAT_TABS.map(t => `<button class="cond" ${act('statTab', t)} style="height:36px;border-radius:9px;font-size:14px;font-weight:800;letter-spacing:0;color:${t === tab ? 'var(--text)' : 'var(--text3)'};background:${t === tab ? 'var(--card3)' : 'transparent'}">${t}</button>`).join('')}</div>
+  ${body}
+</div>${tabbar('stats')}${liveBar()}`;
+};
+
+function statsStandings(games) {
+  const seasons = Statistician.seasons(games);
+  const yr = S.statSeason || 'ALL TIME';
+  const rows = Statistician.standings(games, yr === 'ALL TIME' ? {} : { season: +yr });
+  const ties = rows.some(r => r.t);
+  const cols = ties ? '24px 1fr 34px 34px 34px 18px' : '24px 1fr 40px 40px 18px';
+  return `<div style="display:flex;align-items:center;justify-content:space-between">
+    <button class="press cond" ${act('openSheet', 'season')} style="height:36px;padding:0 14px;border-radius:18px;background:var(--card);font-size:19px;font-weight:800;letter-spacing:.6px;display:flex;align-items:center;gap:6px">${esc(yr)} ${ICON.down}</button>
+    <span class="courier meta">Tap a player for more</span></div>
+  <div class="card" style="padding:0 14px">
+    <div class="cond" style="display:grid;grid-template-columns:${cols};height:32px;align-items:center;font-size:13px;font-weight:800;letter-spacing:.8px;color:var(--text3);border-bottom:1px solid var(--line)"><span></span><span>PLAYER</span><span style="text-align:center">W</span><span style="text-align:center">L</span>${ties ? '<span style="text-align:center">T</span>' : ''}<span></span></div>
+    ${rows.map((r, i) => {
+      const open = S.statOpen === r.id;
+      return `<button class="press" ${act('standOpen', r.id)} style="width:100%;display:block;text-align:left;${i ? 'border-top:1px solid var(--line)' : ''}">
+        <div style="display:grid;grid-template-columns:${cols};height:46px;align-items:center">
+          <span class="shoulders" style="font-size:18px;font-weight:800;color:var(--text3)">${i + 1}</span>
+          <span style="font-size:17px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(r.name)}</span>
+          <span class="shoulders num" style="text-align:center;font-size:22px;font-weight:900">${r.w}</span>
+          <span class="shoulders num" style="text-align:center;font-size:22px;font-weight:800;color:var(--text2)">${r.l}</span>
+          ${ties ? `<span class="shoulders num" style="text-align:center;font-size:22px;font-weight:800;color:var(--text2)">${r.t}</span>` : ''}
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="var(--text4)" stroke-width="1.8" stroke-linecap="round" style="transform:rotate(${open ? 180 : 0}deg)"><path d="M3 4.5l3 3 3-3"/></svg></div>
+        ${open ? `<div class="fade" style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;padding:0 0 12px 24px">${[[pct3(r.winPct), 'WIN %'], [r.avgPts == null ? '—' : r.avgPts.toFixed(1), 'AVG PTS'], [pctText(r.accuracy), 'ACCURACY'], [r.games, 'GAMES']]
+          .map(([v, k]) => `<div style="background:var(--card2);border-radius:10px;padding:6px 8px;display:flex;flex-direction:column"><span class="shoulders" style="font-size:20px;font-weight:900">${v}</span><span class="cond" style="font-size:11px;font-weight:800;letter-spacing:.6px;color:var(--text3)">${k}</span></div>`).join('')}</div>` : ''}
+      </button>`;
+    }).join('')}</div>`;
+}
+function seasonSheet() {
+  const games = scopeGames() || [];
+  const list = ['ALL TIME', ...Statistician.seasons(games).map(String)];
+  const cur = S.statSeason || 'ALL TIME';
+  return `<h2 class="cond" style="margin:0;font-size:28px;font-weight:800">SEASON</h2>
+  <div class="list">${list.map(y => `<button class="row press" ${act('pickSeason', y)}><span class="cond" style="flex-grow:1;font-size:20px;font-weight:800;letter-spacing:.4px">${y}</span>${ICON.check(y === cur ? 'var(--link)' : 'transparent')}</button>`).join('')}</div>`;
+}
+
+function statsHistory(games) {
+  const hist = Statistician.history(games);
+  const total = games.length;
+  const card = g => {
+    const d = g.date.split('-');
+    const tag = g.tag ? `<span class="cond tag" style="font-size:10px">${esc(g.tag)}</span>` : '';
+    const meta = [g.doubleheader, g.away && g.home ? `${shortTeam(g.away)} at ${shortTeam(g.home)}` : '', g.park].filter(Boolean).join(' · ');
+    return `<button class="card press" ${act('openGame', g.id)} style="width:100%;border-radius:18px;padding:10px 16px;display:flex;align-items:center;gap:14px;text-align:left">
+      <div style="width:40px;display:flex;flex-direction:column;align-items:center;flex-shrink:0"><span class="cond" style="font-size:14px;font-weight:800;color:var(--text3);letter-spacing:.6px">${MONTHS[+d[1] - 1]}</span><span class="shoulders num" style="font-size:26px;font-weight:900;line-height:1">${+d[2]}</span></div>
+      <div style="flex-grow:1;min-width:0;display:flex;flex-direction:column;gap:1px">
+        ${g.players.map((p, i) => `<div style="display:flex;justify-content:space-between;align-items:center;height:24px;color:${i === 0 && !g.tie ? 'var(--text)' : (g.tie && p.outcome === 'T' ? 'var(--text)' : 'var(--text2)')}">
+          <span style="font-size:16px;font-weight:${i === 0 ? 700 : 500};overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(p.name)}</span><span class="shoulders num" style="font-size:21px;font-weight:900">${p.score}</span></div>`).join('')}
+        ${tag || meta ? `<div style="display:flex;align-items:center;gap:6px;margin-top:3px;min-width:0">${tag}<span class="courier meta" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(meta)}</span></div>` : ''}
+      </div></button>`;
+  };
+  return `<button class="press cond mid-btn" style="height:44px;font-size:17px" ${act('addGame')}>${ICON.plus} ADD A PAST GAME</button>
+  ${hist.map((s, k) => `<div style="display:flex;align-items:baseline;justify-content:space-between;margin-top:${k ? 8 : 0}px"><h2 class="cond" style="margin:0;font-size:30px;font-weight:800">${s.season}</h2>
+    <span class="courier meta">${s.games.length} game${s.games.length > 1 ? 's' : ''}${k === 0 ? ' · ' + total + ' all time' : ''}</span></div>
+    <div style="display:flex;flex-direction:column;gap:10px">${s.games.map(card).join('')}</div>`).join('')}`;
+}
+
+function statsRecords(games) {
+  const recs = Statistician.records(games);
+  const fmt = r => {
+    switch (r.label) {
+      case 'BIGGEST WIN': return ['+' + r.value, r.who, `${niceDate(r.date)} · ${r.extra.score} to ${r.extra.loserScore}`];
+      case 'WIN STREAK': return [r.value, r.who, 'Games in a row'];
+      case 'MOST WINS': return [r.value, r.who, 'All time'];
+      case 'BEST ACCURACY': return [pctText(r.value), r.who, `${niceDate(r.date)} · ${r.extra.picks} picks`];
+      case 'MOST GAMES': return [r.value, r.who, 'Since ' + r.since];
+      case 'SEASONS': return [r.value, 'Club history', r.from === r.to ? String(r.from) : `${r.from} – ${r.to}`];
+      case 'BEST HALF-INNING': return ['+' + r.value, r.who, niceDate(r.date)];
+      case 'BIGGEST COMEBACK': return [r.value, r.who, 'Down by this much, still won'];
+      case 'LONGEST PICK STREAK': return [r.value, r.who, 'Right in a row · ' + niceDate(r.date)];
+      default: return [String(r.value).replace('-', '−'), r.who, niceDate(r.date)];
+    }
+  };
+  const hasInGame = recs.some(r => r.label === 'BEST HALF-INNING');
+  return `<div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px">${recs.map(r => { const [v, who, when] = fmt(r);
+    return `<div class="card" style="border-radius:16px;padding:10px 14px;display:flex;flex-direction:column;min-width:0">
+      <span class="cond" style="font-size:13px;font-weight:800;letter-spacing:.8px;color:var(--text3)">${r.label}</span>
+      <span class="shoulders" style="font-size:38px;font-weight:900;line-height:1.05">${v}</span>
+      <span style="font-size:14px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(who)}</span>
+      <span class="courier" style="font-size:10px;font-weight:700;color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(when)}</span></div>`; }).join('')}</div>
+  ${hasInGame ? '' : `<span class="courier meta" style="line-height:1.5;padding:0 2px">In-game records (best half-inning, biggest comeback, longest pick streak) start with the first new-app game.</span>`}`;
+}
+
+function statsH2H(games) {
+  const people = Statistician.standings(games).sort((a, b) => b.games - a.games);
+  if (people.length < 2) return `<div class="card" style="padding:18px;color:var(--text2);font-size:15px">Head to head needs at least two players.</div>`;
+  let a = S.h2hA && people.find(p => p.id === S.h2hA) ? S.h2hA : (people.find(p => p.id === S.user.uid) || people[0]).id;
+  const opps = Statistician.opponents(games, a);
+  let b = S.h2hB && opps.find(o => o.id === S.h2hB) ? S.h2hB : (opps[0] || {}).id;
+  S.h2hA = a; S.h2hB = b;
+  const nameOf = id => (people.find(p => p.id === id) || {}).name || '?';
+  const picker = (side, id, color) => `<button class="press cond" ${act('openSheet', 'h2hPick:' + side)} style="flex:1;min-width:0;height:44px;border-radius:12px;background:var(--card);border-bottom:3px solid ${color};font-size:19px;font-weight:800;display:flex;align-items:center;justify-content:center;gap:6px;overflow:hidden;white-space:nowrap">${esc(nameOf(id))} ${ICON.down}</button>`;
+  if (!b) return `<div style="display:flex;align-items:center;gap:10px">${picker('a', a, H2H_A)}</div><div class="card" style="padding:18px;color:var(--text2)">${esc(nameOf(a))} hasn't played anyone here yet.</div>`;
+  const h = Statistician.h2h(games, a, b);
+  const lead = h.leader ? nameOf(h.leader === 'a' ? a : b) + ' leads' : 'All square';
+  const initial = id => esc(nameOf(id)[0].toUpperCase());
+  const row = (label, va, vb) => `<div style="display:grid;grid-template-columns:70px 1fr 70px;align-items:center;height:48px;border-top:1px solid var(--line)">
+    <span class="shoulders num" style="font-size:24px;font-weight:900">${va}</span><span class="cond" style="text-align:center;font-size:15px;font-weight:800;letter-spacing:.8px;color:var(--text3)">${label}</span><span class="shoulders num" style="text-align:right;font-size:24px;font-weight:900">${vb}</span></div>`;
+  const streak = side => (h[side].current ? 'W' + h[side].current : '—');
+  return `<div style="display:flex;align-items:center;gap:10px">${picker('a', a, H2H_A)}<span class="cond" style="font-size:16px;font-weight:800;color:var(--text3)">VS</span>${picker('b', b, H2H_B)}</div>
+  <div style="display:flex;flex-direction:column;align-items:center;gap:4px;padding:6px 0">
+    <div style="display:flex;align-items:baseline;gap:16px"><span class="shoulders" style="font-size:80px;font-weight:900;line-height:1;color:${H2H_A}">${h.a.wins}</span><span class="shoulders" style="font-size:36px;font-weight:800;color:var(--text4)">–</span><span class="shoulders" style="font-size:80px;font-weight:900;line-height:1;color:${H2H_B}">${h.b.wins}</span></div>
+    <span class="courier" style="font-size:13px;font-weight:700;color:var(--text2)">${h.games} game${h.games === 1 ? '' : 's'}${h.since ? ' since ' + h.since : ''} · ${esc(lead)}</span></div>
+  ${h.last10.length ? `<div class="card" style="border-radius:16px;padding:12px 14px;display:flex;flex-direction:column;gap:8px">
+    <div style="display:flex;justify-content:space-between"><span class="cond" style="font-size:14px;font-weight:800;letter-spacing:.8px;color:var(--text3)">LAST ${h.last10.length}</span><span class="courier meta">oldest → newest</span></div>
+    <div style="display:grid;grid-template-columns:repeat(10,minmax(0,1fr));gap:4px">${h.last10.map(w => `<span class="cond" style="height:30px;border-radius:7px;background:${w === 'a' ? H2H_A : H2H_B};color:#fff;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:800">${initial(w === 'a' ? a : b)}</span>`).join('')}</div></div>` : ''}
+  <div class="card" style="border-radius:16px;padding:0 16px">
+    ${row('AVG SCORE', h.a.avg == null ? '—' : h.a.avg.toFixed(1), h.b.avg == null ? '—' : h.b.avg.toFixed(1)).replace('border-top:1px solid var(--line)', '')}
+    ${row('BIGGEST WIN', h.a.bestWin == null ? '—' : '+' + h.a.bestWin, h.b.bestWin == null ? '—' : '+' + h.b.bestWin)}
+    ${row('LONGEST STREAK', h.a.longest, h.b.longest)}
+    ${row('CURRENT STREAK', streak('a'), streak('b'))}</div>
+  ${info('h2hwhy', '<span class="courier meta">What counts?</span>', 'Only the overall winner of a game beats the others. A tie, or a game a third player won, doesn’t count for either of you.', '')}`;
+}
+function h2hPickSheet() {
+  const side = S.sheet.arg, games = scopeGames() || [];
+  const people = Statistician.standings(games);
+  let list;
+  if (side === 'a') list = people.sort((x, y) => y.games - x.games).map(p => ({ id: p.id, name: p.name, n: p.games, sub: `${p.w}–${p.l}${p.t ? '–' + p.t : ''}` }));
+  else list = Statistician.opponents(games, S.h2hA).map(o => { const h = Statistician.h2h(games, S.h2hA, o.id);
+    const aName = (people.find(p => p.id === S.h2hA) || {}).name;
+    return { id: o.id, name: o.name, n: o.games, sub: h.leader ? `${h.leader === 'a' ? aName : o.name} leads ${Math.max(h.a.wins, h.b.wins)}–${Math.min(h.a.wins, h.b.wins)}` : `Tied ${h.a.wins}–${h.b.wins}` }; });
+  const cur = side === 'a' ? S.h2hA : S.h2hB;
+  const aName = (people.find(p => p.id === S.h2hA) || {}).name || '';
+  return `<h2 class="cond" style="margin:0;font-size:28px;font-weight:800">${side === 'a' ? 'PICK A PLAYER' : esc(aName.toUpperCase()) + ' VS…'}</h2>
+  ${side === 'b' ? `<span class="courier meta">Only people ${esc(aName)} has played · ${esc(scopeName())}</span>` : ''}
+  <div class="list">${list.map(p => `<button class="row press" ${act('h2hPick', side + '|' + p.id)} style="min-height:56px">
+    <span style="width:32px;height:32px;border-radius:16px;background:var(--card3);display:flex;align-items:center;justify-content:center;font-weight:700;flex-shrink:0">${esc(p.name[0].toUpperCase())}</span>
+    <div style="flex-grow:1;min-width:0;display:flex;flex-direction:column"><span style="font-size:17px;font-weight:600">${esc(p.name)}</span><span class="courier meta">${esc(p.sub)}</span></div>
+    <span class="shoulders" style="font-size:20px;font-weight:800;color:var(--text2)">${p.n}</span>${ICON.check(p.id === cur ? 'var(--link)' : 'transparent')}</button>`).join('')}</div>
+  <span class="courier meta" style="line-height:1.5">Number = games together. Switch to ALL MY GAMES to include people from other clubs.</span>`;
+}
+
+// ════════════ Past game ════════════
+SCREENS.pastGame = () => {
+  const games = scopeGames() || [];
+  const g = games.find(x => x.id === S.params.id) || (S.params.game);
+  if (!g) return `<div class="page"><div class="topbar">${backBtn()}</div><div class="card" style="padding:18px">This game isn't here anymore.</div></div>`;
+  const sum = Statistician.summary(g, games), r = sum.result, n = g.players.length;
+  const order = g.players.map((_, i) => i).sort((a, b) => r.scores[b] - r.scores[a]);
+  const nm = i => esc(g.players[i].name.toUpperCase());
+  const headline = r.tie ? r.leaders.map(nm).join(' & ') + ' TIE' : nm(r.winner) + ' WINS';
+  const mlb = g.mlb ? `${shortTeam(g.away) || 'Away'} ${g.mlb.away} at ${shortTeam(g.home) || 'Home'} ${g.mlb.home}` : (g.away && g.home ? `${shortTeam(g.away)} at ${shortTeam(g.home)}` : '');
+  const host = g.era === 'app' ? (g.players.find(p => p.id === g.host) || {}).name : '';
+  const meta = [mlb, g.park, host && 'hosted by ' + host, g.era === 'hand' && 'added by ' + g.addedBy].filter(Boolean).join(' · ');
+  const mine = S.clubs.filter(c => c.captain).map(c => c.code);
+  const canDelete = S.admin || (g.clubList || []).some(c => mine.includes(c)) || (g.era === 'hand' && g.host === S.user.uid);
+  const canEdit = g.era === 'hand' && (g.host === S.user.uid || S.admin);
+  const aw = S.params.awards;
+  return `<div class="page">
+  <div class="topbar" style="justify-content:space-between">${backBtn()}<span class="cond" style="font-size:18px;font-weight:800;letter-spacing:1px;color:var(--text2)">${niceDate(g.date, true).toUpperCase()}</span>
+    <button class="back press" aria-label="Share card" ${act('shareCard', g.id)}><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 10V2M5 4.5L8 1.5l3 3M3 8v5.5h10V8"/></svg></button></div>
+  <div style="display:flex;flex-direction:column;align-items:center;gap:6px;padding:4px 0">
+    <span class="cond" style="font-size:${headline.length > 22 ? 30 : headline.length > 16 ? 36 : 44}px;font-weight:800;line-height:1.05;text-align:center;overflow-wrap:anywhere">${headline}</span>
+    ${n === 3 && !r.tie ? `<div style="display:flex;align-items:flex-end;gap:22px">${order.map((i, k) => `<div style="display:flex;flex-direction:column;align-items:center"><span class="shoulders" style="font-size:${k ? 44 : 64}px;font-weight:900;line-height:1;color:${k ? 'var(--text2)' : 'var(--text)'}">${r.scores[i]}</span><span style="font-size:13px;font-weight:600;color:var(--text2)">${esc(g.players[i].name)}</span></div>`).join('')}</div>`
+      : `<div style="display:flex;align-items:baseline;gap:14px"><span class="shoulders" style="font-size:68px;font-weight:900;line-height:1">${r.scores[order[0]]}</span><span class="shoulders" style="font-size:32px;color:var(--text4)">–</span><span class="shoulders" style="font-size:68px;font-weight:900;line-height:1;color:${r.tie ? 'var(--text)' : 'var(--text2)'}">${r.scores[order[1]]}</span></div>`}
+    ${meta ? `<span class="courier" style="font-size:12px;font-weight:700;color:var(--text2);text-align:center">${esc(meta)}</span>` : ''}
+    ${g.era !== 'app' ? `<span class="cond tag" style="margin-top:4px">${g.era === 'beta' ? 'BETA' : g.era === 'hand' ? 'ADDED BY HAND' : 'PRE-APP'}</span>` : ''}</div>
+  ${sum.lineScore ? lineScoreCard(false, g) : ''}
+  ${sum.tiles ? `<div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px">${sum.tiles.map(t => {
+    const fmt = v => (t.label === 'ACCURACY' ? pctText(v) : t.label === 'CONFIDENCE' ? v.join('–') : v);
+    const sc = v => (t.label === 'CONFIDENCE' ? v[0] - v[1] : v == null ? -1 : v); const top = Math.max(...t.values.map(sc));
+    return `<div class="card" style="border-radius:16px;padding:10px 14px"><span class="cond" style="font-size:13px;font-weight:800;letter-spacing:.8px;color:var(--text3)">${t.label}</span>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">${order.map(i => `<span class="shoulders" style="font-size:${n === 3 ? 22 : 26}px;font-weight:900;color:${sc(t.values[i]) === top ? 'var(--text)' : '#5E5E66'}">${fmt(t.values[i])}</span>`).join('')}</div></div>`; }).join('')}</div>` : ''}
+  ${sum.plays.length ? `<h2 class="cond" style="margin:6px 0 0;font-size:22px;font-weight:800">PLAYS OF THE GAME</h2>
+  <div class="card" style="padding:0 16px">${sum.plays.map((m, k) => `<div style="display:flex;align-items:center;gap:12px;padding:10px 0;${k ? 'border-top:1px solid var(--line)' : ''}"><span class="shoulders" style="width:40px;font-size:22px;font-weight:900">${m.code}</span>
+    <div style="flex-grow:1;display:flex;flex-direction:column;gap:1px"><span style="font-size:15px;font-weight:600">${esc(m.text)}</span><span class="courier meta" style="color:var(--text2)">${m.when}${m.context ? ' · ' + m.context : ''}</span></div>
+    <span class="shoulders" style="font-size:20px;font-weight:900;color:var(--green)">+${m.pts}</span></div>`).join('')}</div>` : ''}
+  ${aw && aw.length ? `<h2 class="cond" style="margin:6px 0 0;font-size:22px;font-weight:800">AWARDS EARNED</h2>
+  <div style="display:flex;flex-direction:column;gap:8px">${aw.map(a => `<div class="card" style="border-radius:16px;padding:10px 14px;display:flex;align-items:center;gap:12px">
+    <div style="width:36px;height:36px;border-radius:10px;background:#2A2418;display:flex;align-items:center;justify-content:center;color:var(--gold)">${a.award.code ? `<span class="shoulders" style="font-size:14px;font-weight:900">${a.award.code}</span>` : ICON.tabs.awards}</div>
+    <span style="flex-grow:1;font-size:16px;font-weight:700">${esc(a.award.name)}</span><span style="font-size:14px;font-weight:600;color:var(--text2)">${esc(a.names.join(', '))}</span></div>`).join('')}</div>` : ''}
+  ${g.note ? `<div class="card" style="padding:12px 16px"><span class="cond label" style="padding:0">GAME NOTE</span><div style="font-size:15px;line-height:1.45;margin-top:4px">${esc(g.note)}</div></div>` : ''}
+  ${canEdit ? `<button class="press cond mid-btn" style="margin-top:8px;font-size:18px" ${act('editGame', g.id)}>EDIT GAME</button>` : ''}
+  ${canDelete ? `<button class="press cond mid-btn" style="font-size:18px;color:var(--orange);${canEdit ? '' : 'margin-top:8px'}" ${act('openSheet', 'deleteGame')}>DELETE GAME <span class="cond tag gold" style="font-size:10px;margin-left:4px">${S.admin && !(g.clubList || []).some(c => mine.includes(c)) ? 'ADMIN' : g.era === 'hand' && g.host === S.user.uid ? 'YOURS' : 'CAPTAINS'}</span></button>` : ''}
+</div>`;
+};
+function deleteGameSheet() {
+  return `<span class="cond" style="font-size:26px;font-weight:800">DELETE THIS GAME?</span>
+  <span style="font-size:15px;line-height:1.5;color:var(--text2)">It's removed for everyone who played in it. Standings, records and awards recalculate without it. This can't be undone.</span>
+  <button class="big-btn cond press" style="background:#E0502F" ${act('deleteGame')} ${S.busy ? 'disabled' : ''}>DELETE GAME</button>
+  <button class="press cond mid-btn" ${act('closeSheet')}>KEEP IT</button>`;
+}
+
+// ════════════ Add / edit a past game (final scores only) ════════════
+SCREENS.addGame = () => {
+  const d = S.ag, editing = !!d.id;
+  const ok = d.players.length >= 2 && d.players.every(p => p.score !== '' && !isNaN(+p.score)) && d.date;
+  return `<div class="page">
+  <div class="topbar">${backBtn()}<h1 class="cond h1">${editing ? 'EDIT GAME' : 'ADD A PAST GAME'}</h1></div>
+  ${info('agWhy', '<span class="courier" style="font-size:13px;font-weight:700;color:var(--text2)">Final scores only</span>', 'For games you played without the app. They count toward wins, standings, rivalries and travel, but not in-game awards. Anyone in the game can see who added it.', '')}
+  <span class="cond label">DATE</span>
+  <label class="field"><input type="date" data-model="ag.date" value="${attr(d.date)}" max="${new Date().toISOString().slice(0, 10)}" style="color-scheme:dark"></label>
+  <span class="cond label">PLAYERS & SCORES</span>
+  <div class="list">${d.players.map((p, i) => `<div class="row" style="min-height:58px">
+      <span style="flex-grow:1;font-size:17px;font-weight:600;overflow:hidden;text-overflow:ellipsis">${esc(p.name)}${p.guest ? ' <span class="cond tag" style="font-size:10px">GUEST</span>' : ''}</span>
+      <label class="field" style="width:90px;height:42px;background:var(--card2);padding:0 10px"><input inputmode="numeric" pattern="-?[0-9]*" data-model="ag.players.${i}.score" value="${attr(p.score)}" placeholder="Score" style="text-align:center;font-size:20px"></label>
+      ${editing ? '' : `<button class="press" ${act('agRemove', i)} style="width:28px;height:28px;border-radius:14px;background:var(--card2);color:var(--text2)">✕</button>`}</div>`).join('')}
+    ${!editing && d.players.length < 3 ? `<button class="row press" ${act('openSheet', 'addPlayer:ag')} style="min-height:52px;color:var(--link)">${ICON.plus}<span style="font-size:17px;font-weight:600">Add a player</span></button>` : ''}</div>
+  <span class="cond label">MATCHUP · OPTIONAL</span>
+  <div class="list">
+    <button class="row press" ${act('openSheet', 'pickTeam:away')}><span class="cond" style="width:48px;font-size:15px;font-weight:800;color:var(--text3)">AWAY</span><span style="flex-grow:1;font-size:16px;color:${d.away ? 'var(--text)' : 'var(--text4)'}">${esc(d.away || 'Choose team')}</span>${ICON.chev}</button>
+    <button class="row press" ${act('openSheet', 'pickTeam:home')}><span class="cond" style="width:48px;font-size:15px;font-weight:800;color:var(--text3)">HOME</span><span style="flex-grow:1;font-size:16px;color:${d.home ? 'var(--text)' : 'var(--text4)'}">${esc(d.home || 'Choose team')}</span>${ICON.chev}</button>
+    <button class="row press" ${act('openSheet', 'park')}><span class="cond" style="width:48px;font-size:15px;font-weight:800;color:var(--text3)">PARK</span><span style="flex-grow:1;font-size:16px;color:${d.park || TEAMS[d.home] ? 'var(--text)' : 'var(--text4)'}">${esc(d.park || TEAMS[d.home] || 'Ballpark')}</span>${ICON.chev}</button></div>
+  <span class="cond label">NOTE · OPTIONAL</span>
+  <label class="field"><input data-model="ag.note" value="${attr(d.note)}" maxlength="280" placeholder="Anything worth remembering"></label>
+  <button class="big-btn cond press" style="margin-top:6px" ${act('agSave')} data-ok="${ok ? 1 : 0}" ${ok && !S.busy ? '' : 'disabled'}>${editing ? 'SAVE CHANGES' : 'ADD GAME'}</button>
+</div>`;
+};
+
+// ════════════ Share card (a picture made on the phone) ════════════
+async function drawShareCard(g, sum, awards) {
+  try { await document.fonts.ready; } catch (e) { /* fonts may not be loaded offline: system fonts are fine */ }
+  const W = 540, H = 675, K = 2, c = document.createElement('canvas'); c.width = W * K; c.height = H * K;
+  const x = c.getContext('2d'); x.scale(K, K);
+  const F = (w, size, fam) => `${w} ${size}px ${fam}`;
+  const COND = '"Barlow Condensed", -apple-system, sans-serif', SH = '"Big Shoulders Display", -apple-system, sans-serif', CO = '"Courier Prime", "Courier New", monospace', SYS = '-apple-system, "Helvetica Neue", sans-serif';
+  x.fillStyle = '#0B0B0D'; x.fillRect(0, 0, W, H);
+  // faint scorebook diamond watermark (the red double tapers into the outline at home plate)
+  x.save(); x.globalAlpha = 0.06; x.translate(W + 120 - 420, -110); x.scale(3.5, 3.5);
+  x.strokeStyle = '#F4F1E8'; x.lineWidth = 3; x.stroke(new Path2D('M60 5L115 60 60 115 5 60z'));
+  x.fillStyle = '#D63A2F'; x.fill(new Path2D('M60 117.12L119.95 60 60 0.05 60 9.95 110.05 60 60 112.88z')); x.restore();
+  const rr = (px, py, w, h, r, fill) => { x.beginPath(); x.roundRect(px, py, w, h, r); x.fillStyle = fill; x.fill(); };
+  const text = (t, px, py, font, color, align = 'left') => { x.font = font; x.fillStyle = color; x.textAlign = align; x.fillText(t, px, py); };
+  const fit = (t, max, font) => { x.font = font; let s = t; while (x.measureText(s).width > max && s.length > 2) s = s.slice(0, -2) + '…'; return s; };
+  // wordmark
+  text('Guess Ball', 36, 70, '36px Norican, cursive', '#F4F1E8');
+  x.strokeStyle = '#D63A2F'; x.lineWidth = 1.5; x.save(); x.translate(36, 76); x.scale(.85, .85); x.stroke(new Path2D('M14 12C70 4 140 3 188 8')); x.setLineDash([1.4, 5.5]); x.lineWidth = 7; x.stroke(new Path2D('M14 12C70 4 140 3 188 8')); x.restore();
+  const r = sum.result, n = g.players.length, order = g.players.map((_, i) => i).sort((a, b) => r.scores[b] - r.scores[a]);
+  text('FINAL', W - 36, 52, F(800, 16, COND), '#A1A1AA', 'right');
+  text([niceDate(g.date), g.park].filter(Boolean).join(' · '), W - 36, 72, F(700, 13, CO), '#A1A1AA', 'right');
+  if (g.mlb && (g.away || g.home)) text(`${shortTeam(g.away) || 'Away'} ${g.mlb.away} · ${shortTeam(g.home) || 'Home'} ${g.mlb.home}`, W - 36, 90, F(700, 13, CO), '#C7C7CC', 'right');
+  // headline + score
+  const nm = i => g.players[i].name.toUpperCase();
+  const head = r.tie ? r.leaders.map(nm).join(' & ') + ' TIE' : nm(r.winner) + ' WINS';
+  let hs = 54; x.font = F(800, hs, COND); while (x.measureText(head).width > W - 72 && hs > 30) { hs -= 2; x.font = F(800, hs, COND); }
+  text(head, 36, 160, F(800, hs, COND), '#F5F5F7');
+  let y = 250;
+  if (r.tie) { text(`${r.scores[r.leaders[0]]}`, 36, y, F(900, 96, SH), '#F5F5F7'); x.font = F(900, 96, SH); let w = x.measureText(String(r.scores[r.leaders[0]])).width;
+    text('–', 36 + w + 14, y - 10, F(800, 44, SH), '#5E5E66'); text(`${r.scores[r.leaders[1]]}`, 36 + w + 50, y, F(900, 96, SH), '#F5F5F7'); w += 50 + x.measureText(String(r.scores[r.leaders[1]])).width;
+    text('DEAD EVEN', 36 + w + 20, y - 8, F(800, 22, COND), '#8E8E96');
+  } else {
+    const top = String(r.scores[order[0]]); text(top, 36, y, F(900, 96, SH), '#F5F5F7'); x.font = F(900, 96, SH); const w = x.measureText(top).width;
+    if (n === 2) { text('–', 36 + w + 14, y - 10, F(800, 44, SH), '#5E5E66'); text(String(r.scores[order[1]]), 36 + w + 50, y, F(900, 96, SH), '#8E8E96');
+      x.font = F(900, 96, SH); const w2 = x.measureText(String(r.scores[order[1]])).width; text('OVER ' + nm(order[1]), 36 + w + 50 + w2 + 16, y - 8, F(800, 22, COND), '#8E8E96'); }
+    else order.slice(1).forEach((i, k) => { const yy = y - 52 + k * 40; text(fit(`${k ? '3RD' : '2ND'} · ${nm(i)}`, 250, F(800, 20, COND)), 36 + w + 24, yy, F(800, 20, COND), '#A1A1AA'); text(String(r.scores[i]), W - 36, yy + 4, F(900, 30, SH), '#A1A1AA', 'right'); });
+  }
+  y += 22;
+  // line score (app games)
+  if (sum.lineScore) {
+    const ls = sum.lineScore, inns = ls.innings.slice(-9), h = 32 + n * 36;
+    rr(36, y, W - 72, h, 16, '#17171A');
+    const x0 = 36 + 14 + 58, colW = (W - 72 - 28 - 58 - 40) / inns.length;
+    inns.forEach((k, j) => text(String(k), x0 + colW * j + colW / 2, y + 22, F(700, 14, COND), '#8E8E96', 'center'));
+    text('R', W - 50, y + 22, F(700, 14, COND), '#F5F5F7', 'right');
+    g.players.forEach((p, i) => { const yy = y + 32 + i * 36 + 25; const lead = ls.totals[i] === Math.max(...ls.totals);
+      text(fit(p.name, 56, F(700, 15, SYS)), 50, yy, F(lead ? 700 : 600, 15, SYS), lead ? '#F5F5F7' : '#A1A1AA');
+      inns.forEach((k, j) => { const v = ls.rows[i][k - 1]; if (v != null) text(String(v), x0 + colW * j + colW / 2, yy, F(800, 19, SH), '#C7C7CC', 'center'); });
+      text(String(ls.totals[i]), W - 50, yy + 1, F(900, 26, SH), lead ? '#F5F5F7' : '#A1A1AA', 'right'); });
+    y += h + 16;
+  }
+  // play of the game
+  const top = sum.plays[0];
+  if (top) {
+    rr(36, y, W - 72, 68, 16, '#17171A');
+    x.save(); x.translate(50, y + 12); x.scale(44 / 58, 44 / 58); x.strokeStyle = '#5BD27A'; x.lineWidth = 5; x.lineJoin = 'round'; x.stroke(new Path2D('M29 53L53 29 29 5 5 29z')); x.restore();
+    text(top.code, 72, y + 40, F(900, top.code.length > 2 ? 14 : 17, SH), '#F5F5F7', 'center');
+    text('PLAY OF THE GAME', 108, y + 28, F(800, 13, COND), '#8E8E96');
+    text(fit(`${top.text} · +${top.pts}`, W - 72 - 90, F(700, 16, SYS)), 108, y + 50, F(700, 16, SYS), '#F5F5F7');
+    y += 84;
+  }
+  // awards
+  if (awards && awards.length) {
+    text('AWARDS', 36, y + 20, F(800, 13, COND), '#8E8E96');
+    let cx = 100, cy = y;
+    awards.slice(0, 6).forEach(a => {
+      const label = `${a.award.name} · ${a.names.join(', ')}`; x.font = F(600, 13, SYS); const w = Math.min(x.measureText(label).width + 24, W - 72);
+      if (cx + w > W - 36) { cx = 36; cy += 38; }
+      rr(cx, cy, w, 30, 15, '#17171A'); text(fit(label, w - 24, F(600, 13, SYS)), cx + 12, cy + 20, F(600, 13, SYS), '#F5F5F7'); cx += w + 8;
+    });
+  }
+  // footer: the club name only
+  const club = (S.clubs.find(k => (g.clubList || []).includes(k.code)) || {}).name;
+  if (club) text(club.toUpperCase(), W / 2, H - 26, F(800, 14, COND), '#5E5E66', 'center');
+  return new Promise(res => c.toBlob(res, 'image/png'));
+}
+async function shareGame(g, sum, awards) {
+  try {
+    const blob = await drawShareCard(g, sum, awards);
+    const file = new File([blob], `guess-ball-${g.date}.png`, { type: 'image/png' });
+    if (navigator.canShare && navigator.canShare({ files: [file] })) await navigator.share({ files: [file] });
+    else { const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = file.name; a.click(); }
+  } catch (e) { if (e && e.name !== 'AbortError') toast('Couldn’t make the share card: ' + e.message, true); }
+}
+
+// Admin: delete any game
+SCREENS.adminGames = () => {
+  const games = (S.adminGames || []).filter(g => { const q = S.q.trim().toLowerCase(); return !q || g.players.some(p => p.name.toLowerCase().includes(q)) || g.date.includes(q); });
+  return `<div class="page"><div class="topbar">${backBtn()}<h1 class="cond h1">DELETE A GAME</h1></div>
+  <label class="field search">${ICON.search}<input data-model="q" data-region="list" value="${attr(S.q)}" placeholder="Search by player or date (2026-09)"></label>
+  <div data-region="list" style="display:flex;flex-direction:column;gap:8px">${S.adminGames == null ? `<div style="display:flex;justify-content:center;padding:20px">${ICON.spinner}</div>` : games.slice(0, 60).map(g => { const r = Statistician.result(g);
+    return `<button class="card press" ${act('openGame', g.id)} style="width:100%;border-radius:14px;padding:10px 14px;display:flex;justify-content:space-between;align-items:center;text-align:left">
+      <div style="display:flex;flex-direction:column"><span style="font-size:15px;font-weight:700">${esc(g.players.map((p, i) => p.name + ' ' + r.scores[i]).join(' · '))}</span><span class="courier meta">${esc(niceDate(g.date))} · ${g.era}</span></div>${ICON.chev}</button>`; }).join('')}</div></div>`;
+};
+
+Object.assign(SHEETS, { season: seasonSheet, h2hPick: h2hPickSheet, deleteGame: deleteGameSheet });
+
+// ════════════ Actions ════════════
+Object.assign(ACT, {
+  statTab: t => { S.statTab = t; render(); const p = $app().querySelector('.page'); if (p) p.scrollTop = 0; },
+  standOpen: id => { S.statOpen = S.statOpen === id ? null : id; render(); },
+  pickSeason: y => { S.statSeason = y; S.sheet = null; render(); },
+  h2hPick: arg => { const [side, id] = arg.split('|'); if (side === 'a') { S.h2hA = id; S.h2hB = null; } else S.h2hB = id; S.sheet = null; render(); },
+  openGame: async id => {
+    const g = (scopeGames() || []).find(x => x.id === id) || (S.adminGames || []).find(x => x.id === id);
+    go('pastGame', { id, game: g, awards: null });
+    if (!g || g.era === 'preapp' || g.era === 'hand') return;
+    try {   // awards need everyone's full history — fetch it in the background
+      const hist = await withTimeout(FCab.historyOf(g.players.map(p => p.id)), 20000);
+      const got = Statistician.awardsInGame(hist.some(x => x.id === g.id) ? hist : hist.concat([g]), g);
+      const merged = [];
+      got.forEach(a => { const m = merged.find(x => x.award.id === a.award.id && x.tier === a.tier); if (m) m.names.push(a.name); else merged.push({ ...a, names: [a.name] }); });
+      if (S.screen === 'pastGame' && S.params.id === id) { S.params.awards = merged; render(); }
+    } catch (e) { /* offline: just no awards list */ }
+  },
+  deleteGame: async () => {
+    const g = S.params.game || (scopeGames() || []).find(x => x.id === S.params.id);
+    S.busy = true; render();
+    try {
+      await FCab.deleteGame(g);
+      S.busy = false; S.sheet = null;
+      if (S.data && S.data.games) S.data.games = S.data.games.filter(x => x.id !== g.id);
+      if (S.adminGames) S.adminGames = S.adminGames.filter(x => x.id !== g.id);
+      back(); toast('Game deleted — stats recalculated'); loadScopeGames(true); loadHome();
+    } catch (e) { fail(e); }
+  },
+  shareCard: async id => {
+    const g = S.params.game || (scopeGames() || []).find(x => x.id === id);
+    await shareGame(g, Statistician.summary(g, scopeGames() || [g]), S.params.awards || []);
+  },
+  addGame: () => {
+    S.ag = { date: new Date().toISOString().slice(0, 10), players: [{ id: S.user.uid, name: S.account.name, score: '' }], away: '', home: '', park: '', note: '' };
+    S.ng = S.ag; S.ngRoster = null; go('addGame'); loadRoster();
+  },
+  editGame: id => {
+    const g = S.params.game || (scopeGames() || []).find(x => x.id === id);
+    S.ag = { id: g.id, game: g, date: g.date, players: g.players.map((p, i) => ({ id: p.id, name: p.name, score: String(g.scores[i]) })), away: g.away || '', home: g.home || '', park: g.park || '', note: g.note || '' };
+    S.ng = S.ag; go('addGame');
+  },
+  agRemove: i => { S.ag.players.splice(+i, 1); render(); },
+  agSave: async () => {
+    const d = S.ag; S.busy = true; render();
+    const scores = d.players.map(p => Math.round(+p.score));
+    try {
+      if (d.id) await FCab.editHandGame(d.game, { scores, date: d.date, away: d.away, home: d.home, park: d.park || TEAMS[d.home] || '', note: d.note });
+      else await FCab.addHandGame({ players: d.players.map(p => ({ id: p.id, name: p.name })), scores, date: d.date, away: d.away, home: d.home, park: d.park || TEAMS[d.home] || '', note: d.note });
+      S.busy = false; back(); if (d.id) back();
+      toast(d.id ? 'Game updated' : 'Game added'); await loadScopeGames(true); loadHome();
+    } catch (e) { fail(e); }
+  },
+  adminDelete: async () => {
+    S.adminGames = null; go('adminGames');
+    try {
+      const all = await FCab.exportAll();
+      const games = Object.values((all && all.games) || {}).filter(g => g.ended).map(g => ({ ...g, events: g.events ? Object.values(g.events) : undefined }));
+      S.adminGames = games.sort((a, b) => (a.date < b.date ? 1 : -1)); render();
+    } catch (e) { fail(e); }
+  },
+});
+async function loadRoster() {
+  try {
+    const codes = S.scope === 'mine' ? S.clubs.filter(c => c.status === 'member').map(c => c.code) : [S.scope];
+    const seen = {}, out = [];
+    for (const c of codes) (await withTimeout(FCab.roster(c), 8000)).forEach(m => { if (!seen[m.pid] && m.pid !== S.user.uid) { seen[m.pid] = 1; out.push({ ...m, club: c }); } });
+    S.ngRoster = out.sort((a, b) => a.name.localeCompare(b.name));
+  } catch (e) { S.ngRoster = []; }
   render();
 }
 
