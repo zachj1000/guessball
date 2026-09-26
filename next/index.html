@@ -1,0 +1,2194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="GB Next">
+<meta name="theme-color" content="#000000">
+<title>Guess Ball</title>
+<link rel="apple-touch-icon" href="../apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=Big+Shoulders+Display:wght@700;800;900&family=Courier+Prime:wght@400;700&family=Norican&display=swap">
+<style>
+/* ── Theme: every color lives here, so light mode and accents are a swap, not a rewrite ── */
+:root {
+  --bg: #000000; --card: #1C1C1F; --card2: #2A2A2F; --card3: #3A3A40; --inner: #242428;
+  --sheet: #161618; --sheetcard: #1F1F22; --grab: #48484E;
+  --text: #F5F5F7; --text2: #A1A1AA; --text3: #8E8E96; --text4: #6E6E76; --text5: #C7C7CC;
+  --line: #2A2A2F; --line2: #34343A;
+  --accent: #2F6FE4; --onaccent: #FFFFFF; --link: #7AABFF;
+  --gold: #F2C14E; --goldfill: #F2C14E; --green: #5BD27A; --orange: #FF8A65; --live: #FF5A4E; --livetext: #FF7B70;
+  --cream: #F4F1E8; --swoosh: #D63A2F; --toggle: #34C759;
+  --nav: rgba(30,30,34,0.86); --navpill: rgba(255,255,255,0.11); --scrim: rgba(0,0,0,0.6);
+  --safe-top: env(safe-area-inset-top, 0px); --safe-bot: env(safe-area-inset-bottom, 0px);
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text); }
+body { font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif; -webkit-font-smoothing: antialiased;
+       -webkit-text-size-adjust: 100%; overscroll-behavior: none; -webkit-user-select: none; user-select: none; }
+input, textarea { -webkit-user-select: text; user-select: text; }
+button { font-family: inherit; border: 0; cursor: pointer; -webkit-tap-highlight-color: transparent; color: inherit; background: none; padding: 0; }
+a { color: var(--link); text-decoration: none; -webkit-tap-highlight-color: transparent; }
+.press { transition: transform .16s cubic-bezier(.3,.7,.4,1), opacity .2s, background-color .2s; }
+.press:active { transform: scale(.96); }
+.cond { font-family: "Barlow Condensed", -apple-system, sans-serif; }
+.shoulders { font-family: "Big Shoulders Display", -apple-system, sans-serif; }
+.courier { font-family: "Courier Prime", "Courier New", monospace; }
+.script { font-family: "Norican", cursive; }
+.num { font-variant-numeric: tabular-nums; }
+@keyframes pulse { 0%,100% { opacity: 1 } 50% { opacity: .3 } }
+.live { animation: pulse 1.6s ease-in-out infinite; }
+@keyframes rise { from { transform: translateY(14px); opacity: 0 } to { transform: none; opacity: 1 } }
+.rise { animation: rise .6s cubic-bezier(.2,.8,.2,1) both } .rise2 { animation: rise .6s cubic-bezier(.2,.8,.2,1) .15s both }
+@keyframes up { from { transform: translateY(40px); opacity: 0 } to { transform: none; opacity: 1 } }
+.up { animation: up .3s cubic-bezier(.2,.8,.2,1) both; }
+@keyframes fade { from { opacity: 0; transform: translateY(-6px) } to { opacity: 1; transform: none } }
+.fade { animation: fade .22s ease-out both; }
+@keyframes slide { from { opacity: 0; transform: translateX(18px) } to { opacity: 1; transform: none } }
+.slide { animation: slide .3s cubic-bezier(.2,.8,.2,1) both; }
+@keyframes spin { to { transform: rotate(360deg) } }
+.spin { animation: spin 1s linear infinite; transform-origin: center; }
+
+/* ── Layout ── */
+#app { position: fixed; inset: 0; max-width: 520px; margin: 0 auto; overflow: hidden; }
+.screen { position: absolute; inset: 0; display: flex; flex-direction: column; }
+.page { position: absolute; inset: 0; overflow-y: auto; -webkit-overflow-scrolling: touch;
+        padding: calc(var(--safe-top) + 14px) 20px calc(var(--safe-bot) + 24px); display: flex; flex-direction: column; gap: 14px; }
+.page > * { flex-shrink: 0; }
+.page.tabbed { padding-bottom: calc(var(--safe-bot) + 130px);
+  -webkit-mask-image: linear-gradient(180deg, #000 0, #000 calc(100% - var(--safe-bot) - 110px), transparent calc(100% - var(--safe-bot) - 82px));
+          mask-image: linear-gradient(180deg, #000 0, #000 calc(100% - var(--safe-bot) - 110px), transparent calc(100% - var(--safe-bot) - 82px)); }
+.fixedpage { position: absolute; inset: 0; padding: calc(var(--safe-top) + 14px) 20px calc(var(--safe-bot) + 20px); display: flex; flex-direction: column; gap: 14px; overflow-y: auto; }
+.fixedpage > * { flex-shrink: 0; }
+.grow { flex-grow: 1 !important; flex-shrink: 1 !important; }
+
+.card { background: var(--card); border-radius: 18px; }
+.list { background: var(--card); border-radius: 16px; padding: 0 14px; }
+.row { width: 100%; min-height: 50px; display: flex; align-items: center; gap: 10px; text-align: left; }
+.list > .row + .row, .list > * + .row { border-top: 1px solid var(--line); }
+.h1 { margin: 0; font-size: 30px; font-weight: 800; letter-spacing: .4px; }
+.h2 { margin: 0; font-size: 24px; font-weight: 800; letter-spacing: .6px; }
+.label { padding: 0 4px; font-size: 15px; font-weight: 800; letter-spacing: .8px; color: var(--text3); }
+.meta { font-size: 11px; font-weight: 700; color: var(--text3); }
+.big-btn { height: 58px; border-radius: 29px; background: var(--accent); color: var(--onaccent); font-size: 22px; font-weight: 800; letter-spacing: .8px; width: 100%; }
+.mid-btn { height: 50px; border-radius: 25px; background: var(--card); color: var(--text); font-size: 20px; font-weight: 800; letter-spacing: .8px; width: 100%;
+           display: flex; align-items: center; justify-content: center; gap: 8px; }
+.small-btn { height: 34px; padding: 0 16px; border-radius: 17px; font-size: 16px; font-weight: 800; letter-spacing: .6px; background: var(--card2); color: var(--text); }
+.big-btn:disabled, .mid-btn:disabled, .small-btn:disabled { opacity: .4; }
+.back { width: 36px; height: 36px; border-radius: 18px; background: var(--card); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.topbar { display: flex; align-items: center; gap: 12px; min-height: 40px; }
+.field { height: 52px; border-radius: 14px; background: var(--card); display: flex; align-items: center; padding: 0 14px; gap: 8px; }
+.field input { flex-grow: 1; min-width: 0; background: none; border: 0; outline: none; color: var(--text); font-family: inherit; font-size: 17px; font-weight: 600; }
+.field input::placeholder { color: var(--text4); font-weight: 500; }
+.search { height: 44px; border-radius: 12px; }
+.search input { font-size: 16px; font-weight: 500; }
+.tag { font-size: 11px; font-weight: 800; letter-spacing: .8px; padding: 0 5px; border-radius: 5px; border: 1.5px solid #4A4A52; color: var(--text5); white-space: nowrap; }
+.tag.gold { color: var(--gold); border-color: rgba(242,193,78,.55); }
+.seg { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; padding: 4px; border-radius: 14px; background: var(--card); }
+.seg button { height: 40px; border-radius: 10px; font-size: 17px; font-weight: 800; letter-spacing: .6px; color: var(--text3); }
+.seg button.on { background: var(--card3); color: var(--text); }
+.toggle { width: 52px; height: 32px; flex-shrink: 0; border-radius: 16px; padding: 2px; display: flex; align-items: center; transition: background-color .25s; background: var(--card3); }
+.toggle span { width: 28px; height: 28px; border-radius: 14px; background: #FFFFFF; box-shadow: 0 2px 6px rgba(0,0,0,.35); transition: transform .25s; }
+.toggle.on { background: var(--toggle); } .toggle.on span { transform: translateX(20px); }
+.chev { flex-shrink: 0; }
+
+/* ── Info (i) bubbles ── */
+.info-btn { display: inline-flex; align-items: center; gap: 6px; text-align: left; }
+.info-i { width: 17px; height: 17px; border-radius: 9px; border: 1.5px solid var(--text4); color: var(--text3); font: 700 11px/14px Georgia, serif; font-style: italic;
+          display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.bubble { background: #2C2C31; color: var(--text5); border-radius: 12px; padding: 10px 12px; font-size: 13px; font-weight: 500; line-height: 1.45; position: relative; margin-top: 6px; }
+.bubble::before { content: ""; position: absolute; top: -6px; left: 14px; border: 6px solid transparent; border-top: 0; border-bottom-color: #2C2C31; }
+
+/* ── Tab bar (floating glass capsule) ── */
+.tabbar { z-index: 10; position: absolute; left: 16px; right: 16px; bottom: calc(var(--safe-bot) + 12px); height: 64px; padding: 6px; display: flex; gap: 4px; border-radius: 32px;
+  background: var(--nav); -webkit-backdrop-filter: blur(24px) saturate(160%); backdrop-filter: blur(24px) saturate(160%);
+  border: 1px solid rgba(255,255,255,.10); box-shadow: 0 10px 30px rgba(0,0,0,.45); }
+.tabbar button { flex: 1; height: 52px; border-radius: 26px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+  color: var(--text2); font-size: 11px; font-weight: 700; letter-spacing: .6px; }
+.tabbar button.on { background: var(--navpill); color: var(--link); }
+
+/* ── Sheets, toasts ── */
+.scrim { position: absolute; inset: 0; background: var(--scrim); z-index: 20; }
+.sheet { position: absolute; left: 0; right: 0; bottom: 0; max-height: 88%; overflow-y: auto; z-index: 21; background: var(--sheet); border-radius: 28px 28px 0 0;
+         padding: 10px 20px calc(var(--safe-bot) + 24px); display: flex; flex-direction: column; gap: 12px; }
+.sheet > * { flex-shrink: 0; }
+.grab { align-self: center; width: 38px; height: 5px; border-radius: 3px; background: var(--grab); }
+.sheet .list { background: var(--sheetcard); }
+.toast { position: absolute; left: 20px; right: 20px; bottom: calc(var(--safe-bot) + 96px); z-index: 30; background: #2C2C31; color: var(--text); border-radius: 16px;
+         padding: 12px 16px; font-size: 15px; font-weight: 600; box-shadow: 0 10px 30px rgba(0,0,0,.5); }
+.toast.bad { color: var(--orange); }
+.spinner { width: 22px; height: 22px; }
+body.bigtext .page { zoom: 1.08; }
+
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script>
+// ════════════════════════════════════════════════════════════════
+//  GUESS BALL — one file, five sections:
+//  1 Scorebook (the list of events in a game — lives inside each game)
+//  2 Umpire (rules)  3 Statistician (stats + awards)
+//  4 Filing Cabinet (saving/loading)  5 Screens
+// ════════════════════════════════════════════════════════════════
+// ════════════════════════════════════════════════════════════════
+//  SECTION 2 — THE UMPIRE (game rules)
+//  Pure functions only: no screen, no storage, no internet.
+//  Give it the game setup + the scorebook (list of events) and it
+//  works out everything about the game at that moment.
+// ════════════════════════════════════════════════════════════════
+const Umpire = (() => {
+
+  // ── Outcome table (borrowed from v1.9) ──
+  // pickable: players can choose it · outs: outs it adds · midAtBat: at-bat continues after it
+  const OUTCOMES = [
+    { id: 'strikeout',       label: 'STRIKEOUT',        pts: 1,  outs: 1, pickable: true  },
+    { id: 'in_play_out',     label: 'IN PLAY OUT',      pts: 1,  outs: 1, pickable: true  },
+    { id: 'double_play',     label: 'DOUBLE PLAY',      pts: 3,  outs: 2, pickable: true  },
+    { id: 'fielders_choice', label: "FIELDER'S CHOICE", pts: 2,  outs: 1, pickable: true  },
+    { id: 'bunt',            label: 'BUNT',             pts: 4,  outs: 0, pickable: true  },
+    { id: 'walk',            label: 'WALK',             pts: 3,  outs: 0, pickable: true  },
+    { id: 'hbp',             label: 'HBP',              pts: 3,  outs: 0, pickable: true  },
+    { id: 'single',          label: 'SINGLE',           pts: 2,  outs: 0, pickable: true  },
+    { id: 'double',          label: 'DOUBLE',           pts: 5,  outs: 0, pickable: true  },
+    { id: 'triple',          label: 'TRIPLE',           pts: 10, outs: 0, pickable: true  },
+    { id: 'home_run',        label: 'HOME RUN',         pts: 7,  outs: 0, pickable: true  },
+    { id: 'stolen_base',     label: 'STOLEN BASE',      pts: 4,  outs: 0, pickable: true,  midAtBat: true },
+    { id: 'caught_stealing', label: 'CAUGHT STEALING',  pts: 0,  outs: 1, pickable: false, midAtBat: true },
+    { id: 'other',           label: 'OTHER',            pts: 0,  outs: 0, pickable: false },
+  ];
+  const BY_ID = Object.fromEntries(OUTCOMES.map(o => [o.id, o]));
+  const PICKABLE = OUTCOMES.filter(o => o.pickable).map(o => o.id);
+
+  const CONF_WIN = 5, CONF_LOSS = -2, P3_BONUS = 7;
+
+  const outcome = id => BY_ID[id] || null;
+  const halfKey = s => s.inning + (s.bottom ? 'b' : 't');
+
+  // ── Fresh state for a new game ──
+  function start(setup) {
+    const n = setup.players.length;
+    if (n < 2 || n > 3) throw new Error('Guess Ball needs 2 or 3 players');
+    return {
+      players: setup.players.slice(),
+      scores: Array(n).fill(0),
+      priority: setup.priority || 0,
+      inning: 1, bottom: false, outs: 0,
+      ab: 1,                 // at-bat number within this half-inning
+      p3: null,              // { picks:[[a,b,c]|null…], alive:[bool…], hits:[n…] } — set by a pick3 event
+      needsPick3: true,      // a Pick 3 round is owed at the start of every half-inning
+      carried: {},           // manual picks that still stand after a steal: { playerIdx: {pick, conf} }
+      sittingOut: [],        // players whose pick already resolved during this at-bat (called the steal)
+      mlb: { away: 0, home: 0 },
+      ended: false,
+      log: [],               // one entry per resolved pick
+      plays: [],             // one entry per result entered
+    };
+  }
+
+  // Is this player playing Pick 3 on the current at-bat?
+  function p3Live(s, i) {
+    return !!(s.p3 && s.p3.picks[i] && s.p3.alive[i] && s.ab <= 3);
+  }
+  function p3PickNow(s, i) {
+    return p3Live(s, i) ? s.p3.picks[i][s.ab - 1] : null;
+  }
+
+  // Players who still need to make a manual pick this at-bat, priority first, then seat order.
+  // (Skips Pick 3 players, steal-callers sitting out, and picks carried over after a steal.)
+  function pickOrder(s) {
+    const order = [s.priority, ...s.players.map((_, i) => i).filter(i => i !== s.priority)];
+    return order.filter(i => !p3Live(s, i) && !s.sittingOut.includes(i) && !s.carried[i]);
+  }
+
+  // Picks already locked for this at-bat (Pick 3 picks + steal carry-overs).
+  function lockedPicks(s) {
+    const locked = {};
+    s.players.forEach((_, i) => {
+      if (s.sittingOut.includes(i)) return;
+      const p = p3PickNow(s, i);
+      if (p) locked[i] = { pick: p, conf: false, fromP3: true };
+      else if (s.carried[i]) locked[i] = { ...s.carried[i], fromP3: false };
+    });
+    return locked;
+  }
+
+  // Outcomes a player may NOT choose, given picks made so far this at-bat.
+  function blocked(s, player, manualSoFar = {}) {
+    const all = { ...lockedPicks(s), ...manualSoFar };
+    return Object.entries(all).filter(([i]) => +i !== player).map(([, v]) => v.pick);
+  }
+
+  // Pick 3: only slot 1 must differ between players.
+  function blockedP3First(p3SoFar, player) {
+    return Object.entries(p3SoFar)
+      .filter(([i, picks]) => +i !== player && picks && picks[0])
+      .map(([, picks]) => picks[0]);
+  }
+
+  // ── Event handlers ──
+  function applyPick3(s, ev) {
+    if (!s.needsPick3) throw new Error('Pick 3 already made this half-inning');
+    const firsts = new Set();
+    s.players.forEach((_, i) => {
+      const p = ev.picks[i];
+      if (p == null) return; // skipped
+      if (!Array.isArray(p) || p.length !== 3 || !p.every(x => PICKABLE.includes(x)))
+        throw new Error('Pick 3 must be three valid outcomes');
+      if (firsts.has(p[0])) throw new Error('Pick 3 first outcomes must all be different');
+      firsts.add(p[0]);
+    });
+    s.p3 = {
+      picks: s.players.map((_, i) => ev.picks[i] || null),
+      alive: s.players.map((_, i) => !!ev.picks[i]),
+      hits: s.players.map(() => 0),
+    };
+    s.needsPick3 = false;
+  }
+
+  function applyPlay(s, ev) {
+    if (s.ended) throw new Error('Game is over');
+    if (s.needsPick3) throw new Error('Pick 3 comes first this half-inning');
+    if (s.outs >= 3) throw new Error('Three outs — start the next half-inning');
+    const oc = outcome(ev.outcome);
+    if (!oc) throw new Error('Unknown outcome ' + ev.outcome);
+    const runs = ev.runs || 0, extraOuts = ev.extraOuts || 0;
+
+    // Gather every pick standing on this at-bat and validate it.
+    const picks = lockedPicks(s);
+    const manual = ev.picks || {};
+    const needed = pickOrder(s);
+    needed.forEach(i => {
+      if (!manual[i] || !PICKABLE.includes(manual[i].pick)) throw new Error(s.players[i] + ' has no pick');
+    });
+    Object.keys(manual).forEach(i => {
+      if (!needed.includes(+i)) throw new Error(s.players[i] + ' should not be picking now');
+      picks[i] = { pick: manual[i].pick, conf: !!manual[i].conf, fromP3: false };
+    });
+    const seen = new Set();
+    Object.values(picks).forEach(p => {
+      if (seen.has(p.pick)) throw new Error('Two players picked ' + p.pick);
+      seen.add(p.pick);
+    });
+
+    const before = { priority: s.priority, scores: s.scores.slice() };
+    const resolve = (i, correct) => {
+      const p = picks[i];
+      const base = correct ? oc.pts + runs : 0;
+      const confPts = p.conf ? (correct ? CONF_WIN : CONF_LOSS) : 0;
+      let p3Bonus = 0;
+      if (p.fromP3) {
+        if (correct) {
+          s.p3.hits[i]++;
+          if (s.ab === 3 && s.p3.hits[i] === 3) p3Bonus = P3_BONUS;
+        } else s.p3.alive[i] = false;
+      }
+      const pts = base + confPts + p3Bonus;
+      s.scores[i] += pts;
+      s.log.push({ half: halfKey(s), ab: s.ab, player: i, pick: p.pick, conf: p.conf, fromP3: p.fromP3,
+                   outcome: oc.id, runs, correct, pts, base, confPts, p3Bonus, hadPriority: before.priority === i });
+      if (correct && i !== s.priority) s.priority = i;
+    };
+
+    const endsAtBat = !oc.midAtBat;
+    const newOuts = s.outs + oc.outs + extraOuts;
+    const halfOverMidAtBat = oc.midAtBat && newOuts >= 3; // caught stealing for out #3
+
+    if (oc.id === 'stolen_base') {
+      // Only the steal-caller resolves; everyone else's pick stands.
+      const caller = Object.keys(picks).find(i => picks[i].pick === 'stolen_base');
+      // (Pick 3 picks don't need carrying — they're re-read from the Pick 3 card.)
+      Object.keys(picks).forEach(i => {
+        if (+i !== +caller && !picks[i].fromP3) s.carried[i] = { pick: picks[i].pick, conf: picks[i].conf };
+      });
+      if (caller !== undefined) { resolve(+caller, true); s.sittingOut.push(+caller); }
+    } else if (oc.id === 'caught_stealing') {
+      // Nothing resolves; picks stand unless the inning just ended.
+      Object.keys(picks).forEach(i => { if (!picks[i].fromP3) s.carried[i] = { pick: picks[i].pick, conf: picks[i].conf }; });
+    } else {
+      Object.keys(picks).forEach(i => resolve(+i, picks[i].pick === oc.id));
+    }
+
+    // Runs count toward the real MLB score for whichever team is batting (top = away, bottom = home).
+    // Runs on a voided at-bat (caught stealing for out #3) still happened in the real game.
+    if (runs) s.mlb[s.bottom ? 'home' : 'away'] += runs;
+
+    s.outs = Math.min(3, newOuts);
+    if (endsAtBat || halfOverMidAtBat) {
+      // At-bat over: Pick 3 players who sat out after a correct steal keep their hit.
+      s.carried = {}; s.sittingOut = [];
+      if (endsAtBat) s.ab++;
+    }
+    s.plays.push({ half: halfKey(s), outcome: oc.id, runs, extraOuts,
+                   priorityBefore: before.priority, priorityAfter: s.priority,
+                   scoresBefore: before.scores, scoresAfter: s.scores.slice(), outsAfter: s.outs,
+                   voided: halfOverMidAtBat });
+  }
+
+  function applyNextHalf(s) {
+    if (s.ended) throw new Error('Game is over');
+    if (s.bottom) { s.inning++; s.bottom = false; } else s.bottom = true;
+    s.outs = 0; s.ab = 1; s.p3 = null; s.needsPick3 = true; s.carried = {}; s.sittingOut = [];
+  }
+
+  function apply(s, ev) {
+    switch (ev.type) {
+      case 'pick3':    applyPick3(s, ev); break;
+      case 'play':     applyPlay(s, ev); break;
+      case 'nextHalf': applyNextHalf(s); break;
+      case 'mlb':      s.mlb = { away: ev.away | 0, home: ev.home | 0 }; break;
+      case 'end':      s.ended = true; break;
+      default: throw new Error('Unknown event ' + ev.type);
+    }
+    return s;
+  }
+
+  // Replay the whole scorebook from the start. Undo = drop the last event and replay.
+  function replay(setup, events) {
+    const s = start(setup);
+    events.forEach(ev => apply(s, ev));
+    return s;
+  }
+
+  // Would the real MLB game be over? (home leads after top 9+ is done, or away leads after bottom 9+)
+  function mlbGameOver(s) {
+    if (s.inning < 9) return false;
+    if (s.bottom && s.mlb.home > s.mlb.away) return true;                 // walk-off / home leads
+    if (s.bottom && s.outs >= 3 && s.mlb.away > s.mlb.home) return true;  // away wins
+    if (!s.bottom && s.outs >= 3 && s.mlb.home > s.mlb.away) return true; // home leads after top 9+: no bottom half
+    return false;
+  }
+
+  // Final result, ties handled.
+  function result(s) {
+    const top = Math.max(...s.scores);
+    const leaders = s.scores.map((v, i) => v === top ? i : -1).filter(i => i >= 0);
+    return { tie: leaders.length > 1, winner: leaders.length === 1 ? leaders[0] : null, scores: s.scores.slice() };
+  }
+
+  return { OUTCOMES, PICKABLE, outcome, start, apply, replay, pickOrder, lockedPicks, blocked,
+           blockedP3First, p3Live, p3PickNow, mlbGameOver, result, CONF_WIN, CONF_LOSS, P3_BONUS };
+})();
+
+
+
+// ════════════════════════════════════════════════════════════════
+//  SECTION 3 — THE STATISTICIAN (stats and awards)
+//  Pure functions only: no screen, no storage, no internet.
+//  Give it a list of games and it works out standings, history,
+//  records, head-to-head, game summaries and every award — always
+//  from scratch, so a deleted or fixed game can never leave stale
+//  numbers behind.
+//
+//  A game looks like this:
+//  { id, date: '2026-09-25', seq: 1790000000000 (sort order within a day),
+//    era: 'app' | 'beta' | 'preapp' | 'hand',
+//    players: [{ id, name }, …]  (seat order, 2–3 players),
+//    scores: [41, 29]            (final scores; app games get them from the events),
+//    away, home, park, mlb: { away, home } | null, note, addedBy,
+//    setup: { priority }, events: [...]   (app games only — the scorebook),
+//    ended: true | false,                  (false = live game in progress)
+//    beta: [{ correct, picks, confRight, confWrong }, …]  (beta games only) }
+// ════════════════════════════════════════════════════════════════
+const Statistician = (() => {
+  const U = (typeof Umpire !== 'undefined') ? Umpire : require('./umpire.js');
+
+  // ── Small helpers ──
+  const byTime = (a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : (a.seq || 0) - (b.seq || 0));
+  const chrono = games => games.slice().sort(byTime);
+  const season = g => +g.date.slice(0, 4);
+  const hasPlays = g => g.era === 'app';
+  const hasPickData = g => g.era === 'app' || g.era === 'beta';
+  const CODES = { strikeout: 'K', in_play_out: 'IPO', double_play: 'DP', fielders_choice: 'FC', bunt: 'BU',
+    walk: 'BB', hbp: 'HBP', single: '1B', double: '2B', triple: '3B', home_run: 'HR', stolen_base: 'SB',
+    caught_stealing: 'CS', other: 'OTH' };
+  const WORDS = { strikeout: 'strikeout', in_play_out: 'in-play out', double_play: 'double play',
+    fielders_choice: "fielder's choice", bunt: 'bunt', walk: 'walk', hbp: 'hit by pitch', single: 'single',
+    double: 'double', triple: 'triple', home_run: 'HR', stolen_base: 'steal' };
+  const halfLabel = h => (h.endsWith('t') ? 'Top ' : 'Bot ') + parseInt(h, 10);
+  const pct = (a, b) => (b ? a / b : null);
+
+  // ── Who won: the one top score wins; a shared top score is a tie between those players ──
+  function result(g) {
+    const s = scoresOf(g);
+    const top = Math.max(...s);
+    const leaders = s.map((v, i) => (v === top ? i : -1)).filter(i => i >= 0);
+    const sorted = s.slice().sort((a, b) => b - a);
+    return { scores: s, tie: leaders.length > 1, leaders, winner: leaders.length === 1 ? leaders[0] : null,
+             margin: sorted[0] - sorted[1] };
+  }
+  // Each player's outcome in a game: 'W', 'L' or 'T' (tied for the top score).
+  function outcomeFor(g, i) {
+    const r = result(g);
+    if (r.winner === i) return 'W';
+    if (r.tie && r.leaders.includes(i)) return 'T';
+    return 'L';
+  }
+  const seatOf = (g, pid) => g.players.findIndex(p => p.id === pid);
+
+  // ════════════════════════════════════════════════════════════
+  //  GAME REPLAY — runs an app game's scorebook through the Umpire
+  //  once and records everything the stats and awards need.
+  // ════════════════════════════════════════════════════════════
+  const cache = new WeakMap();
+  function replay(g) {
+    if (!hasPlays(g)) return null;
+    const hit = cache.get(g);
+    if (hit && hit.n === g.events.length) return hit.r;
+    const n = g.players.length;
+    const s = U.start({ players: g.players.map(p => p.name), priority: (g.setup && g.setup.priority) || 0 });
+    const plays = [];      // one entry per play event: { ev, index, half, log:[…], scoresBefore, scoresAfter, … }
+    const halves = [];     // one entry per half-inning played: { half, pts:[…], picks:[…], right:[…], complete }
+    let half = null;
+    g.events.forEach((ev, index) => {
+      const before = { scores: s.scores.slice(), priority: s.priority, ab: s.ab, half: s.inning + (s.bottom ? 'b' : 't'),
+                       logLen: s.log.length };
+      U.apply(s, ev);
+      if (ev.type === 'pick3' || (ev.type === 'play' && !half)) {
+        if (!half || half.half !== before.half) {
+          half = { half: before.half, pts: Array(n).fill(0), picks: Array(n).fill(0), right: Array(n).fill(0),
+                   complete: false, priorityChanged: false, priorityStart: before.priority };
+          halves.push(half);
+        }
+      }
+      if (ev.type !== 'play') return;
+      const log = s.log.slice(before.logLen);
+      const last = s.plays[s.plays.length - 1];
+      log.forEach(e => {
+        half.pts[e.player] += e.pts; half.picks[e.player]++; if (e.correct) half.right[e.player]++;
+      });
+      if (last.priorityAfter !== before.priority) half.priorityChanged = true;
+      const endsAtBat = !U.outcome(ev.outcome).midAtBat || last.voided;
+      if (s.outs >= 3) half.complete = true;
+      plays.push({ ev, index, half: before.half, ab: before.ab, log, outcome: ev.outcome, runs: ev.runs || 0,
+                   scoresBefore: before.scores, scoresAfter: s.scores.slice(),
+                   priorityBefore: before.priority, priorityAfter: last.priorityAfter,
+                   endsAtBat, halfComplete: s.outs >= 3, voided: last.voided });
+    });
+    const r = { state: s, plays, halves, scores: s.scores.slice(), ended: !!s.ended || g.ended === true };
+    cache.set(g, { n: g.events.length, r });
+    return r;
+  }
+  const scoresOf = g => (hasPlays(g) ? replay(g).scores : g.scores);
+
+  // Per-player numbers for one game (accuracy, confidence, Pick 3, best streak, line score…)
+  function gameNumbers(g) {
+    const n = g.players.length;
+    const out = g.players.map(() => ({ picks: 0, right: 0, confRight: 0, confWrong: 0, p3: 0, bestStreak: 0 }));
+    if (g.era === 'beta') {
+      g.beta.forEach((b, i) => Object.assign(out[i], { picks: b.picks, right: b.correct,
+        confRight: b.confRight || 0, confWrong: b.confWrong || 0, bestStreak: null, p3: null }));
+      return out;
+    }
+    if (!hasPlays(g)) return null;
+    const cur = Array(n).fill(0);
+    replay(g).plays.forEach(p => p.log.forEach(e => {
+      const o = out[e.player];
+      o.picks++; if (e.correct) o.right++;
+      if (e.conf) (e.correct ? o.confRight++ : o.confWrong++);
+      if (e.p3Bonus) o.p3++;
+      cur[e.player] = e.correct ? cur[e.player] + 1 : 0;
+      o.bestStreak = Math.max(o.bestStreak, cur[e.player]);
+    }));
+    return out;
+  }
+
+  // Points per player per inning — the line score. Returns { innings:[1..N], rows:[[…per inning]], totals }
+  function lineScore(g) {
+    if (!hasPlays(g)) return null;
+    const r = replay(g);
+    const last = r.halves.length ? parseInt(r.halves[r.halves.length - 1].half, 10) : 1;
+    const innings = Array.from({ length: Math.max(9, last) }, (_, i) => i + 1);
+    const rows = g.players.map(() => innings.map(() => null));
+    r.halves.forEach(h => {
+      const inn = parseInt(h.half, 10);
+      h.pts.forEach((v, i) => { rows[i][inn - 1] = (rows[i][inn - 1] || 0) + v; });
+    });
+    return { innings, rows, totals: r.scores.slice() };
+  }
+
+  // ════════════════════════════════════════════════════════════
+  //  STANDINGS — W / L / T per player, with win %, avg points, accuracy
+  //  opts.season: a year (number) or omitted for all time
+  // ════════════════════════════════════════════════════════════
+  function standings(games, opts = {}) {
+    const rows = {};
+    chrono(games).filter(g => g.ended !== false && (!opts.season || season(g) === opts.season)).forEach(g => {
+      const nums = gameNumbers(g);
+      g.players.forEach((p, i) => {
+        const r = rows[p.id] || (rows[p.id] = { id: p.id, name: p.name, w: 0, l: 0, t: 0, games: 0, points: 0,
+                                                 picks: 0, right: 0, first: g.date });
+        r.name = p.name;
+        r[outcomeFor(g, i).toLowerCase()]++; r.games++; r.points += scoresOf(g)[i];
+        if (nums) { r.picks += nums[i].picks; r.right += nums[i].right; }
+      });
+    });
+    return Object.values(rows).map(r => ({ ...r,
+      winPct: pct(r.w, r.games), avgPts: pct(r.points, r.games), accuracy: pct(r.right, r.picks) }))
+      .sort((a, b) => b.w - a.w || a.l - b.l || b.games - a.games || a.name.localeCompare(b.name));
+  }
+  // Seasons that have games, newest first (for the season dropdown)
+  const seasons = games => [...new Set(games.map(season))].sort((a, b) => b - a);
+
+  // ════════════════════════════════════════════════════════════
+  //  HISTORY — games grouped by season, newest first, with tags
+  // ════════════════════════════════════════════════════════════
+  function history(games) {
+    const list = chrono(games.filter(g => g.ended !== false));
+    // Doubleheaders: same day + same matchup → "Game 1", "Game 2"
+    const groups = {};
+    list.forEach(g => { const k = g.date + '|' + (g.away || '') + '|' + (g.home || '');
+                        (groups[k] = groups[k] || []).push(g); });
+    const label = new Map();
+    Object.values(groups).forEach(gs => { if (gs.length > 1) gs.forEach((g, i) => label.set(g, 'Game ' + (i + 1))); });
+    const bySeason = {};
+    list.slice().reverse().forEach(g => {
+      const r = result(g);
+      const order = g.players.map((_, i) => i).sort((a, b) => r.scores[b] - r.scores[a]);
+      (bySeason[season(g)] = bySeason[season(g)] || []).push({
+        id: g.id, date: g.date, era: g.era, tag: { preapp: 'PRE-APP', beta: 'BETA', hand: 'ADDED BY ' + (g.addedBy || '').toUpperCase(), app: '' }[g.era],
+        doubleheader: label.get(g) || '', tie: r.tie,
+        players: order.map(i => ({ id: g.players[i].id, name: g.players[i].name, score: r.scores[i], outcome: outcomeFor(g, i) })),
+        away: g.away || '', home: g.home || '', park: g.park || '', mlb: g.mlb || null,
+      });
+    });
+    return Object.keys(bySeason).sort((a, b) => b - a).map(y => ({ season: +y, games: bySeason[y] }));
+  }
+
+  // ════════════════════════════════════════════════════════════
+  //  RECORDS — the all-time record cards
+  // ════════════════════════════════════════════════════════════
+  function records(games) {
+    const list = chrono(games.filter(g => g.ended !== false));
+    if (!list.length) return [];
+    const best = (label, better) => {
+      let top = null;
+      return { offer(value, who, g, extra) { if (top === null || better(value, top.value)) top = { label, value, who, date: g && g.date, gameId: g && g.id, extra }; },
+               get: () => top };
+    };
+    const hi = best('HIGHEST SCORE', (a, b) => a > b), lo = best('LOWEST SCORE', (a, b) => a < b);
+    const win = best('BIGGEST WIN', (a, b) => a > b), acc = best('BEST ACCURACY', (a, b) => a > b);
+    const halfRec = best('BEST HALF-INNING', (a, b) => a > b), comeback = best('BIGGEST COMEBACK', (a, b) => a > b);
+    const pickStreak = best('LONGEST PICK STREAK', (a, b) => a > b);
+    const run = {}, streak = best('WIN STREAK', (a, b) => a > b);
+    list.forEach(g => {
+      const r = result(g), nums = gameNumbers(g);
+      g.players.forEach((p, i) => {
+        hi.offer(r.scores[i], p.name, g); lo.offer(r.scores[i], p.name, g);
+        const o = outcomeFor(g, i);
+        run[p.id] = o === 'W' ? (run[p.id] || 0) + 1 : 0;
+        streak.offer(run[p.id], p.name, g);
+        if (nums && nums[i].picks >= 10) acc.offer(nums[i].right / nums[i].picks, p.name, g, { picks: nums[i].picks });
+        if (nums && nums[i].bestStreak) pickStreak.offer(nums[i].bestStreak, p.name, g);
+      });
+      if (r.winner !== null) {
+        const loser = r.scores.map((v, i) => i).filter(i => i !== r.winner).sort((a, b) => r.scores[b] - r.scores[a])[0];
+        win.offer(r.margin, g.players[r.winner].name, g, { score: r.scores[r.winner], loserScore: r.scores[loser], loser: g.players[loser].name });
+      }
+      if (hasPlays(g)) {
+        replay(g).halves.forEach(h => h.pts.forEach((v, i) => halfRec.offer(v, g.players[i].name, g, { half: h.half })));
+        const d = deficits(g);
+        if (r.winner !== null && d[r.winner] > 0) comeback.offer(d[r.winner], g.players[r.winner].name, g);
+      }
+    });
+    const st = standings(list);
+    const mostWins = st.slice().sort((a, b) => b.w - a.w)[0];
+    const mostGames = st.slice().sort((a, b) => b.games - a.games)[0];
+    const ys = seasons(list);
+    const out = [hi.get(), win.get(), streak.get(),
+      { label: 'MOST WINS', value: mostWins.w, who: mostWins.name },
+      acc.get(), lo.get(),
+      { label: 'MOST GAMES', value: mostGames.games, who: mostGames.name, since: season({ date: mostGames.first }) },
+      { label: 'SEASONS', value: ys.length, from: ys[ys.length - 1], to: ys[0] }];
+    // In-game records appear once there is at least one new-app game
+    [halfRec.get(), comeback.get(), pickStreak.get()].forEach(x => { if (x) out.push(x); });
+    return out.filter(Boolean);
+  }
+
+  // Biggest deficit each player faced (behind the leader) at any point in an app game
+  function deficits(g) {
+    const r = replay(g);
+    const d = g.players.map(() => 0);
+    r.plays.forEach(p => p.scoresAfter.forEach((v, i) => {
+      const others = p.scoresAfter.filter((_, j) => j !== i);
+      d[i] = Math.max(d[i], Math.max(...others) - v);
+    }));
+    return d;
+  }
+
+  // ════════════════════════════════════════════════════════════
+  //  HEAD TO HEAD — a vs b
+  //  Only the overall winner of a game beats the others; a tie, or a
+  //  game a third player won, doesn't count for either side.
+  // ════════════════════════════════════════════════════════════
+  function h2h(games, a, b) {
+    const list = chrono(games.filter(g => g.ended !== false && seatOf(g, a) >= 0 && seatOf(g, b) >= 0));
+    const res = [];   // 'a' | 'b' per decided game
+    const side = { a: { pts: 0, bestWin: null, longest: 0 }, b: { pts: 0, bestWin: null, longest: 0 } };
+    let runA = 0, runB = 0;
+    list.forEach(g => {
+      const ia = seatOf(g, a), ib = seatOf(g, b), r = result(g);
+      side.a.pts += r.scores[ia]; side.b.pts += r.scores[ib];
+      let w = null;
+      if (r.winner === ia) w = 'a'; else if (r.winner === ib) w = 'b';
+      if (!w) return;
+      res.push({ w, gameId: g.id, date: g.date });
+      const m = w === 'a' ? r.scores[ia] - r.scores[ib] : r.scores[ib] - r.scores[ia];
+      if (side[w].bestWin === null || m > side[w].bestWin) side[w].bestWin = m;
+      if (w === 'a') { runA++; runB = 0; } else { runB++; runA = 0; }
+      side.a.longest = Math.max(side.a.longest, runA); side.b.longest = Math.max(side.b.longest, runB);
+    });
+    const wa = res.filter(x => x.w === 'a').length, wb = res.length - wa;
+    const lastW = res.length ? res[res.length - 1].w : null;
+    let cur = 0; for (let i = res.length - 1; i >= 0 && res[i].w === lastW; i--) cur++;
+    return {
+      a: { wins: wa, avg: pct(side.a.pts, list.length), bestWin: side.a.bestWin, longest: side.a.longest,
+           current: lastW === 'a' ? cur : 0 },
+      b: { wins: wb, avg: pct(side.b.pts, list.length), bestWin: side.b.bestWin, longest: side.b.longest,
+           current: lastW === 'b' ? cur : 0 },
+      games: list.length, since: list.length ? season(list[0]) : null,
+      leader: wa > wb ? 'a' : wb > wa ? 'b' : null,
+      last10: res.slice(-10).map(x => x.w),
+    };
+  }
+  // Everyone a player has faced, with game counts (for the second H2H picker)
+  function opponents(games, pid) {
+    const c = {};
+    games.forEach(g => { if (g.ended === false || seatOf(g, pid) < 0) return;
+      g.players.forEach(p => { if (p.id !== pid) c[p.id] = { id: p.id, name: p.name, games: ((c[p.id] || {}).games || 0) + 1 }; }); });
+    return Object.values(c).sort((x, y) => y.games - x.games);
+  }
+
+  // ════════════════════════════════════════════════════════════
+  //  GAME SUMMARY — everything the Final and Past game screens show
+  // ════════════════════════════════════════════════════════════
+  function summary(g, allGames) {
+    const r = result(g), nums = gameNumbers(g);
+    const out = { id: g.id, result: r, players: g.players, lineScore: lineScore(g), tiles: null, plays: [], series: null, winNumber: null };
+    if (nums) {
+      const acc = nums.map(x => pct(x.right, x.picks));
+      out.tiles = [
+        { label: 'ACCURACY', values: acc, lead: leadOf(acc) },
+        { label: 'PICK 3 BONUSES', values: nums.map(x => x.p3), lead: leadOf(nums.map(x => x.p3)) },
+        { label: 'CONFIDENCE', values: nums.map(x => [x.confRight, x.confWrong]), lead: leadOf(nums.map(x => x.confRight - x.confWrong)) },
+        { label: 'BEST STREAK', values: nums.map(x => x.bestStreak), lead: leadOf(nums.map(x => x.bestStreak)) },
+      ].filter(t => t.values.every(v => v !== null && v !== undefined));
+    }
+    if (hasPlays(g)) out.plays = bigPlays(g);
+    if (allGames && g.players.length === 2) {
+      const before = allGames.filter(x => byTime(x, g) <= 0 || x === g);
+      out.series = h2h(before.includes(g) ? before : before.concat(g), g.players[0].id, g.players[1].id);
+    }
+    if (allGames && r.winner !== null) {
+      const wid = g.players[r.winner].id;
+      out.winNumber = chrono(allGames.concat(allGames.includes(g) ? [] : [g])).filter(x => byTime(x, g) <= 0 && x.ended !== false)
+        .filter(x => { const i = seatOf(x, wid); return i >= 0 && outcomeFor(x, i) === 'W'; }).length;
+    }
+    return out;
+  }
+  const leadOf = vals => { const m = Math.max(...vals.map(v => (v === null ? -Infinity : v)));
+    const at = vals.map((v, i) => (v === m ? i : -1)).filter(i => i >= 0); return at.length === 1 ? at[0] : null; };
+
+  // The biggest at-bats of the game, best first. Each: { player, pts, code, text, when, context, half }
+  function bigPlays(g) {
+    const r = replay(g), list = [];
+    // Pick 3 bonuses are one "play" covering the three at-bats
+    r.plays.forEach(p => p.log.forEach(e => {
+      if (e.p3Bonus) {
+        const picks = r.plays.filter(q => q.half === p.half).flatMap(q => q.log).filter(x => x.player === e.player && x.fromP3 && x.correct);
+        const pts = picks.reduce((a, x) => a + x.pts, 0);
+        list.push(mk(p, e.player, pts, 'P3', `${g.players[e.player].name} hit Pick 3 (${picks.map(x => CODES[x.pick]).join(' · ')})`));
+      } else if (e.correct && !e.fromP3 && e.pts >= 4) {
+        const runs = e.runs ? `${e.runs}-run ` : '';
+        list.push(mk(p, e.player, e.pts, CODES[e.outcome],
+          `${g.players[e.player].name} called a ${runs}${WORDS[e.outcome]}${e.conf ? ' with confidence' : ''}`));
+      }
+    }));
+    function mk(p, i, pts, code, text) {
+      const bef = p.scoresBefore, aft = p.scoresAfter;
+      const lead = (s, k) => s[k] - Math.max(...s.filter((_, j) => j !== k));
+      const lb = lead(bef, i), la = lead(aft, i);
+      const context = lb <= 0 && la > 0 ? 'took the lead' : lb < 0 && la === 0 ? 'tied it'
+        : lb > 0 && la > lb ? 'went up by ' + la : la < 0 ? 'cut it to ' + (-la) : '';
+      return { player: i, pts, code, text, when: halfLabel(p.half), context, half: p.half, index: p.index };
+    }
+    return list.sort((a, b) => b.pts - a.pts || a.index - b.index).slice(0, 5);
+  }
+
+  // ════════════════════════════════════════════════════════════
+  //  AWARDS — 81 awards in 10 categories
+  //  kind: 'count' (tiered or single target, shows a progress bar),
+  //        'once'  (earned the first time something happens)
+  //  scope: 'all' = every game counts (pre-app, beta, hand-added too)
+  //         'app' = only new-app games with a full scorebook
+  // ════════════════════════════════════════════════════════════
+  const A = (id, name, cat, desc, extra = {}) => ({ id, name, cat, desc, kind: 'once', scope: 'app', ...extra });
+  const T = tiers => ({ kind: 'count', tiers });
+  const AWARDS = [
+    A('wins', 'Wins', 'WINS & GAMES', 'Win games all time', { ...T([1, 5, 10, 25]), scope: 'all' }),
+    A('games', 'Games Played', 'WINS & GAMES', 'Play games all time', { ...T([5, 10, 25]), scope: 'all' }),
+    A('season_ticket', 'Season Ticket', 'WINS & GAMES', 'Play 20 games', { ...T([20]), scope: 'all' }),
+    A('points', 'Points', 'WINS & GAMES', 'Total points all time', { ...T([100, 500, 1000, 2500]), scope: 'all' }),
+
+    A('rivalry', 'Rivalry', 'RIVALRIES', 'Play 25 games vs the same opponent', { ...T([25]), scope: 'all' }),
+    A('blood_feud', 'Blood Feud', 'RIVALRIES', 'Play 50 games vs the same opponent', { ...T([50]), scope: 'all' }),
+    A('dominant', 'Dominant', 'RIVALRIES', 'Win 70%+ vs one opponent (min 10)', { scope: 'all' }),
+    A('dynasty', 'Dynasty', 'RIVALRIES', 'Win 5 straight vs the same opponent', { ...T([5]), scope: 'all' }),
+    A('nemesis', 'Nemesis', 'RIVALRIES', 'Lose 5 straight to the same opponent', { ...T([5]), scope: 'all' }),
+    A('revenge', 'Revenge', 'RIVALRIES', 'Beat whoever beat you last time', { scope: 'all' }),
+
+    A('bold', 'Bold', 'BIG CALLS', 'Call confidence for the first time'),
+    A('called_shot', 'Called Shot', 'BIG CALLS', 'Right on a HR with confidence'),
+    A('big_brain', 'Big Brain', 'BIG CALLS', 'Right on a DP with confidence'),
+    A('first_to_third', 'First to Third', 'BIG CALLS', 'Right on a triple with confidence'),
+    A('hubris', 'Hubris', 'BIG CALLS', 'Wrong on a HR with confidence'),
+    A('diamond_hands', 'Diamond Hands', 'BIG CALLS', 'Confidence 5 times in a game, 5 for 5'),
+    A('perfect_confidence', 'Perfect Confidence', 'BIG CALLS', 'Every confidence call right (min 3)'),
+    A('rough_patch', 'Rough Patch', 'BIG CALLS', 'Lose 3 confidence calls in a row'),
+    A('reckless', 'Reckless', 'BIG CALLS', 'Lose 3 confidence calls in one game'),
+    A('reckless_win', 'Reckless Win', 'BIG CALLS', 'Lose 3 confidence calls and still win'),
+    A('assassin', 'Assassin', 'BIG CALLS', 'Steal priority with a confidence call'),
+    A('confidence_correct', 'Confidence Correct', 'BIG CALLS', 'Right on confidence all time', T([10, 25, 50])),
+
+    A('first_p3', 'First Pick 3', 'PICK 3', 'Hit your first Pick 3 bonus'),
+    A('prophet', 'Prophet', 'PICK 3', 'Pick 3 bonus in the first half-inning'),
+    A('hat_trick', 'Hat Trick', 'PICK 3', '3 Pick 3 bonuses in one game'),
+    A('clairvoyant', 'Clairvoyant', 'PICK 3', 'Pick 3 bonus 3 games in a row'),
+    A('p3_bonuses', 'Pick 3 Bonuses', 'PICK 3', 'Pick 3 bonuses all time', T([5, 15, 30])),
+
+    A('on_fire', 'On Fire', 'STREAKS & ACCURACY', '5 right in a row'),
+    A('wave', 'Wave', 'STREAKS & ACCURACY', '7 right in a row'),
+    A('unstoppable', 'Unstoppable', 'STREAKS & ACCURACY', '10 right in a row'),
+    A('twenty_straight', 'Twenty Straight', 'STREAKS & ACCURACY', '20 right in a row'),
+    A('perfect_half', 'Perfect Half', 'STREAKS & ACCURACY', 'Every pick right in a half-inning (min 3)'),
+    A('hot_streak', 'Hot Streak', 'STREAKS & ACCURACY', 'Score on 10 straight at-bats'),
+    A('dead_eye', 'Dead Eye', 'STREAKS & ACCURACY', '55%+ in a game (min 10 picks)'),
+    A('sniper', 'Sniper', 'STREAKS & ACCURACY', '70%+ in a game (min 10 picks)'),
+    A('ice_cold', 'Ice Cold', 'STREAKS & ACCURACY', 'Miss 6 in a row'),
+    A('correct_picks', 'Correct Picks', 'STREAKS & ACCURACY', 'Right picks all time', T([25, 100, 250])),
+
+    A('oracle', 'Oracle', 'PRIORITY', 'Hold priority 5 straight at-bats'),
+    A('priority_hog', 'Priority Hog', 'PRIORITY', 'Hold priority 10+ straight at-bats'),
+    A('king_of_the_hill', 'King of the Hill', 'PRIORITY', 'Hold priority 3 full innings'),
+    A('perfect_game', 'Perfect Game', 'PRIORITY', 'Win without ever losing priority'),
+    A('stolen_thunder', 'Stolen Thunder', 'PRIORITY', 'Non-priority player scores on the first at-bat'),
+
+    A('payday', 'Payday', 'GAME MOMENTS', 'Score 20+ in a game'),
+    A('rocket', 'Rocket', 'GAME MOMENTS', '10+ points in one half-inning'),
+    A('big_winner', 'Big Winner', 'GAME MOMENTS', '5+ points on one at-bat'),
+    A('ghost', 'Ghost', 'GAME MOMENTS', '7+ in a half-inning, opponent gets 0'),
+    A('comeback_kid', 'Comeback Kid', 'GAME MOMENTS', 'Win after trailing by 10+'),
+    A('cold_start', 'Cold Start', 'GAME MOMENTS', 'Score 0 in the 1st inning, still win'),
+    A('walk_off', 'Walk Off', 'GAME MOMENTS', 'Trailing, win it on the last play'),
+    A('last_laugh', 'Last Laugh', 'GAME MOMENTS', 'Score on the last at-bat of the game'),
+    A('dead_heat', 'Dead Heat', 'GAME MOMENTS', 'Tied after the 5th inning or later'),
+    A('sweating', 'Sweating', 'GAME MOMENTS', 'Win by exactly 1', { scope: 'margin' }),
+    A('comfortable', 'Comfortable', 'GAME MOMENTS', 'Win by 20+', { scope: 'margin' }),
+    A('blowout', 'Blowout', 'GAME MOMENTS', 'Win by 30+', { scope: 'margin' }),
+    A('good_sport', 'Good Sport', 'GAME MOMENTS', 'Lose by 20+', { scope: 'margin' }),
+    A('dead_even', 'Dead Even', 'GAME MOMENTS', 'Finish a game tied', { scope: 'all' }),
+    A('below_zero', 'Below Zero', 'GAME MOMENTS', 'Finish with a negative score', { scope: 'all' }),
+    A('last_one_standing', 'Last One Standing', 'GAME MOMENTS', 'Win a 3-player game', { scope: 'all' }),
+
+    A('unicorn', 'Unicorn', 'BIG PLAYS', 'Call a triple'),
+    A('take_your_base', 'Take Your Base', 'BIG PLAYS', 'Call a hit by pitch'),
+    A('small_ball', 'Small Ball', 'BIG PLAYS', 'Call a bunt'),
+    A('speed_demon', 'Speed Demon', 'BIG PLAYS', 'Call 3 steals in one game'),
+    A('patient', 'Patient', 'BIG PLAYS', 'Call 3 walks in one game'),
+    A('lightning_rod', 'Lightning Rod', 'BIG PLAYS', 'Call 3 HBPs in one game'),
+    A('small_ball_specialist', 'Small Ball Specialist', 'BIG PLAYS', 'Call 3 bunts in one game'),
+    A('hr_hat_trick', 'HR Hat Trick', 'BIG PLAYS', 'Call 3 HRs in one game'),
+    A('cleanup_hitter', 'Cleanup Hitter', 'BIG PLAYS', 'Call a HR that scores 4'),
+
+    A('calls_k', 'Strikeouts', 'CAREER CALLS', 'Correct K calls all time', { ...T([10, 50, 100]), outcome: 'strikeout', code: 'K' }),
+    A('calls_ipo', 'In Play Outs', 'CAREER CALLS', 'Correct IPO calls all time', { ...T([10, 50, 100]), outcome: 'in_play_out', code: 'IPO' }),
+    A('calls_1b', 'Singles', 'CAREER CALLS', 'Correct 1B calls all time', { ...T([10, 50, 100]), outcome: 'single', code: '1B' }),
+    A('calls_2b', 'Doubles', 'CAREER CALLS', 'Correct 2B calls all time', { ...T([5, 25, 50]), outcome: 'double', code: '2B' }),
+    A('calls_3b', 'Triples', 'CAREER CALLS', 'Correct 3B calls all time', { ...T([3, 10, 25]), outcome: 'triple', code: '3B' }),
+    A('calls_hr', 'Home Runs', 'CAREER CALLS', 'Correct HR calls all time', { ...T([5, 25, 50]), outcome: 'home_run', code: 'HR' }),
+    A('calls_bb', 'Walks', 'CAREER CALLS', 'Correct BB calls all time', { ...T([10, 25, 50]), outcome: 'walk', code: 'BB' }),
+    A('calls_hbp', 'Hit by Pitch', 'CAREER CALLS', 'Correct HBP calls all time', { ...T([5, 15, 30]), outcome: 'hbp', code: 'HBP' }),
+    A('calls_sb', 'Steals', 'CAREER CALLS', 'Correct SB calls all time', { ...T([5, 15, 30]), outcome: 'stolen_base', code: 'SB' }),
+    A('calls_dp', 'Double Plays', 'CAREER CALLS', 'Correct DP calls all time', { ...T([5, 15, 30]), outcome: 'double_play', code: 'DP' }),
+    A('calls_bu', 'Bunts', 'CAREER CALLS', 'Correct BU calls all time', { ...T([5, 15, 30]), outcome: 'bunt', code: 'BU' }),
+
+    A('road_trip', 'Road Trip', 'TRAVEL', 'Play at different ballparks', { ...T([3, 5, 10]), scope: 'all' }),
+    A('home_cooking', 'Home Cooking', 'TRAVEL', 'Play 10 games at one ballpark', { ...T([10]), scope: 'all' }),
+    A('lifer', 'Lifer', 'TRAVEL', 'Play in different seasons', { ...T([5, 10]), scope: 'all' }),
+  ];
+  const AWARD = Object.fromEntries(AWARDS.map(a => [a.id, a]));
+
+  // Works through every game in order and records when each player earned each award.
+  // Returns { [playerId]: { earned: { [awardId]: [{ tier, gameId, date, at }] }, counts: { [awardId]: n } } }
+  //   at = index of the scorebook event that earned it (null = at the end of the game / final score)
+  // Give it ALL of a player's games (across clubs) — awards are per person.
+  function awardBook(games) {
+    const book = {};
+    const P = id => book[id] || (book[id] = {
+      earned: {}, counts: {}, games: 0, wins: 0, points: 0, parks: {}, seasons: new Set(),
+      vs: {}, lastLossTo: null, confRun: 0, p3Run: 0, confUsed: false,
+    });
+    const give = (pid, g, id, tier = 1, at = null) => {
+      const e = P(pid).earned[id] || (P(pid).earned[id] = []);
+      if (e.some(x => x.tier === tier)) return;
+      e.push({ tier, gameId: g.id, date: g.date, at });
+    };
+    const count = (pid, g, id, value, at = null) => {
+      const p = P(pid); p.counts[id] = value;
+      AWARD[id].tiers.forEach((t, k) => { if (value >= t) give(pid, g, id, k + 1, at); });
+    };
+
+    chrono(games).forEach(g => {
+      const ended = g.ended !== false;
+      const r = hasPlays(g) ? replay(g) : null;
+      const inGame = hasPlays(g);
+
+      // ── In-game awards, checked play by play so each lands on the play that earned it ──
+      if (inGame) inGameAwards(g, r, give, count, P);
+      if (!ended) return;
+
+      // ── Final-score awards (every era) ──
+      const res = result(g);
+      g.players.forEach((pl, i) => {
+        const p = P(pl.id), o = outcomeFor(g, i);
+        p.games++; p.points += res.scores[i]; if (o === 'W') p.wins++;
+        count(pl.id, g, 'wins', p.wins); count(pl.id, g, 'games', p.games);
+        count(pl.id, g, 'season_ticket', p.games); count(pl.id, g, 'points', p.points);
+        if (g.park) { p.parks[g.park] = (p.parks[g.park] || 0) + 1;
+          count(pl.id, g, 'road_trip', Object.keys(p.parks).length);
+          count(pl.id, g, 'home_cooking', Math.max(...Object.values(p.parks))); }
+        p.seasons.add(season(g)); count(pl.id, g, 'lifer', p.seasons.size);
+        if (o === 'T') give(pl.id, g, 'dead_even');
+        if (res.scores[i] < 0) give(pl.id, g, 'below_zero');
+        if (o === 'W' && g.players.length === 3) give(pl.id, g, 'last_one_standing');
+        // Margin awards: only games played in the app (pre-app / beta / hand-added excluded)
+        if (inGame) {
+          if (o === 'W' && res.margin === 1) give(pl.id, g, 'sweating');
+          if (o === 'W' && res.margin >= 20) give(pl.id, g, 'comfortable');
+          if (o === 'W' && res.margin >= 30) give(pl.id, g, 'blowout');
+          if (o === 'L' && res.winner !== null && res.scores[res.winner] - res.scores[i] >= 20) give(pl.id, g, 'good_sport');
+        }
+        // Rivalries
+        g.players.forEach((op, j) => {
+          if (j === i) return;
+          const v = p.vs[op.id] || (p.vs[op.id] = { games: 0, w: 0, l: 0, run: 0, lossRun: 0 });
+          v.games++;
+          count(pl.id, g, 'rivalry', Math.max(...Object.values(p.vs).map(x => x.games)));
+          count(pl.id, g, 'blood_feud', Math.max(...Object.values(p.vs).map(x => x.games)));
+          if (res.winner === i) { v.w++; v.run++; v.lossRun = 0; }
+          else if (res.winner === j) { v.l++; v.lossRun++; v.run = 0; }
+          count(pl.id, g, 'dynasty', Math.max(...Object.values(p.vs).map(x => x.run)));
+          count(pl.id, g, 'nemesis', Math.max(...Object.values(p.vs).map(x => x.lossRun)));
+          if (v.w + v.l >= 10 && v.w / (v.w + v.l) >= 0.7) give(pl.id, g, 'dominant');
+        });
+        // Revenge: whoever won your previous game played in this one, and you beat them
+        if (o === 'W' && p.lastLossTo && g.players.some(x => x.id === p.lastLossTo)) give(pl.id, g, 'revenge');
+      });
+      g.players.forEach((pl, i) => {
+        const o = outcomeFor(g, i);
+        P(pl.id).lastLossTo = o === 'L' && res.winner !== null ? g.players[res.winner].id : null;
+      });
+
+      // Pick 3 run across games (Clairvoyant) — app games only
+      if (inGame) g.players.forEach((pl, i) => {
+        const p = P(pl.id);
+        const hit = r.plays.some(q => q.log.some(e => e.player === i && e.p3Bonus));
+        p.p3Run = hit ? p.p3Run + 1 : 0;
+        if (p.p3Run >= 3) give(pl.id, g, 'clairvoyant');
+      });
+    });
+    return book;
+  }
+
+  function inGameAwards(g, r, give, count, P) {
+    const n = g.players.length, ids = g.players.map(p => p.id);
+    const streak = Array(n).fill(0), miss = Array(n).fill(0), scoreRun = Array(n).fill(0);
+    const confWrongRun = Array(n).fill(0);
+    const conf = g.players.map(() => ({ right: 0, wrong: 0 }));
+    const inGameCalls = g.players.map(() => ({}));
+    const p3 = Array(n).fill(0);
+    const halfPts = {}, halfPicks = {}, halfRight = {};
+    let abPts = Array(n).fill(0);
+    let abStartPriority = null, prioRun = 0, prioHolder = null, halfPrioRun = 0, halfPrioHolder = null;
+    let halfStartPriority = null, halfChanged = false, curHalf = null, priorityEverChanged = false;
+    let firstAtBat = true;
+    const ended = r.ended;
+
+    r.plays.forEach((p, k) => {
+      const at = p.index;
+      if (curHalf !== p.half) { curHalf = p.half; halfStartPriority = p.priorityBefore; halfChanged = false;
+        halfPts[p.half] = Array(n).fill(0); halfPicks[p.half] = Array(n).fill(0); halfRight[p.half] = Array(n).fill(0); }
+      if (abStartPriority === null) abStartPriority = p.priorityBefore;
+      if (p.priorityAfter !== p.priorityBefore) { halfChanged = true; priorityEverChanged = true; }
+
+      p.log.forEach(e => {
+        const i = e.player, pid = ids[i], P0 = P(pid);
+        abPts[i] += e.pts; halfPts[p.half][i] += e.pts; halfPicks[p.half][i]++; if (e.correct) halfRight[p.half][i]++;
+        // streaks
+        if (e.correct) { streak[i]++; miss[i] = 0; } else { streak[i] = 0; miss[i]++; }
+        [[5, 'on_fire'], [7, 'wave'], [10, 'unstoppable'], [20, 'twenty_straight']].forEach(([t, id]) => { if (streak[i] >= t) give(pid, g, id, 1, at); });
+        if (miss[i] >= 6) give(pid, g, 'ice_cold', 1, at);
+        // career counts
+        if (e.correct) {
+          P0.counts._right = (P0.counts._right || 0) + 1; count(pid, g, 'correct_picks', P0.counts._right, at);
+          const c = AWARDS.find(a => a.outcome === e.outcome);
+          if (c) { P0.counts['_' + c.id] = (P0.counts['_' + c.id] || 0) + 1; count(pid, g, c.id, P0.counts['_' + c.id], at); }
+          inGameCalls[i][e.outcome] = (inGameCalls[i][e.outcome] || 0) + 1;
+          if (e.outcome === 'triple') give(pid, g, 'unicorn', 1, at);
+          if (e.outcome === 'hbp') give(pid, g, 'take_your_base', 1, at);
+          if (e.outcome === 'bunt') give(pid, g, 'small_ball', 1, at);
+          if (e.outcome === 'home_run' && e.runs >= 4) give(pid, g, 'cleanup_hitter', 1, at);
+          [['stolen_base', 'speed_demon'], ['walk', 'patient'], ['hbp', 'lightning_rod'], ['bunt', 'small_ball_specialist'], ['home_run', 'hr_hat_trick']]
+            .forEach(([o, id]) => { if (inGameCalls[i][o] >= 3) give(pid, g, id, 1, at); });
+        }
+        // confidence
+        if (e.conf) {
+          give(pid, g, 'bold', 1, at);
+          if (e.correct) {
+            conf[i].right++; confWrongRun[i] = 0;
+            P0.counts._conf = (P0.counts._conf || 0) + 1; count(pid, g, 'confidence_correct', P0.counts._conf, at);
+            if (e.outcome === 'home_run') give(pid, g, 'called_shot', 1, at);
+            if (e.outcome === 'double_play') give(pid, g, 'big_brain', 1, at);
+            if (e.outcome === 'triple') give(pid, g, 'first_to_third', 1, at);
+            if (!e.hadPriority) give(pid, g, 'assassin', 1, at);
+          } else {
+            conf[i].wrong++; confWrongRun[i]++;
+            if (e.pick === 'home_run') give(pid, g, 'hubris', 1, at);
+            if (confWrongRun[i] >= 3) give(pid, g, 'rough_patch', 1, at);
+            if (conf[i].wrong >= 3) give(pid, g, 'reckless', 1, at);
+          }
+          if (conf[i].right >= 5 && conf[i].wrong === 0) give(pid, g, 'diamond_hands', 1, at);
+        }
+        // Pick 3
+        if (e.p3Bonus) {
+          p3[i]++;
+          P0.counts._p3 = (P0.counts._p3 || 0) + 1; count(pid, g, 'p3_bonuses', P0.counts._p3, at);
+          give(pid, g, 'first_p3', 1, at);
+          if (p.half === '1t') give(pid, g, 'prophet', 1, at);
+          if (p3[i] >= 3) give(pid, g, 'hat_trick', 1, at);
+        }
+        // points moments
+        if (halfPts[p.half][i] >= 10) give(pid, g, 'rocket', 1, at);
+        if (p.scoresAfter[i] >= 20) give(pid, g, 'payday', 1, at);
+      });
+
+      // ── End of an at-bat ──
+      if (p.endsAtBat) {
+        g.players.forEach((_, i) => {
+          if (abPts[i] >= 5) give(ids[i], g, 'big_winner', 1, at);
+          scoreRun[i] = abPts[i] > 0 ? scoreRun[i] + 1 : 0;
+          if (scoreRun[i] >= 10) give(ids[i], g, 'hot_streak', 1, at);
+          if (firstAtBat && abPts[i] > 0 && i !== abStartPriority) give(ids[i], g, 'stolen_thunder', 1, at);
+        });
+        // priority held through this at-bat
+        const holder = p.priorityAfter;
+        if (holder === abStartPriority) { prioRun = prioHolder === holder ? prioRun + 1 : 1; }
+        else prioRun = 0;
+        prioHolder = holder;
+        if (prioRun >= 5) give(ids[holder], g, 'oracle', 1, at);
+        if (prioRun >= 10) give(ids[holder], g, 'priority_hog', 1, at);
+        abPts = Array(n).fill(0); abStartPriority = null; firstAtBat = false;
+      }
+
+      // ── End of a half-inning ──
+      if (p.halfComplete) {
+        const hp = halfPts[p.half];
+        g.players.forEach((_, i) => {
+          if (halfPicks[p.half][i] >= 3 && halfRight[p.half][i] === halfPicks[p.half][i]) give(ids[i], g, 'perfect_half', 1, at);
+          if (hp[i] >= 7 && hp.every((v, j) => j === i || v <= 0)) give(ids[i], g, 'ghost', 1, at);
+        });
+        // King of the Hill: same player held priority through 6 straight whole half-innings (3 innings)
+        const kept = !halfChanged && p.priorityAfter === halfStartPriority;
+        halfPrioRun = kept ? (halfPrioHolder === halfStartPriority ? halfPrioRun + 1 : 1) : 0;
+        halfPrioHolder = kept ? halfStartPriority : null;
+        if (halfPrioRun >= 6) give(ids[halfStartPriority], g, 'king_of_the_hill', 1, at);
+        // Dead Heat: everyone tied at the end of the 5th inning or later
+        if (p.half.endsWith('b') && parseInt(p.half, 10) >= 5 && p.scoresAfter.every(v => v === p.scoresAfter[0]))
+          g.players.forEach((_, i) => give(ids[i], g, 'dead_heat', 1, at));
+      }
+    });
+
+    if (!ended || !r.plays.length) return;
+    // ── End-of-game awards that need the final result ──
+    const res = result(g), nums = gameNumbers(g), last = r.plays[r.plays.length - 1];
+    const lastAB = r.plays.filter(p => p.endsAtBat).pop();
+    const d = deficits(g);
+    g.players.forEach((pl, i) => {
+      const pid = pl.id, won = res.winner === i;
+      const a = pct(nums[i].right, nums[i].picks);
+      if (nums[i].picks >= 10 && a >= 0.55) give(pid, g, 'dead_eye');
+      if (nums[i].picks >= 10 && a >= 0.70) give(pid, g, 'sniper');
+      if (conf[i].right + conf[i].wrong >= 3 && conf[i].wrong === 0) give(pid, g, 'perfect_confidence');
+      if (won && conf[i].wrong >= 3) give(pid, g, 'reckless_win');
+      if (won && d[i] >= 10) give(pid, g, 'comeback_kid');
+      if (lastAB && lastAB.log.some(e => e.player === i && e.correct)) give(pid, g, 'last_laugh');
+      if (won) {
+        const firstInning = r.halves.filter(h => parseInt(h.half, 10) === 1).reduce((s, h) => s + h.pts[i], 0);
+        if (firstInning === 0) give(pid, g, 'cold_start');
+        const b = last.scoresBefore;
+        const trailing = b[i] < Math.max(...b.filter((_, j) => j !== i));
+        if (trailing && last.log.some(e => e.player === i && e.correct)) give(pid, g, 'walk_off');
+        if (!priorityEverChanged && (g.setup && g.setup.priority || 0) === i) give(pid, g, 'perfect_game');
+      }
+    });
+  }
+
+  // One player's award list for the Awards screen:
+  // [{ ...award, tier (0 = not yet), earnedAt: [{tier, date, gameId}], progress: {value, target} | null }]
+  function awardsFor(games, pid) {
+    const p = awardBook(games)[pid] || { earned: {}, counts: {} };
+    return AWARDS.map(a => {
+      const e = (p.earned[a.id] || []).slice().sort((x, y) => x.tier - y.tier);
+      const tier = e.length ? Math.max(...e.map(x => x.tier)) : 0;
+      let progress = null;
+      if (a.kind === 'count') {
+        const value = p.counts[a.id] || 0;
+        const target = a.tiers[Math.min(tier, a.tiers.length - 1)];
+        progress = { value, target, done: tier === a.tiers.length };
+      }
+      return { ...a, tier, earnedAt: e, progress };
+    });
+  }
+
+  // Awards earned during one game (for the popup after a play, and the Final screen).
+  // `games` = the players' games INCLUDING this one. Returns [{ award, playerId, name, tier, at }]
+  function awardsInGame(games, g) {
+    const book = awardBook(games), out = [];
+    g.players.forEach(pl => {
+      const e = (book[pl.id] || { earned: {} }).earned;
+      Object.keys(e).forEach(id => e[id].forEach(x => {
+        if (x.gameId === g.id) out.push({ award: AWARD[id], playerId: pl.id, name: pl.name, tier: x.tier, at: x.at });
+      }));
+    });
+    return out.sort((a, b) => (a.at === null) - (b.at === null) || (a.at || 0) - (b.at || 0));
+  }
+
+  // Who has an award (Award detail "Who has it"), for the players in `games`
+  function whoHas(games, awardId) {
+    const book = awardBook(games);
+    return Object.entries(book).filter(([, p]) => p.earned[awardId])
+      .map(([id, p]) => ({ id, tier: Math.max(...p.earned[awardId].map(x => x.tier)), first: p.earned[awardId][0].date }));
+  }
+
+  return { AWARDS, CODES, result, outcomeFor, replay, gameNumbers, lineScore, standings, seasons, history,
+           records, h2h, opponents, summary, awardBook, awardsFor, awardsInGame, whoHas };
+})();
+
+
+
+// ════════════════════════════════════════════════════════════════
+//  SECTION 4 — THE FILING CABINET (saving and loading)
+//  The ONLY code that touches Firebase or the phone's storage.
+//  Screens ask it for things ("load the Dodgers' games", "save this
+//  play") and never talk to Firebase themselves.
+//
+//  Offline: every change goes into an outbox kept on the phone first,
+//  then gets sent when there's signal — so a play entered with no
+//  bars survives even if the app is closed before it syncs.
+//
+//  Where things live in Firebase (all under /v2):
+//    users/<uid>            your private info: name, team, clubs you joined or asked to join, guest claims
+//    profiles/<pid>         every player's public name (accounts: pid = uid; guests: random id)
+//    clubs/<code>/info      name, public/private      clubs/<code>/members   the roster (+ captains, guests)
+//    clubs/<code>/requests  join requests             clubs/<code>/claims    "that's me" guest claims
+//    clubs/<code>/games     which games count for the club
+//    clubNames/<name>       makes club names unique   clubList/<code>        Find a club list
+//    games/<id>             one game, with its scorebook      playerGames/<pid>   each player's "All my games"
+//    live/<pid>             who is in a live game right now
+// ════════════════════════════════════════════════════════════════
+const FilingCabinet = (() => {
+
+  const CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // no 0/O/1/I mix-ups
+  const nameKey = s => s.trim().toLowerCase().replace(/\s+/g, ' ').replace(/[.#$\[\]\/]/g, '_');
+  const clean = o => JSON.parse(JSON.stringify(o)); // drops undefined (Firebase rejects it)
+
+  function create({ db, storage, deviceId, now = () => Date.now(), random = Math.random }) {
+    let uid = null;
+    const listeners = new Set();
+    let online = false;
+    const R = p => 'v2/' + p;
+
+    // ── Outbox (kept on the phone) ──
+    const load = (k, d) => { try { const v = storage.getItem(k); return v ? JSON.parse(v) : d; } catch (e) { return d; } };
+    const save = (k, v) => { try { storage.setItem(k, JSON.stringify(v)); } catch (e) { /* storage full or blocked */ } };
+    let outbox = load('gb_outbox', []);
+    let flushing = null;
+    const status = () => ({ online, pending: outbox.length });
+    const emit = () => listeners.forEach(f => f(status()));
+
+    const denied = new Map();                 // outbox item id → Firebase's refusal
+    function queue(changes) {                 // changes: { 'path': value | null, … } — sent together, all or nothing
+      const full = {};
+      Object.entries(changes).forEach(([p, v]) => { full[R(p)] = v === undefined ? null : v; });
+      const id = now() + '-' + Math.floor(random() * 1e9);
+      outbox.push({ id, changes: clean(full) }); save('gb_outbox', outbox); emit();
+      // Online: wait for it to land (and report a refusal). Offline: it's safely queued on the phone.
+      return flush().then(() => {
+        if (denied.has(id)) { const e = denied.get(id); denied.delete(id); throw e; }
+      });
+    }
+    function flush() {
+      if (flushing) return flushing;
+      flushing = (async () => {
+        while (online && outbox.length) {
+          const item = outbox[0];
+          try { await db.update(item.changes); }
+          catch (e) {
+            if (e && e.code === 'PERMISSION_DENIED') { denied.set(item.id, e); console.warn('Firebase refused a change', item.changes); }
+            else break;                          // network trouble — try again later
+          }
+          outbox.shift(); save('gb_outbox', outbox); emit();
+        }
+      })().finally(() => { flushing = null; });
+      return flushing;
+    }
+    db.onConnected(c => { online = c; emit(); if (c) flush(); });
+
+    const get = async p => { await flush(); return db.get(R(p)); };
+    const need = () => { if (!uid) throw new Error('Not signed in'); };
+    const newCode = () => Array.from({ length: 6 }, () => CODE_CHARS[Math.floor(random() * CODE_CHARS.length)]).join('');
+
+    // ════════════ Account & profile ════════════
+    function setUser(u) { uid = u; }
+    async function myAccount() {
+      need();
+      const u = (await get('users/' + uid)) || null;
+      return u;
+    }
+    async function saveProfile({ name, team = null }) {
+      need();
+      name = name.trim();
+      if (!name || name.length > 16) throw new Error('Names are 1–16 characters');
+      const first = !(await get('users/' + uid));
+      const ch = { ['users/' + uid + '/name']: name, ['users/' + uid + '/team']: team,
+        ['profiles/' + uid + '/name']: name, ['profiles/' + uid + '/account']: true };
+      if (first) { ch['users/' + uid + '/createdAt'] = now(); ch['profiles/' + uid + '/createdAt'] = now(); }
+      await queue(ch);
+    }
+    // "Delete account": unlinks Google only. The profile turns back into a guest that can be claimed again.
+    async function unlinkAccount() {
+      need();
+      const clubs = Object.keys((await get('users/' + uid + '/clubs')) || {});
+      await queue({ ['profiles/' + uid + '/account']: false, ['profiles/' + uid + '/createdBy']: uid,
+        ['profiles/' + uid + '/club']: clubs[0] || null, ['users/' + uid]: null });
+    }
+    async function profiles(ids) {
+      const out = {};
+      await Promise.all([...new Set(ids)].map(async id => { out[id] = (await get('profiles/' + id)) || { name: '?' }; }));
+      return out;
+    }
+
+    // ════════════ Clubs ════════════
+    async function createClub(name, isPublic) {
+      need();
+      name = name.trim();
+      if (!name || name.length > 30) throw new Error('Club names are 1–30 characters');
+      const key = nameKey(name);
+      if (await get('clubNames/' + key)) throw new Error(`There's already a club called "${name}"`);
+      let code = newCode();
+      while (await get('clubs/' + code + '/info')) code = newCode();
+      const me = await get('profiles/' + uid);
+      await queue({ ['clubs/' + code + '/info']: { name, public: !!isPublic, createdAt: now(), createdBy: uid },
+        ['clubNames/' + key]: code, ['clubList/' + code]: { name, public: !!isPublic } });
+      await queue({ ['clubs/' + code + '/members/' + uid]: { name: me.name, captain: true, guest: false, joinedAt: now() },
+        ['users/' + uid + '/clubs/' + code]: true });
+      return code;
+    }
+    async function findClubs(text = '') {
+      const all = (await get('clubList')) || {};
+      const q = text.trim().toLowerCase();
+      return Object.entries(all).map(([code, c]) => ({ code, ...c }))
+        .filter(c => !q || c.name.toLowerCase().includes(q)).sort((a, b) => a.name.localeCompare(b.name));
+    }
+    // Your clubs, checked against the real rosters (a captain may have approved or removed you meanwhile)
+    async function myClubs() {
+      need();
+      const listed = Object.keys((await get('users/' + uid + '/clubs')) || {});
+      const out = [];
+      for (const code of listed) {
+        const info = await get('clubs/' + code + '/info');
+        if (!info) { await queue({ ['users/' + uid + '/clubs/' + code]: null }); continue; }
+        let me = null; try { me = await get('clubs/' + code + '/members/' + uid); } catch (e) { /* private, not a member */ }
+        const req = await get('clubs/' + code + '/requests/' + uid);
+        if (me) out.push({ code, ...info, status: 'member', captain: !!me.captain });
+        else if (req) out.push({ code, ...info, status: 'pending' });
+        else await queue({ ['users/' + uid + '/clubs/' + code]: null });
+      }
+      return out;
+    }
+    async function roster(code) {
+      const m = (await get('clubs/' + code + '/members')) || {};
+      return Object.entries(m).map(([pid, x]) => ({ pid, ...x })).sort((a, b) => a.joinedAt - b.joinedAt);
+    }
+    async function nameTaken(code, name, exceptPid) {
+      const m = (await get('clubs/' + code + '/members')) || {};
+      return Object.entries(m).some(([pid, x]) => pid !== exceptPid && nameKey(x.name) === nameKey(name));
+    }
+    // Join: public → in right away; private → a request a captain answers. `nickname` if your name is taken there.
+    async function joinClub(code, { note = '', nickname = null } = {}) {
+      need();
+      const info = await get('clubs/' + code + '/info');
+      if (!info) throw new Error('That club no longer exists');
+      const me = await get('profiles/' + uid);
+      const name = nickname || me.name;
+      if (info.public) {
+        if (await nameTaken(code, name)) throw Object.assign(new Error(`Someone in ${info.name} is already called ${name}. Pick a nickname for this club.`), { code: 'NAME_TAKEN' });
+        await queue({ ['clubs/' + code + '/members/' + uid]: { name, captain: false, guest: false, joinedAt: now() },
+          ['users/' + uid + '/clubs/' + code]: true });
+        return 'joined';
+      }
+      await queue({ ['clubs/' + code + '/requests/' + uid]: { name, note: note.slice(0, 140), at: now() },
+        ['users/' + uid + '/clubs/' + code]: true });
+      return 'requested';
+    }
+    async function requests(code) {
+      const r = (await get('clubs/' + code + '/requests')) || {};
+      const c = (await get('clubs/' + code + '/claims')) || {};
+      return { joins: Object.entries(r).map(([u, x]) => ({ uid: u, ...x })),
+               claims: Object.entries(c).map(([g, x]) => ({ guest: g, ...x })) };
+    }
+    async function answerRequest(code, who, accept) {
+      const r = await get('clubs/' + code + '/requests/' + who);
+      if (!r) return;
+      if (accept && await nameTaken(code, r.name)) throw new Error(`Someone is already called ${r.name} — ask them to request again with a nickname`);
+      const ch = { ['clubs/' + code + '/requests/' + who]: null };
+      if (accept) ch['clubs/' + code + '/members/' + who] = { name: r.name, captain: false, guest: false, joinedAt: now() };
+      await queue(ch);
+    }
+    async function leaveClub(code) {
+      need();
+      const list = await roster(code);
+      const people = list.filter(m => !m.guest);
+      const me = list.find(m => m.pid === uid);
+      if (!me) return;
+      if (people.length === 1) {                           // last member: the club is deleted
+        const info = await get('clubs/' + code + '/info');
+        return queue({ ['clubs/' + code]: null, ['clubNames/' + nameKey(info.name)]: null, ['clubList/' + code]: null,
+          ['users/' + uid + '/clubs/' + code]: null });
+      }
+      if (me.captain && !people.some(m => m.pid !== uid && m.captain))
+        throw Object.assign(new Error('Name another captain before you leave'), { code: 'LAST_CAPTAIN' });
+      await queue({ ['clubs/' + code + '/members/' + uid]: null, ['users/' + uid + '/clubs/' + code]: null });
+    }
+    const setCaptain = (code, pid, on) => queue({ ['clubs/' + code + '/members/' + pid + '/captain']: !!on });
+    const removeMember = (code, pid) => queue({ ['clubs/' + code + '/members/' + pid]: null });
+    async function updateClub(code, { name, public: pub }) {
+      const info = await get('clubs/' + code + '/info');
+      const ch = {};
+      if (name !== undefined && name.trim() !== info.name) {
+        const key = nameKey(name);
+        if (await get('clubNames/' + key)) throw new Error(`There's already a club called "${name.trim()}"`);
+        ch['clubs/' + code + '/info/name'] = name.trim(); ch['clubList/' + code + '/name'] = name.trim();
+        ch['clubNames/' + key] = code; ch['clubNames/' + nameKey(info.name)] = null;
+      }
+      if (pub !== undefined) { ch['clubs/' + code + '/info/public'] = !!pub; ch['clubList/' + code + '/public'] = !!pub; }
+      await queue(ch);
+    }
+
+    // ════════════ Guests ════════════
+    // A guest joins the club you have selected (code), or is personal to you (code = null).
+    async function addGuest(name, code = null) {
+      need();
+      name = name.trim();
+      if (!name || name.length > 16) throw new Error('Names are 1–16 characters');
+      if (code && await nameTaken(code, name)) throw Object.assign(new Error(`${name} is already in this club`), { code: 'NAME_TAKEN' });
+      const pid = 'g_' + db.newId();
+      const ch = { ['profiles/' + pid]: { name, account: false, createdBy: uid, club: code, createdAt: now() } };
+      await queue(ch);
+      if (code) await queue({ ['clubs/' + code + '/members/' + pid]: { name, captain: false, guest: true, joinedAt: now() } });
+      return pid;
+    }
+    async function renameGuest(code, pid, name) {
+      if (await nameTaken(code, name, pid)) throw new Error(`${name} is already in this club`);
+      await queue({ ['clubs/' + code + '/members/' + pid + '/name']: name.trim(), ['profiles/' + pid + '/name']: name.trim() });
+    }
+    // "That's me": ask to take over a guest's games
+    async function claimGuest(code, guestPid) {
+      need();
+      const me = await get('profiles/' + uid);
+      await queue({ ['clubs/' + code + '/claims/' + guestPid]: { uid, name: me.name, at: now() },
+        ['users/' + uid + '/claims/' + guestPid]: code });
+    }
+    // Captain approves: the guest's games now count as the claimer's, and they join the club.
+    async function answerClaim(code, guestPid, accept) {
+      const c = await get('clubs/' + code + '/claims/' + guestPid);
+      if (!c) return;
+      const ch = { ['clubs/' + code + '/claims/' + guestPid]: null };
+      if (accept) {
+        ch['profiles/' + guestPid + '/claimedBy'] = c.uid;
+        ch['clubs/' + code + '/members/' + guestPid] = null;
+        const guest = await get('clubs/' + code + '/members/' + guestPid);
+        const already = await get('clubs/' + code + '/members/' + c.uid);
+        if (!already) ch['clubs/' + code + '/members/' + c.uid] = { name: (guest && guest.name) || c.name, captain: false, guest: false, joinedAt: (guest && guest.joinedAt) || now() };
+      }
+      await queue(ch);
+    }
+    // Guests you've claimed and had approved — their games are yours
+    async function myAliases() {
+      need();
+      const claims = Object.keys((await get('users/' + uid + '/claims')) || {});
+      const out = [];
+      for (const g of claims) { const p = await get('profiles/' + g); if (p && p.claimedBy === uid) out.push(g); }
+      // Publish them on your profile so other people's phones count those games for you too (awards, H2H)
+      const listed = Object.keys((await get('profiles/' + uid + '/aliases')) || {});
+      const add = {}; out.filter(g => !listed.includes(g)).forEach(g => { add['profiles/' + uid + '/aliases/' + g] = true; });
+      if (Object.keys(add).length) await queue(add);
+      return out;
+    }
+
+    // ════════════ Games ════════════
+    // Which of the host's clubs this game counts for: every club that ALL the players belong to.
+    async function clubsFor(pids) {
+      const mine = Object.keys((await get('users/' + uid + '/clubs')) || {});
+      const out = [];
+      for (const code of mine) {
+        let m = null; try { m = await get('clubs/' + code + '/members'); } catch (e) { continue; }
+        if (m && pids.every(p => m[p])) out.push(code);
+      }
+      return out;
+    }
+    const indexChanges = (g, value) => {
+      const ch = {};
+      g.players.forEach(p => { ch['playerGames/' + p.id + '/' + g.id] = value; });
+      (g.clubList || []).forEach(c => { ch['clubs/' + c + '/games/' + g.id] = value; });
+      return ch;
+    };
+    const localDate = t => { const d = new Date(t); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
+
+    // Start a live game. players: [{ id, name }] in seat order.
+    async function startGame({ players, priority = 0, away = '', home = '', park = '' }) {
+      need();
+      for (const p of players) {                           // one live game per player
+        const l = await get('live/' + p.id);
+        if (l && l.gameId) {
+          const g = await get('games/' + l.gameId);
+          if (g && !g.ended) {
+            const host = (await get('profiles/' + g.host)) || { name: 'someone' };
+            throw Object.assign(new Error(`${p.name} is already in a live game hosted by ${host.name}.`), { code: 'IN_LIVE_GAME' });
+          }
+        }
+      }
+      const t = now();
+      const clubList = await clubsFor(players.map(p => p.id));
+      const g = { id: db.newId(), host: uid, device: deviceId, era: 'app', date: localDate(t), seq: t, startedAt: t,
+        players: players.map(p => ({ id: p.id, name: p.name })), setup: { priority }, events: [],
+        away, home, park, clubList, ended: false };
+      const ch = { ['games/' + g.id]: g, ...indexChanges(g, { date: g.date, seq: g.seq }) };
+      players.forEach(p => { ch['live/' + p.id] = { gameId: g.id, host: uid, at: t }; });
+      save('gb_live', g);
+      await queue(ch);
+      return g;
+    }
+    const liveGame = () => load('gb_live', null);      // resume after closing the app, even offline
+    function addEvent(g, ev) {
+      g.events.push(ev); save('gb_live', g);
+      return queue({ ['games/' + g.id + '/events/' + (g.events.length - 1)]: ev, ['games/' + g.id + '/updatedAt']: now() });
+    }
+    function undo(g) {
+      if (!g.events.length) return Promise.resolve();
+      g.events.pop(); save('gb_live', g);
+      return queue({ ['games/' + g.id + '/events/' + g.events.length]: null, ['games/' + g.id + '/updatedAt']: now() });
+    }
+    // Another device of the same account takes over a live game
+    function takeOver(g) { g.device = deviceId; save('gb_live', g); return queue({ ['games/' + g.id + '/device']: deviceId }); }
+    // End the game. A game with no plays is thrown away instead of saved.
+    async function endGame(g, { scores, mlb = null, note = '' } = {}) {
+      const liveOff = {}; g.players.forEach(p => { liveOff['live/' + p.id] = null; });
+      const plays = g.events.filter(e => e.type === 'play').length;
+      storage.removeItem('gb_live');
+      if (!plays) {
+        await queue({ ...liveOff, ['games/' + g.id]: null });
+        return queue(indexChanges(g, null));
+      }
+      g.events.push({ type: 'end' });
+      Object.assign(g, { ended: true, endedAt: now(), scores, mlb, note: note.slice(0, 280) });
+      return queue({ ['games/' + g.id + '/events/' + (g.events.length - 1)]: { type: 'end' },
+        ['games/' + g.id + '/ended']: true, ['games/' + g.id + '/endedAt']: g.endedAt,
+        ['games/' + g.id + '/scores']: scores, ['games/' + g.id + '/mlb']: mlb, ['games/' + g.id + '/note']: g.note, ...liveOff });
+    }
+    // Add a game by hand (final scores only). Anyone can; it counts like a pre-app game.
+    async function addHandGame({ players, scores, date, away = '', home = '', park = '', mlb = null, note = '' }) {
+      need();
+      const me = await get('profiles/' + uid);
+      const clubList = await clubsFor(players.map(p => p.id));
+      const g = { id: db.newId(), host: uid, addedBy: me.name, era: 'hand', date, seq: now(), players, scores,
+        away, home, park, mlb, note, clubList, ended: true };
+      await queue({ ['games/' + g.id]: g, ...indexChanges(g, { date, seq: g.seq }) });
+      return g;
+    }
+    async function editHandGame(g, fields) {
+      const allowed = ['scores', 'date', 'away', 'home', 'park', 'mlb', 'note'];
+      const ch = {};
+      allowed.forEach(k => { if (k in fields) { g[k] = fields[k]; ch['games/' + g.id + '/' + k] = fields[k]; } });
+      if ('date' in fields) Object.assign(ch, indexChanges(g, { date: g.date, seq: g.seq }));
+      await queue(ch);
+    }
+    // Delete a game (captains of its clubs, whoever hand-added it, or Xaq). Stats and awards recalculate.
+    async function deleteGame(g) {
+      await queue({ ['games/' + g.id]: null });
+      await queue(indexChanges(g, null));
+    }
+
+    // Load games for a scope. scope: { club: code } or { mine: true }.
+    // Returns games ready for the Statistician, with claimed guests folded into their accounts.
+    async function loadGames(scope) {
+      need();
+      let ids = [];
+      if (scope.club) ids = Object.keys((await get('clubs/' + scope.club + '/games')) || {});
+      else {
+        const pids = [uid, ...(await myAliases())];
+        for (const p of pids) ids.push(...Object.keys((await get('playerGames/' + p)) || {}));
+      }
+      return prepare(await fetchGames([...new Set(ids)]), scope.club);
+    }
+    // Every game a set of players has played (awards need each person's full history)
+    async function historyOf(pids) {
+      const ids = new Set(), all = new Set(pids);
+      for (const p of pids) {                        // only guests a captain actually approved for this person
+        for (const a of Object.keys(((await get('profiles/' + p)) || {}).aliases || {})) {
+          if (((await get('profiles/' + a)) || {}).claimedBy === p) all.add(a);
+        }
+      }
+      for (const p of all) Object.keys((await get('playerGames/' + p)) || {}).forEach(id => ids.add(id));
+      return prepare(await fetchGames([...ids]));
+    }
+    const gameCache = new Map();                     // finished games never change, so keep them
+    async function fetchGames(ids) {
+      const out = await Promise.all(ids.map(async id => {
+        if (gameCache.has(id)) return gameCache.get(id);
+        const g = await get('games/' + id);
+        if (g && g.ended) gameCache.set(id, g);
+        return g;
+      }));
+      return out.filter(Boolean);
+    }
+    // Fold claimed guests into the account that claimed them, and use current names.
+    async function prepare(games, club) {
+      const ids = [...new Set(games.flatMap(g => g.players.map(p => p.id)))];
+      const prof = await profiles(ids);
+      let nick = {};
+      if (club) { try { nick = (await get('clubs/' + club + '/members')) || {}; } catch (e) { /* not visible */ } }
+      const canon = id => (prof[id] && prof[id].claimedBy) || id;
+      const acct = await profiles([...new Set(ids.map(canon))]);
+      // Firebase drops empty values (e.g. a skipped Pick 3 is null) — put them back so the Umpire can replay.
+      const fix = (ev, n) => ev.type !== 'pick3' ? ev
+        : { ...ev, picks: Array.from({ length: n }, (_, i) => (ev.picks && ev.picks[i] ? Object.values(ev.picks[i]) : null)) };
+      return games.map(g => ({ ...g, events: g.events ? Object.values(g.events).map(ev => fix(ev, g.players.length)) : undefined,
+        players: g.players.map(p => { const c = canon(p.id);
+          return { id: c, name: (nick[c] && nick[c].name) || (acct[c] && acct[c].name) || p.name }; }) }));
+    }
+
+    // ════════════ Admin (Xaq only) ════════════
+    const exportAll = () => get('');
+    const isAdmin = async () => { need(); return (await get('admins/' + uid)) === true; };
+
+    return { setUser, onStatus: f => { listeners.add(f); f(status()); return () => listeners.delete(f); }, status, flush,
+      myAccount, saveProfile, unlinkAccount, profiles,
+      createClub, findClubs, myClubs, roster, joinClub, requests, answerRequest, leaveClub, setCaptain, removeMember, updateClub,
+      addGuest, renameGuest, claimGuest, answerClaim, myAliases,
+      startGame, liveGame, addEvent, undo, takeOver, endGame, addHandGame, editHandGame, deleteGame,
+      loadGames, historyOf, exportAll, isAdmin };
+  }
+
+  // ── Firebase adapter (used in the app). Pass in the Firebase database module + db instance. ──
+  function firebaseAdapter(F, database) {
+    return {
+      get: async p => (await F.get(F.ref(database, p))).val(),
+      update: changes => F.update(F.ref(database), changes),
+      onConnected: cb => F.onValue(F.ref(database, '.info/connected'), s => cb(s.val() === true)),
+      newId: () => F.push(F.ref(database, 'v2/games')).key,
+    };
+  }
+
+  return { create, firebaseAdapter, nameKey };
+})();
+
+
+
+// ════════════════════════════════════════════════════════════════
+//  SECTION 5 — THE SCREENS
+//  Everything you see. Screens ask the Filing Cabinet for data and
+//  the Statistician for numbers; they never touch Firebase directly.
+//
+//  How it works: `S` holds what's on screen. Each screen is a function
+//  that returns HTML. Buttons carry data-act="…" and the matching
+//  function in ACT runs when tapped, then the screen redraws.
+// ════════════════════════════════════════════════════════════════
+const VERSION = '2.0 · test build 1';
+
+const TEAMS = {
+  'Arizona Diamondbacks': 'Chase Field', 'Athletics': 'Sutter Health Park', 'Atlanta Braves': 'Truist Park',
+  'Baltimore Orioles': 'Oriole Park at Camden Yards', 'Boston Red Sox': 'Fenway Park', 'Chicago Cubs': 'Wrigley Field',
+  'Chicago White Sox': 'Rate Field', 'Cincinnati Reds': 'Great American Ball Park', 'Cleveland Guardians': 'Progressive Field',
+  'Colorado Rockies': 'Coors Field', 'Detroit Tigers': 'Comerica Park', 'Houston Astros': 'Daikin Park',
+  'Kansas City Royals': 'Kauffman Stadium', 'Los Angeles Angels': 'Angel Stadium', 'Los Angeles Dodgers': 'Dodger Stadium',
+  'Miami Marlins': 'loanDepot park', 'Milwaukee Brewers': 'American Family Field', 'Minnesota Twins': 'Target Field',
+  'New York Mets': 'Citi Field', 'New York Yankees': 'Yankee Stadium', 'Philadelphia Phillies': 'Citizens Bank Park',
+  'Pittsburgh Pirates': 'PNC Park', 'San Diego Padres': 'Petco Park', 'San Francisco Giants': 'Oracle Park',
+  'Seattle Mariners': 'T-Mobile Park', 'St. Louis Cardinals': 'Busch Stadium', 'Tampa Bay Rays': 'Tropicana Field',
+  'Texas Rangers': 'Globe Life Field', 'Toronto Blue Jays': 'Rogers Centre', 'Washington Nationals': 'Nationals Park',
+};
+const TEAM_NAMES = Object.keys(TEAMS).sort();
+const shortTeam = t => (t ? (t === 'Athletics' ? 'Athletics' : t.split(' ').slice(t.startsWith('Boston Red') || t.startsWith('Chicago White') || t.startsWith('Toronto Blue') ? -2 : -1).join(' ')) : '');
+
+const LOADING_LINES = ['Mowing the outfield...', 'Chalking the foul lines...', 'Warming up the bullpen...', 'Filling the rosin bag...',
+  'Dragging the infield...', 'Polishing the trophy case...', 'Checking the radar gun...', 'Dusting off home plate...',
+  'Untangling the batting cage net...', 'Adjusting the scoreboard...', 'Tightening the cleats...', 'Waving runners home...',
+  'Arguing with the umpire...', 'Eating a hot dog...', 'Taking the signs from third...', 'Raking the warning track...',
+  'Rubbing up the baseballs...', 'Shagging fly balls...', 'Heckling the visiting bullpen...', 'Pulling the tarp...',
+  'Loading the T-shirt cannon...', 'Tracing the diamond...', 'Blaming the sun...', 'Tuning the stadium organ...',
+  'Spitting sunflower seeds...', 'Starting the wave...', 'Racing the mascots...', 'Bribing the official scorer...',
+  'Calling for the cutoff man...', 'Doing the Jah...', 'Glazing Shohei Ohtani...'];
+
+// ── Phone storage (never crashes if Safari blocks it) ──
+const Store = {
+  getItem: k => { try { return localStorage.getItem(k); } catch (e) { return null; } },
+  setItem: (k, v) => { try { localStorage.setItem(k, v); } catch (e) { /* full or blocked */ } },
+  removeItem: k => { try { localStorage.removeItem(k); } catch (e) { /* blocked */ } },
+  json(k, d) { try { const v = this.getItem(k); return v ? JSON.parse(v) : d; } catch (e) { return d; } },
+  put(k, v) { this.setItem(k, JSON.stringify(v)); },
+};
+const deviceId = Store.getItem('gb_device') || (() => { const d = 'd' + Math.random().toString(36).slice(2, 10); Store.setItem('gb_device', d); return d; })();
+
+// ── Screen state ──
+const S = {
+  screen: 'loading', params: {}, stack: [], sheet: null, info: null, toast: null,
+  user: null, account: null, admin: false,
+  clubs: [], scope: null,              // scope: club code, or 'mine' for All my games
+  home: { loading: true, rows: [], recent: [], games: 0 },
+  setup: { name: '', team: null, played: null },
+  q: '', found: [], draft: {},
+  settings: Store.json('gb_settings', { haptic: true, sound: true, awake: true, big: false }),
+  loadingLine: LOADING_LINES[Math.floor(Math.random() * LOADING_LINES.length)],
+  busy: false, online: true, pending: 0,
+};
+let FCab = null;   // the Filing Cabinet, once Firebase is ready
+
+// ── Little helpers ──
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const attr = esc;
+const act = (name, arg) => `data-act="${name}"${arg !== undefined ? ` data-arg="${attr(arg)}"` : ''}`;
+const pct3 = v => (v == null ? '—' : v >= 1 ? '1.000' : v.toFixed(3).replace(/^0/, ''));
+const MONTHS = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
+
+const ICON = {
+  back: '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3L5 8l5 5"/></svg>',
+  chev: '<svg class="chev" width="8" height="14" viewBox="0 0 8 14" fill="none" stroke="var(--text4)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1.5 1.5L6.5 7l-5 5.5"/></svg>',
+  down: '<svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="var(--text3)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 4.5l3 3 3-3"/></svg>',
+  check: c => `<svg width="16" height="16" viewBox="0 0 14 14" fill="none" stroke="${c}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 7.5l3 3 6-7"/></svg>`,
+  plus: '<svg width="16" height="16" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M9 3v12M3 9h12"/></svg>',
+  search: '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="var(--text3)" stroke-width="2" stroke-linecap="round"><circle cx="7" cy="7" r="5"/><path d="M11 11l3.5 3.5"/></svg>',
+  lock: '<svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="var(--text3)" stroke-width="1.8" stroke-linecap="round"><rect x="2.5" y="6" width="9" height="6.5" rx="1.5"/><path d="M4.5 6V4.5a2.5 2.5 0 015 0V6"/></svg>',
+  gear: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--text)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M6.5 9h11M6.5 15h11" stroke-width="1.6"/><circle cx="9.6" cy="9" r="1.9" fill="var(--text)"/><circle cx="14.6" cy="15" r="1.9" fill="var(--text)"/></svg>',
+  google: '<svg width="18" height="18" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.5 12.2c0-.8-.1-1.5-.2-2.2H12v4.2h5.9a5 5 0 01-2.2 3.3v2.7h3.5c2.1-1.9 3.3-4.7 3.3-8z"/><path fill="#34A853" d="M12 23c3 0 5.5-1 7.3-2.7l-3.5-2.7c-1 .7-2.3 1.1-3.8 1.1-2.9 0-5.4-2-6.3-4.7H2.1v2.8A11 11 0 0012 23z"/><path fill="#FBBC05" d="M5.7 14c-.2-.7-.4-1.3-.4-2s.1-1.4.4-2V7.2H2.1a11 11 0 000 9.6z"/><path fill="#EA4335" d="M12 5.4c1.6 0 3.1.6 4.2 1.7l3.1-3.1A11 11 0 002.1 7.2L5.7 10c.9-2.7 3.4-4.6 6.3-4.6z"/></svg>',
+  spinner: '<svg class="spin spinner" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="2.4" stroke-linecap="round"><path d="M12 3a9 9 0 019 9"/></svg>',
+  appIcon: size => `<svg width="${size}" height="${size}" viewBox="0 0 180 180" fill="none"><rect width="180" height="180" fill="#E6EFFA"/>
+    <path d="M0 50H180M50 0V180" stroke="#0E1F3D" stroke-width="1.5" opacity="0.16"/>
+    ${[[10, 12], [22, 12], [34, 12], [10, 24], [22, 24]].map(([x, y]) => `<rect x="${x}" y="${y}" width="9" height="9" stroke="#0E1F3D" stroke-width="1.6" opacity="0.6"/>`).join('')}
+    <path d="M100 162L160 102 100 42 40 102z" stroke="#0E1F3D" stroke-width="3.2" stroke-linejoin="round"/>
+    <path d="M100 162L160 102 100 42" stroke="#D63A2F" stroke-width="5.8" stroke-linejoin="round" stroke-linecap="round"/>
+    <rect x="152" y="94" width="16" height="16" transform="rotate(45 160 102)" fill="#FFFFFF" stroke="#0E1F3D" stroke-width="2.7"/>
+    <rect x="92" y="34" width="16" height="16" transform="rotate(45 100 42)" fill="#FFFFFF" stroke="#0E1F3D" stroke-width="2.7"/>
+    <rect x="32" y="94" width="16" height="16" transform="rotate(45 40 102)" fill="#FFFFFF" stroke="#0E1F3D" stroke-width="2.7"/>
+    <path d="M88.8 155.3H111.2V163.3L100 174L88.8 163.3Z" fill="#FFFFFF" stroke="#0E1F3D" stroke-width="2.7" stroke-linejoin="round"/>
+    <text x="99" y="123" text-anchor="middle" font-family="Norican, cursive" font-size="76" fill="#0E1F3D">G</text></svg>`,
+  swoosh: w => `<svg width="${w}" height="${w * 0.09}" viewBox="0 0 200 18" fill="none"><path d="M14 12C70 4 140 3 188 8" stroke="var(--swoosh)" stroke-width="1.8" stroke-linecap="round"/><path d="M14 12C70 4 140 3 188 8" stroke="var(--swoosh)" stroke-width="7" stroke-dasharray="1.4 5.5"/></svg>`,
+  tabs: {
+    games: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M12 3l9 9-9 9-9-9z"/></svg>',
+    stats: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M5 20V11M12 20V4M19 20v-6"/></svg>',
+    awards: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 22h11M8 22l.7-2.6h6.6l.7 2.6" stroke-width="1.6"/><path d="M9.2 19.4C6.4 16.8 4.6 12 4.4 5.6M10.4 19.4C8.8 16 8 11.5 8 4.2M12 19.4V3M13.6 19.4c1.6-3.4 2.4-7.9 2.4-15.2M14.8 19.4c2.8-2.6 4.6-7.4 4.8-13.8" stroke-width="1"/><path d="M4.4 5.6L2.2 6.6l2.3.9zM8 4.2L5.9 5l2.1.9zM12 3l-2.2.8L12 4.6zM16 4.2l2.1.8-2.1.9zM19.6 5.8l2.2 1-2.3.9z" stroke-width="0.8" fill="currentColor"/><path d="M12 11.4a3.1 3.1 0 110 6.2 3.1 3.1 0 010-6.2zM8.9 14.5h6.2M12 11.4c-1.1 1-1.1 5.2 0 6.2" stroke-width="1.2"/></svg>',
+    club: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.5-3.6 3.2-5.5 6.5-5.5s6 1.9 6.5 5.5"/><circle cx="17" cy="9" r="2.5"/><path d="M17 14c2.5 0 4.2 1.6 4.5 4.5"/></svg>',
+  },
+};
+
+// Label with a tap-to-reveal (i) explainer
+function info(id, labelHtml, text, cls = 'label') {
+  const open = S.info === id;
+  return `<div><button class="info-btn ${cls}" ${act('info', id)}>${labelHtml}<span class="info-i">i</span></button>${open ? `<div class="bubble fade">${esc(text)}</div>` : ''}</div>`;
+}
+const backBtn = (a = 'back') => `<button class="back press" aria-label="Back" ${act(a)}>${ICON.back}</button>`;
+const toggle = (on, a, arg) => `<button class="toggle ${on ? 'on' : ''}" aria-pressed="${on}" ${act(a, arg)}><span></span></button>`;
+const progress = (n, of) => `<div style="display:flex;gap:6px">${Array.from({ length: of }, (_, i) => `<span style="width:22px;height:5px;border-radius:3px;background:${i < n ? 'var(--text)' : 'var(--card3)'}"></span>`).join('')}</div>`;
+
+// ════════════ Screens ════════════
+const SCREENS = {};
+
+SCREENS.loading = () => `<div class="fixedpage" style="align-items:center;justify-content:center">
+  <span class="courier fade" style="font-size:15px;font-weight:700;color:var(--text2)">${esc(S.loadingLine)}</span></div>`;
+
+SCREENS.signin = () => `<div class="fixedpage" style="align-items:center;padding-left:24px;padding-right:24px">
+  <div class="grow"></div>
+  <div class="rise" style="width:128px;height:128px;border-radius:29px;overflow:hidden;box-shadow:0 20px 50px rgba(47,111,228,0.25)">${ICON.appIcon(128)}</div>
+  <div class="rise2" style="display:flex;flex-direction:column;align-items:center;margin-top:12px">
+    <span class="script" style="font-size:56px;line-height:1.05;color:var(--cream)">Guess Ball</span>${ICON.swoosh(260)}
+    <span class="courier" style="margin-top:14px;font-size:14px;font-weight:700;color:var(--text2)">Built for the bleachers.</span>
+  </div>
+  <div class="grow" style="flex-grow:1.4 !important"></div>
+  ${S.offlineFirst ? `<span class="courier" style="font-size:12px;font-weight:700;color:var(--orange);text-align:center;line-height:1.5">You need a connection to sign in the first time.</span>` : ''}
+  <button class="press cond" ${act('signIn')} ${S.busy ? 'disabled' : ''} style="width:100%;height:58px;border-radius:29px;background:#F5F5F7;color:#000;font-size:21px;font-weight:800;letter-spacing:.8px">${S.busy ? 'SIGNING IN…' : 'CONTINUE WITH GOOGLE'}</button>
+</div>`;
+
+// ── Account setup (3 steps) ──
+SCREENS.setupName = () => {
+  const n = S.setup.name.trim();
+  return `<div class="fixedpage">
+  <div class="topbar" style="justify-content:space-between"><span style="width:36px"></span>${progress(1, 3)}<span style="width:36px"></span></div>
+  <h1 class="cond" style="margin:28px 0 0;font-size:40px;font-weight:800;line-height:1">WHAT SHOULD WE<br>CALL YOU?</h1>
+  ${info('nameWhy', '<span class="courier" style="font-size:13px;font-weight:700;color:var(--text2)">Your name on every scoreboard</span>', 'Nicknames welcome. You can change it any time in Settings, and your past games switch to the new name.', '')}
+  <label class="field" style="height:60px;border:2px solid var(--accent)"><input data-model="setup.name" value="${attr(S.setup.name)}" maxlength="16" autocomplete="nickname" aria-label="Display name" style="font-size:22px"><span class="courier meta" data-count="setup.name">${n.length}/16</span></label>
+  <div class="grow"></div>
+  <button class="big-btn cond press" ${act('setupNext')} data-enable="setup.name">NEXT</button>
+</div>`;
+};
+function teamList(selected, a) {
+  const q = S.q.trim().toLowerCase();
+  const list = TEAM_NAMES.filter(t => !q || t.toLowerCase().includes(q) || TEAMS[t].toLowerCase().includes(q));
+  return `<label class="field search">${ICON.search}<input data-model="q" data-rerender="1" value="${attr(S.q)}" placeholder="Search teams" aria-label="Search teams"></label>
+  <div class="list">${list.map(t => {
+    const on = t === selected;
+    return `<button class="row press" ${act(a, t)} style="min-height:48px"><span style="flex-grow:1;font-size:16px;font-weight:${on ? 700 : 500}">${esc(t)}</span>
+      <span style="width:22px;height:22px;border-radius:11px;border:2px solid ${on ? 'var(--accent)' : '#4A4A52'};background:${on ? 'var(--accent)' : 'transparent'};display:flex;align-items:center;justify-content:center">${on ? ICON.check('#fff') : ''}</span></button>`;
+  }).join('') || `<div class="row"><span class="courier meta">No team matches. That's fine — it's optional.</span></div>`}</div>`;
+}
+SCREENS.setupTeam = () => `<div class="fixedpage" style="gap:12px">
+  <div class="topbar" style="justify-content:space-between">${backBtn('setupBack')}${progress(2, 3)}<button class="cond press" ${act('setupSkipTeam')} style="width:50px;color:var(--link);font-size:17px;font-weight:800;letter-spacing:.6px;text-align:right">SKIP</button></div>
+  <h1 class="cond" style="margin:16px 0 0;font-size:40px;font-weight:800;line-height:1">FAVORITE TEAM?</h1>
+  <span class="courier" style="font-size:13px;font-weight:700;color:var(--text2)">Optional.</span>
+  ${teamList(S.setup.team, 'setupPickTeam')}
+  <div class="grow" style="min-height:8px"></div>
+  <button class="big-btn cond press" ${act('setupNext')} style="position:sticky;bottom:0">NEXT</button>
+</div>`;
+SCREENS.setupPlayed = () => {
+  const a = S.setup.played;
+  const opt = (v, title, sub) => `<button class="press" ${act('setupPlayed', v)} style="min-height:64px;border-radius:16px;background:var(--card);border:2px solid ${a === v ? 'var(--accent)' : 'transparent'};padding:12px 16px;display:flex;flex-direction:column;align-items:flex-start;gap:2px;text-align:left">
+    <span style="font-size:17px;font-weight:700">${title}</span><span class="courier" style="font-size:12px;font-weight:700;color:var(--text2)">${sub}</span></button>`;
+  return `<div class="fixedpage" style="gap:12px">
+  <div class="topbar" style="justify-content:space-between">${backBtn('setupBack')}${progress(3, 3)}<span style="width:36px"></span></div>
+  <h1 class="cond" style="margin:16px 0 0;font-size:40px;font-weight:800;line-height:1">PLAYED GUESS BALL<br>BEFORE?</h1>
+  ${info('guestWhy', '<span class="courier" style="font-size:13px;font-weight:700;color:var(--text2)">Played on someone else\'s phone?</span>', 'If someone added you to their games as a guest, you can bring that history to your account.', '')}
+  ${opt('yes', "Yes, as a guest on someone's phone", 'Keep your games, wins and records')}
+  ${a === 'yes' ? `<div class="fade" style="background:var(--sheet);border-radius:16px;padding:14px 16px;display:flex;flex-direction:column;gap:10px">
+    <span class="cond" style="font-size:15px;font-weight:800;letter-spacing:.8px;color:var(--gold)">HOW TO CLAIM YOUR GAMES</span>
+    ${[["Ask whoever ran your games to open your guest name in their club and tap <b>Link to an account</b> or <b>Send claim link</b>."], ["You'll get a card on your Home screen. Tap <b>That's me</b>."], ['A club captain approves, and your history moves over.']]
+      .map(([t], i) => `<div style="display:flex;gap:10px"><span class="cond" style="font-size:18px;font-weight:800;color:var(--text4)">${i + 1}</span><span style="font-size:14px;font-weight:500;line-height:1.45">${t}</span></div>`).join('')}
+    <button class="press cond" ${act('shareName')} style="height:42px;border-radius:21px;background:var(--card2);font-size:16px;font-weight:800;letter-spacing:.6px">SHARE MY ACCOUNT NAME</button>
+  </div>` : ''}
+  ${opt('no', "No, I'm new", "We'll show you how to play")}
+  <div class="grow"></div>
+  <button class="big-btn cond press" ${act('setupFinish')} ${a && !S.busy ? '' : 'disabled'}>${a === 'no' ? 'SHOW ME HOW' : "LET'S GO"}</button>
+</div>`;
+};
+
+// ── Walkthrough (5 cards) ──
+const TUTORIAL = [
+  () => `<span class="cond" style="margin-top:18px;font-size:16px;font-weight:800;letter-spacing:1px;color:var(--link)">HOW TO PLAY</span>
+    <h1 class="cond" style="margin:0;font-size:44px;font-weight:800;line-height:.95">CALL EVERY<br>AT-BAT.</h1>
+    <span style="font-size:17px;font-weight:500;line-height:1.5;color:var(--text5)">Before each batter, everyone picks what will happen. Get it right and you score, plus 1 point for every run that scores on the play. Most points when the real game ends wins.</span>
+    <div style="margin-top:10px;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px">
+    ${[['K', '1 pt'], ['BB', '3 pts'], ['1B', '2 pts'], ['2B', '5 pts'], ['HR', '7 pts'], ['3B', '10 pts'], ['OUT', '1 pt'], ['HBP', '3 pts']].map(([c, p], i) =>
+      `<div style="height:54px;border-radius:12px;padding:6px 8px;display:flex;flex-direction:column;justify-content:center;background:${i === 3 ? 'var(--accent)' : 'var(--card)'}">
+        <span class="shoulders" style="font-size:22px;font-weight:900;line-height:1">${c}</span><span class="courier" style="font-size:10px;font-weight:700;color:${i === 3 ? 'rgba(255,255,255,.85)' : 'var(--text2)'}">${p}</span></div>`).join('')}</div>`,
+  () => `<span class="cond" style="margin-top:18px;font-size:16px;font-weight:800;letter-spacing:1px;color:var(--link)">PRIORITY</span>
+    <h1 class="cond" style="margin:0;font-size:44px;font-weight:800;line-height:.95">PRIORITY GETS<br>FIRST DIBS.</h1>
+    <span style="font-size:17px;font-weight:500;line-height:1.5;color:var(--text5)">Whoever has priority picks first. Once a pick is taken, nobody else can use it. Score on an at-bat and you steal priority.</span>
+    <div class="card" style="margin-top:10px;padding:14px;display:flex;flex-direction:column;gap:10px">
+      <div style="display:flex;align-items:center;justify-content:space-between"><div style="display:flex;align-items:center;gap:8px"><span style="font-size:17px;font-weight:700">Zach</span><span class="cond tag" style="color:#9EC1FF;border-color:rgba(122,171,255,.55);font-size:12px">PRIORITY</span></div><span class="shoulders" style="font-size:26px;font-weight:900">2B</span></div>
+      <div style="display:flex;align-items:center;justify-content:space-between"><span style="font-size:17px;font-weight:600;color:var(--text2)">Stu</span>
+        <div style="display:flex;gap:6px"><span class="shoulders" style="height:40px;padding:0 12px;border-radius:10px;background:var(--card2);opacity:.4;display:flex;align-items:center;font-size:20px;font-weight:900">2B</span><span class="shoulders" style="height:40px;padding:0 12px;border-radius:10px;background:var(--accent);display:flex;align-items:center;font-size:20px;font-weight:900">1B</span></div></div>
+      <span class="courier meta">2B is Zach's, so Stu takes 1B.</span></div>`,
+  () => `<span class="cond" style="margin-top:18px;font-size:16px;font-weight:800;letter-spacing:1px;color:var(--link)">POINTS</span>
+    <h1 class="cond" style="margin:0;font-size:44px;font-weight:800;line-height:.95">RARE PAYS<br>MORE.</h1>
+    <span style="font-size:17px;font-weight:500;line-height:1.5;color:var(--text5)">The less likely the call, the bigger the reward. Plus 1 point for every run that scores on your correct call.</span>
+    <div style="margin-top:6px;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px">
+    ${[['K', 1], ['OUT', 1], ['1B', 2], ['FC', 2], ['BB', 3], ['HBP', 3], ['DP', 3], ['BU', 4], ['SB', 4], ['2B', 5], ['HR', 7], ['3B', 10]].map(([c, p]) =>
+      `<div style="height:50px;border-radius:12px;background:var(--card);padding:0 10px;display:flex;align-items:center;justify-content:space-between"><span class="shoulders" style="font-size:19px;font-weight:900">${c}</span><span class="shoulders" style="font-size:19px;font-weight:900;color:var(--gold)">${p}</span></div>`).join('')}</div>`,
+  () => `<span class="cond" style="margin-top:18px;font-size:16px;font-weight:800;letter-spacing:1px;color:var(--link)">PICK 3</span>
+    <h1 class="cond" style="margin:0;font-size:44px;font-weight:800;line-height:.95">CALL THREE<br>IN A ROW.</h1>
+    <span style="font-size:17px;font-weight:500;line-height:1.5;color:var(--text5)">At the start of every half-inning, call the first three at-bats in order. Hit all three for a +7 bonus. Miss one and you go back to picking one at a time.</span>
+    <div style="margin-top:10px;display:grid;grid-template-columns:repeat(3,minmax(0,1fr)) 64px;gap:8px">
+    ${['K', 'BB', '1B'].map(s => `<div style="height:84px;border-radius:14px;background:var(--card);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px"><span class="shoulders" style="font-size:32px;font-weight:900;line-height:1">${s}</span>${ICON.check('var(--green)')}</div>`).join('')}
+    <div style="height:84px;border-radius:14px;background:rgba(91,210,122,.15);display:flex;align-items:center;justify-content:center"><span class="shoulders" style="font-size:28px;font-weight:900;color:var(--green)">+7</span></div></div>`,
+  () => `<span class="cond" style="margin-top:18px;font-size:16px;font-weight:800;letter-spacing:1px;color:var(--link)">CONFIDENCE</span>
+    <h1 class="cond" style="margin:0;font-size:44px;font-weight:800;line-height:.95">FEELING IT?<br>SAY SO.</h1>
+    <span style="font-size:17px;font-weight:500;line-height:1.5;color:var(--text5)">Turn on confidence for any pick: +5 if you're right, −2 if you're wrong.</span>
+    <div class="card" style="border-radius:16px;padding:12px 14px;display:flex;align-items:center;justify-content:space-between"><span style="font-size:16px;font-weight:600">Confidence</span><span class="toggle on"><span></span></span></div>`,
+];
+SCREENS.tutorial = () => {
+  const n = S.params.card || 0, last = TUTORIAL.length - 1;
+  return `<div class="fixedpage">
+  <div class="topbar" style="justify-content:space-between">
+    <button class="back press" aria-label="Back" ${act('tutPrev')} style="opacity:${n ? 1 : 0}">${ICON.back}</button>
+    <div style="display:flex;gap:6px">${TUTORIAL.map((_, i) => `<span style="width:${i === n ? 22 : 6}px;height:6px;border-radius:3px;background:${i === n ? 'var(--text)' : 'var(--card3)'};transition:width .3s"></span>`).join('')}</div>
+    <button class="cond press" ${act('tutDone')} style="width:50px;color:var(--link);font-size:17px;font-weight:800;letter-spacing:.6px;text-align:right">SKIP</button></div>
+  <div class="slide" style="display:flex;flex-direction:column;gap:14px" data-key="card${n}">${TUTORIAL[n]()}</div>
+  <div class="grow"></div>
+  <button class="big-btn cond press" ${act(n === last ? 'tutDone' : 'tutNext')}>${n === last ? 'PLAY BALL' : 'NEXT'}</button>
+</div>`;
+};
+
+// ── Tab bar ──
+function tabbar(on) {
+  const t = (id, label) => `<button class="cond ${on === id ? 'on' : ''}" ${act('tab', id)}>${ICON.tabs[id]}${label}</button>`;
+  return `<nav class="tabbar">${t('games', 'GAMES')}${t('stats', 'STATS')}${t('awards', 'AWARDS')}${t('club', 'CLUB')}</nav>`;
+}
+const scopeName = () => (S.scope === 'mine' ? 'ALL MY GAMES' : ((S.clubs.find(c => c.code === S.scope) || {}).name || 'ALL MY GAMES').toUpperCase());
+const scopeChip = () => `<button class="press cond" ${act('openSwitcher')} style="align-self:flex-start;display:flex;align-items:center;gap:6px;height:34px;padding:0 14px;border-radius:17px;background:var(--card);font-size:18px;font-weight:700;letter-spacing:.6px">${esc(scopeName())} ${ICON.down}</button>`;
+
+// ── Home ──
+SCREENS.home = () => {
+  const h = S.home;
+  const first = (S.account && S.account.name) || '';
+  const noClubs = !S.clubs.some(c => c.status === 'member');
+  let body;
+  if (h.loading && !h.rows.length) body = `<div class="card" style="padding:28px;display:flex;justify-content:center">${ICON.spinner}</div>`;
+  else if (!h.games) body = `<div class="card fade" style="padding:18px;display:flex;flex-direction:column;gap:10px">
+      <span class="cond" style="font-size:24px;font-weight:800;letter-spacing:.4px">${noClubs ? `WELCOME, ${esc(first.toUpperCase())}` : 'NO GAMES YET'}</span>
+      <span style="font-size:15px;line-height:1.45;color:var(--text2)">${noClubs ? 'Join your crew’s club to see its standings, or start your own. Every game you play also shows up under All my games.' : 'Games you play with this club show up here.'}</span>
+      ${noClubs ? `<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:4px"><button class="press cond small-btn" style="height:42px;border-radius:21px" ${act('go', 'findClub')}>FIND A CLUB</button><button class="press cond small-btn" style="height:42px;border-radius:21px" ${act('go', 'createClub')}>CREATE A CLUB</button></div>` : ''}
+    </div>`;
+  else body = `
+    <div style="display:flex;align-items:baseline;justify-content:space-between;margin-top:8px"><h2 class="cond h2">STANDINGS</h2><a ${act('tab', 'stats')}>See all</a></div>
+    <div class="card" style="padding:0 16px">${h.rows.slice(0, 3).map((r, i) => `<div style="display:flex;align-items:center;gap:12px;height:46px;${i ? 'border-top:1px solid var(--line)' : ''}">
+      <span class="shoulders num" style="width:16px;font-size:20px;font-weight:800;color:var(--text3)">${i + 1}</span>
+      <span style="flex-grow:1;font-size:17px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(r.name)}</span>
+      <span class="shoulders num" style="font-size:21px;font-weight:800;color:var(--text2)">${r.w}–${r.l}${r.t ? '–' + r.t : ''}</span>
+      <span class="shoulders num" style="width:50px;text-align:right;font-size:21px;font-weight:900">${pct3(r.winPct)}</span></div>`).join('')}</div>
+    <h2 class="cond h2" style="margin-top:8px">RECENT</h2>
+    <div style="display:flex;flex-direction:column;gap:10px">${h.recent.slice(0, 2).map(g => {
+      const [w, l] = g.players; const d = g.date.split('-');
+      return `<div class="card" style="padding:10px 16px;display:flex;align-items:center;gap:14px">
+        <div style="width:40px;display:flex;flex-direction:column;align-items:center"><span class="cond" style="font-size:14px;font-weight:800;color:var(--text3);letter-spacing:.6px">${MONTHS[+d[1] - 1]}</span><span class="shoulders num" style="font-size:26px;font-weight:900;line-height:1">${+d[2]}</span></div>
+        <div style="flex-grow:1;min-width:0;display:flex;flex-direction:column">
+          <div style="display:flex;justify-content:space-between;align-items:center;height:26px"><span style="font-size:16px;font-weight:700">${esc(w.name)}</span><span class="shoulders num" style="font-size:22px;font-weight:900">${w.score}</span></div>
+          <div style="display:flex;justify-content:space-between;align-items:center;height:26px;color:var(--text2)"><span style="font-size:16px;font-weight:500">${esc(l.name)}${g.players.length > 2 ? ' +' + (g.players.length - 2) : ''}</span><span class="shoulders num" style="font-size:22px;font-weight:800">${l.score}</span></div>
+        </div></div>`;
+    }).join('')}</div>`;
+  return `<div class="page tabbed">
+    <div style="display:flex;align-items:center;justify-content:space-between">
+      <div style="display:flex;flex-direction:column;align-items:center"><span class="script" style="font-size:40px;line-height:1.05;color:var(--cream)">Guess Ball</span>${ICON.swoosh(200)}</div>
+      <button class="press" aria-label="Settings" ${act('go', 'settings')} style="width:38px;height:38px;border-radius:19px;background:var(--card2);display:flex;align-items:center;justify-content:center">${ICON.gear}</button>
+    </div>
+    ${scopeChip()}
+    <button class="press cond mid-btn" ${act('newGame')}>${ICON.plus} NEW GAME</button>
+    ${body}
+  </div>${tabbar('games')}`;
+};
+
+// Tabs that come in later test builds
+const later = (tab, title, what) => () => `<div class="page tabbed">
+  <div class="topbar"><h1 class="cond h1" style="font-size:34px">${title}</h1></div>${tab === 'stats' || tab === 'club' ? scopeChip() : ''}
+  <div class="card" style="padding:18px;display:flex;flex-direction:column;gap:6px"><span class="cond" style="font-size:20px;font-weight:800;letter-spacing:.6px;color:var(--text2)">COMING IN A LATER TEST</span>
+  <span style="font-size:15px;line-height:1.45;color:var(--text2)">${what}</span></div></div>${tabbar(tab)}`;
+SCREENS.stats = later('stats', 'STATS', 'Standings, history, records and head-to-head arrive in test build 3.');
+SCREENS.awards = later('awards', 'AWARDS', 'All 81 awards, with your progress, arrive in test build 4.');
+SCREENS.club = later('club', 'CLUB', 'Roster, requests, guests and club settings arrive in test build 5. For now, switch clubs from the chip above.');
+
+// ── Club switcher sheet ──
+function switcherSheet() {
+  const rows = [...S.clubs.map(c => ({ key: c.code, name: c.name, priv: c.public ? 'PUBLIC' : 'PRIVATE', cap: c.captain, pending: c.status === 'pending',
+      sub: c.status === 'pending' ? 'Request sent · waiting for a captain' : 'Club', req: c.requests || 0 })),
+    { key: 'mine', name: 'All my games', sub: 'Every game you play, any club' }];
+  return `<h2 class="cond" style="margin:0;font-size:28px;font-weight:800;letter-spacing:.4px">SHOWING</h2>
+  <div class="list">${rows.map(r => `<button class="row press" ${r.pending ? '' : act('pickScope', r.key)} style="min-height:62px;padding:8px 0;${r.pending ? 'opacity:.55' : ''}">
+    <div style="flex-grow:1;display:flex;flex-direction:column;gap:3px"><div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+      <span class="cond" style="font-size:22px;font-weight:800;letter-spacing:.4px">${esc(r.name.toUpperCase())}</span>
+      ${r.priv ? `<span class="cond tag">${r.pending ? 'PENDING' : r.priv}</span>` : ''}${r.cap ? '<span class="cond tag gold">CAPTAIN</span>' : ''}</div>
+      <span class="courier meta">${esc(r.sub)}</span></div>
+    ${r.req ? `<span class="shoulders" style="min-width:22px;height:22px;padding:0 6px;border-radius:11px;background:var(--goldfill);color:#1A1406;font-size:14px;font-weight:900;display:flex;align-items:center;justify-content:center">${r.req}</span>` : ''}
+    ${ICON.check(S.scope === r.key ? 'var(--link)' : 'transparent')}</button>`).join('')}</div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><button class="press cond small-btn" style="height:46px;border-radius:23px;font-size:17px" ${act('go', 'findClub')}>FIND A CLUB</button><button class="press cond small-btn" style="height:46px;border-radius:23px;font-size:17px" ${act('go', 'createClub')}>CREATE A CLUB</button></div>
+  ${info('showingWhy', '<span class="courier meta">What does this change?</span>', 'Home, Club and Stats all follow this choice. A gold number means requests are waiting for a captain.', '')}`;
+}
+
+// ── Find a club ──
+SCREENS.findClub = () => {
+  const q = S.q.trim().toLowerCase();
+  const mine = Object.fromEntries(S.clubs.map(c => [c.code, c.status]));
+  const list = S.found.filter(c => !q || c.name.toLowerCase().includes(q));
+  return `<div class="page">
+  <div class="topbar">${backBtn()}<h1 class="cond h1">FIND A CLUB</h1></div>
+  <label class="field search">${ICON.search}<input data-model="q" data-rerender="1" value="${attr(S.q)}" placeholder="Search clubs by name" aria-label="Search clubs"></label>
+  ${S.foundLoading ? `<div class="card" style="padding:24px;display:flex;justify-content:center">${ICON.spinner}</div>` :
+  `<div class="list">${list.map(c => {
+    const st = mine[c.code];
+    const cta = st === 'member' ? 'OPEN' : st === 'pending' ? 'PENDING' : c.public ? 'JOIN' : 'REQUEST';
+    const primary = cta === 'JOIN';
+    return `<div class="row" style="min-height:64px"><div style="flex-grow:1;min-width:0;display:flex;flex-direction:column;gap:2px">
+      <div style="display:flex;align-items:center;gap:6px"><span class="cond" style="font-size:20px;font-weight:800;letter-spacing:.4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(c.name.toUpperCase())}</span>${c.public ? '' : ICON.lock}</div>
+      <span class="courier meta">${st === 'member' ? 'Your club' : st === 'pending' ? 'Request pending' : c.public ? 'Public' : 'Private'}</span></div>
+      <button class="press cond small-btn" ${cta === 'PENDING' ? 'disabled' : act('clubCta', c.code)} style="${primary ? 'background:var(--accent);color:var(--onaccent)' : ''}">${cta}</button></div>`;
+  }).join('') || `<div class="row"><span class="courier meta">${q ? 'No club by that name yet.' : 'No clubs yet — be the first.'}</span></div>`}</div>`}
+  <button class="press cond mid-btn" ${act('go', 'createClub')} style="font-size:19px">${ICON.plus} CREATE A CLUB</button>
+</div>`;
+};
+function requestSheet() {
+  const c = S.found.find(x => x.code === S.sheet.arg) || {};
+  return `<div style="display:flex;align-items:center;gap:8px"><span class="cond" style="font-size:28px;font-weight:800;letter-spacing:.4px">${esc((c.name || '').toUpperCase())}</span>${ICON.lock}</div>
+  <span class="courier" style="font-size:13px;font-weight:700;color:var(--text2);line-height:1.45">Private club. Its roster, games and stats stay hidden until a captain accepts your request.</span>
+  <label class="field" style="background:var(--inner)"><input data-model="draft.note" value="${attr(S.draft.note || '')}" maxlength="140" placeholder="Add a note (optional) — e.g. Stu's son"></label>
+  <button class="big-btn cond press" ${act('sendRequest', c.code)} ${S.busy ? 'disabled' : ''}>SEND REQUEST</button>`;
+}
+function nicknameSheet() {
+  return `<span class="cond" style="font-size:26px;font-weight:800;letter-spacing:.4px">NAME TAKEN</span>
+  <span style="font-size:15px;line-height:1.45;color:var(--text2)">Someone in this club already goes by ${esc(S.account.name)}. Pick a nickname just for this club (like “${esc(S.account.name)} B”).</span>
+  <label class="field" style="background:var(--inner)"><input data-model="draft.nick" value="${attr(S.draft.nick || '')}" maxlength="16" placeholder="Nickname"></label>
+  <button class="big-btn cond press" ${act('joinWithNick', S.sheet.arg)} data-enable="draft.nick">JOIN</button>`;
+}
+
+// ── Create a club ──
+SCREENS.createClub = () => {
+  const priv = S.draft.priv !== false;
+  return `<div class="fixedpage" style="gap:12px">
+  <div class="topbar">${backBtn()}<h1 class="cond h1">NEW CLUB</h1></div>
+  <span class="cond label" style="margin-top:8px;color:var(--text2)">CLUB NAME</span>
+  <label class="field"><input data-model="draft.club" value="${attr(S.draft.club || '')}" maxlength="30" placeholder="e.g. The Dugout" aria-label="Club name"></label>
+  ${S.draft.clubErr ? `<span class="courier" style="font-size:12px;font-weight:700;color:var(--orange);padding:0 4px">${esc(S.draft.clubErr)}</span>` : ''}
+  ${info('whoJoin', '<span class="cond" style="font-size:16px;font-weight:800;letter-spacing:.8px;color:var(--text2)">WHO CAN JOIN</span>', priv
+    ? 'Private: anyone can find it by name and ask to join. A captain accepts requests. The roster, games and stats stay hidden from outsiders.'
+    : 'Public: anyone can find it, see its games and stats, and join right away.', '')}
+  <div class="seg"><button class="cond ${priv ? '' : 'on'}" ${act('setPriv', 'public')}>PUBLIC</button><button class="cond ${priv ? 'on' : ''}" ${act('setPriv', 'private')}>PRIVATE</button></div>
+  <div class="grow"></div>
+  <div class="card" style="border-radius:16px;padding:12px 14px;display:flex;align-items:center;gap:10px"><span class="cond tag gold" style="font-size:12px">CAPTAIN</span>
+    <span class="courier" style="font-size:12px;font-weight:700;color:var(--text5);line-height:1.4">You'll be the first captain. Captains accept requests and name other captains.</span></div>
+  <button class="big-btn cond press" ${act('createClub')} data-enable="draft.club" ${S.busy ? 'disabled' : ''}>${S.busy ? 'CREATING…' : 'CREATE CLUB'}</button>
+</div>`;
+};
+
+// ── Settings ──
+SCREENS.settings = () => {
+  const a = S.account || {};
+  const tg = [['haptic', 'Vibration', 'Taps, correct calls, awards'], ['sound', 'Sounds', 'Crowd cheer and award jingle'],
+    ['awake', 'Keep screen awake', 'So your phone doesn’t lock mid-inning'], ['big', 'Larger text', 'Easier to read in the sun']];
+  return `<div class="page" style="gap:10px">
+  <div class="topbar">${backBtn()}<h1 class="cond h1">SETTINGS</h1></div>
+  <div class="card" style="padding:14px;display:flex;align-items:center;gap:12px">
+    <span style="width:48px;height:48px;border-radius:24px;background:var(--accent);color:var(--onaccent);display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:700">${esc((a.name || '?')[0].toUpperCase())}</span>
+    <div style="flex-grow:1;display:flex;flex-direction:column;gap:2px"><span style="font-size:18px;font-weight:700">${esc(a.name || '')}</span><span class="courier meta">Signed in with Google</span></div>
+    <button class="press cond small-btn" style="height:32px;padding:0 12px;font-size:15px" ${act('go', 'editProfile')}>EDIT</button></div>
+  <div class="list">
+    <button class="row press" ${act('go', 'editProfile')}><span style="flex-grow:1;font-size:16px;font-weight:500">Favorite team</span><span style="font-size:15px;color:var(--text3)">${esc(shortTeam(a.team) || 'None')}</span>${ICON.chev}</button>
+    <button class="row press" ${act('toast', 'Light mode, accents and stadium photos arrive in test build 6.')}><span style="flex-grow:1;font-size:16px;font-weight:500">Appearance</span><span style="font-size:15px;color:var(--text3)">Dark</span>${ICON.chev}</button>
+  </div>
+  <span class="cond label" style="margin-top:6px">DURING GAMES</span>
+  <div class="list">${tg.map(([k, label, sub]) => `<div class="row" style="min-height:52px">
+    <div style="flex-grow:1;padding:6px 0">${info('t_' + k, `<span style="font-size:16px;font-weight:500;color:var(--text)">${label}</span>`, sub, '')}</div>${toggle(S.settings[k], 'setting', k)}</div>`).join('')}</div>
+  <span class="cond label" style="margin-top:6px">HELP</span>
+  <div class="list">
+    <button class="row press" ${act('howToPlay')}><span style="flex-grow:1;font-size:16px;font-weight:500">How to play</span>${ICON.chev}</button>
+    <button class="row press" ${act('toast', 'The rules cheat sheet arrives with the live game in test build 2.')}><span style="flex-grow:1;font-size:16px;font-weight:500">Rules cheat sheet</span>${ICON.chev}</button>
+  </div>
+  ${S.admin ? `<span class="cond label" style="margin-top:6px">ADMIN</span><div class="list"><button class="row press" ${act('go', 'admin')}><span style="flex-grow:1;font-size:16px;font-weight:500">Admin tools</span><span class="courier meta">Only you</span>${ICON.chev}</button></div>` : ''}
+  <button class="press cond mid-btn" style="margin-top:8px;font-size:18px;color:var(--orange)" ${act('signOut')}>SIGN OUT</button>
+  <span class="courier meta" style="text-align:center;color:var(--text4)">Guess Ball ${VERSION}${S.pending ? ` · ${S.pending} change${S.pending > 1 ? 's' : ''} waiting to sync` : ''}</span>
+</div>`;
+};
+
+// ── Edit profile ──
+SCREENS.editProfile = () => {
+  const d = S.draft, name = d.name == null ? (S.account.name || '') : d.name, team = d.team === undefined ? S.account.team : d.team;
+  return `<div class="page" style="gap:10px">
+  <div class="topbar" style="justify-content:space-between"><button class="press cond" ${act('back')} style="color:var(--text2);font-size:17px;font-weight:800;letter-spacing:.6px">CANCEL</button>
+    <h1 class="cond" style="margin:0;font-size:24px;font-weight:800;letter-spacing:.4px">EDIT PROFILE</h1>
+    <button class="press cond" ${act('saveProfile')} style="color:var(--link);font-size:17px;font-weight:800;letter-spacing:.6px">SAVE</button></div>
+  <div style="align-self:center;margin:14px 0 6px;width:84px;height:84px;border-radius:42px;background:var(--accent);color:var(--onaccent);display:flex;align-items:center;justify-content:center;font-size:36px;font-weight:700">${esc((name.trim()[0] || '?').toUpperCase())}</div>
+  ${info('dispName', '<span class="cond" style="font-size:15px;font-weight:800;letter-spacing:.8px;color:var(--text3)">DISPLAY NAME</span>', 'Shown on scoreboards, stats and share cards in every club. Your past games switch to the new name.', '')}
+  <label class="field" style="height:50px"><input data-model="draft.name" value="${attr(name)}" maxlength="16" aria-label="Display name"><span class="courier meta" data-count="draft.name">${name.length}/16</span></label>
+  <span class="cond label" style="margin-top:8px">FAVORITE TEAM</span>
+  <div class="list"><button class="row press" ${act('openSheet', 'team')}><span style="flex-grow:1;font-size:16px;font-weight:500">${esc(team || 'None')}</span><span class="cond" style="font-size:15px;font-weight:800;letter-spacing:.6px;color:var(--link)">CHANGE</span>${ICON.chev}</button></div>
+  <span class="courier meta" style="padding:0 4px;color:var(--text4)">Optional.</span>
+  ${info('acct', '<span class="cond" style="font-size:15px;font-weight:800;letter-spacing:.8px;color:var(--text3)">ACCOUNT</span>', 'Only you can see your email.', '')}
+  <div class="card" style="border-radius:16px;padding:0 14px;height:50px;display:flex;align-items:center;gap:10px">${ICON.google}<span style="flex-grow:1;font-size:15px;font-weight:500;color:var(--text5);overflow:hidden;text-overflow:ellipsis">${esc(S.user && S.user.email)}</span><span class="courier meta">Google</span></div>
+  <div class="grow" style="min-height:20px"></div>
+  ${info('delAcct', '<span class="courier meta">What does deleting do?</span>', 'Unlinks your Google sign-in. Your name, games and stats stay in your clubs as a guest profile that can be claimed again later.', '')}
+  <button class="press cond mid-btn" style="font-size:18px;color:var(--orange)" ${act('openSheet', 'delete')}>DELETE ACCOUNT</button>
+</div>`;
+};
+function teamSheet() {
+  const cur = S.draft.team === undefined ? S.account.team : S.draft.team;
+  return `<div style="display:flex;align-items:center;justify-content:space-between"><h2 class="cond" style="margin:0;font-size:28px;font-weight:800">FAVORITE TEAM</h2>
+    <button class="press cond" ${act('pickTeam', '')} style="color:var(--link);font-size:16px;font-weight:800;letter-spacing:.6px">NONE</button></div>${teamList(cur, 'pickTeam')}`;
+}
+function deleteSheet() {
+  return `<span class="cond" style="font-size:26px;font-weight:800;letter-spacing:.4px">DELETE ACCOUNT?</span>
+  <span style="font-size:15px;line-height:1.5;color:var(--text2)">This unlinks your Google sign-in and signs you out. Nothing is erased: your name, games and stats stay in your clubs as a guest profile, and you can claim it again by signing back in.</span>
+  <button class="big-btn cond press" style="background:var(--orange);color:#1A0A04" ${act('deleteAccount')} ${S.busy ? 'disabled' : ''}>DELETE ACCOUNT</button>
+  <button class="press cond mid-btn" ${act('closeSheet')}>KEEP MY ACCOUNT</button>`;
+}
+
+// ── Admin tools (Xaq only) ──
+SCREENS.admin = () => `<div class="page">
+  <div class="topbar">${backBtn()}<h1 class="cond h1">ADMIN TOOLS</h1></div>
+  <div class="list">
+    <button class="row press" ${act('exportAll')}><div style="flex-grow:1;display:flex;flex-direction:column;gap:2px;padding:8px 0"><span style="font-size:16px;font-weight:600">Export all data</span><span class="courier meta">Downloads everything in Firebase as one file</span></div>${ICON.chev}</button>
+    <button class="row press" ${act('toast', 'Deleting games arrives with History in test build 3.')}><div style="flex-grow:1;display:flex;flex-direction:column;gap:2px;padding:8px 0"><span style="font-size:16px;font-weight:600">Delete a game</span><span class="courier meta">Any club · stats and awards recalculate</span></div>${ICON.chev}</button>
+  </div></div>`;
+
+const SHEETS = { switcher: switcherSheet, request: requestSheet, nickname: nicknameSheet, team: teamSheet, delete: deleteSheet };
+
+// ════════════ Drawing ════════════
+const $app = () => document.getElementById('app');
+function render() {
+  const el = $app();
+  const page = el.querySelector('.page, .fixedpage');
+  const keep = page && el.dataset.screen === S.screen ? page.scrollTop : 0;
+  const focus = document.activeElement && document.activeElement.dataset && document.activeElement.dataset.model;
+  const caret = focus ? document.activeElement.selectionStart : null;
+  document.body.classList.toggle('bigtext', !!S.settings.big);
+  el.dataset.screen = S.screen;
+  el.innerHTML = `<div class="screen">${(SCREENS[S.screen] || SCREENS.home)()}</div>`
+    + (S.sheet ? `<div class="scrim" ${act('closeSheet')}></div><div class="sheet up"><span class="grab"></span>${SHEETS[S.sheet.name]()}</div>` : '')
+    + (S.toast ? `<div class="toast fade ${S.toast.bad ? 'bad' : ''}">${esc(S.toast.text)}</div>` : '');
+  const p2 = el.querySelector('.page, .fixedpage'); if (p2 && keep) p2.scrollTop = keep;
+  if (focus) { const i = el.querySelector(`[data-model="${focus}"]`); if (i) { i.focus(); try { i.setSelectionRange(caret, caret); } catch (e) { /* ok */ } } }
+  syncEnables();
+}
+const getPath = p => p.split('.').reduce((o, k) => (o ? o[k] : undefined), S);
+const setPath = (p, v) => { const ks = p.split('.'); const last = ks.pop(); ks.reduce((o, k) => o[k] = o[k] || {}, S)[last] = v; };
+function syncEnables() {
+  $app().querySelectorAll('[data-enable]').forEach(b => { const v = getPath(b.dataset.enable); b.disabled = S.busy || !(v && String(v).trim()); });
+}
+function toast(text, bad = false) {
+  S.toast = { text, bad }; render();
+  clearTimeout(toast.t); toast.t = setTimeout(() => { S.toast = null; render(); }, 3200);
+}
+function go(screen, params = {}, push = true) {
+  if (push && S.screen !== screen) S.stack.push({ screen: S.screen, params: S.params });
+  S.screen = screen; S.params = params; S.sheet = null; S.info = null; S.q = '';
+  if (screen === 'findClub') loadFound();
+  render();
+  const p = $app().querySelector('.page, .fixedpage'); if (p) p.scrollTop = 0;
+}
+function back() {
+  const prev = S.stack.pop() || { screen: 'home', params: {} };
+  S.screen = prev.screen; S.params = prev.params; S.sheet = null; S.info = null; S.draft = {}; S.q = '';
+  render();
+}
+const buzz = () => { if (S.settings.haptic && navigator.vibrate) navigator.vibrate(8); };
+const fail = e => { console.error(e); S.busy = false; toast(e && e.message ? e.message : 'Something went wrong — try again', true); };
+
+// ════════════ Data ════════════
+async function loadClubs() {
+  S.clubs = await FCab.myClubs();
+  for (const c of S.clubs) if (c.captain) { try { const r = await FCab.requests(c.code); c.requests = r.joins.length + r.claims.length; } catch (e) { /* ignore */ } }
+  const saved = Store.getItem('gb_scope_' + S.user.uid);
+  const ok = k => k === 'mine' || S.clubs.some(c => c.code === k && c.status === 'member');
+  S.scope = ok(saved) ? saved : ((S.clubs.find(c => c.status === 'member') || {}).code || 'mine');
+}
+async function loadHome() {
+  const key = 'gb_home_' + S.user.uid + '_' + S.scope;
+  const cached = Store.json(key, null);
+  S.home = cached ? { ...cached, loading: true } : { loading: true, rows: [], recent: [], games: 0 };
+  render();
+  try {
+    const games = await FCab.loadGames(S.scope === 'mine' ? { mine: true } : { club: S.scope });
+    const done = games.filter(g => g.ended !== false);
+    const hist = Statistician.history(done);
+    const recent = hist.length ? hist[0].games.concat(hist[1] ? hist[1].games : []).slice(0, 2) : [];
+    S.home = { loading: false, rows: Statistician.standings(done).slice(0, 3), recent, games: done.length };
+    Store.put(key, S.home);
+  } catch (e) { S.home.loading = false; if (!cached) toast('Couldn’t load games — check your connection', true); }
+  render();
+}
+async function loadFound() {
+  S.foundLoading = !S.found.length; render();
+  try { S.found = await FCab.findClubs(''); } catch (e) { toast('Couldn’t load clubs', true); }
+  S.foundLoading = false; render();
+}
+async function afterSignIn(user) {
+  S.user = user;
+  FCab.setUser(user.uid);
+  let acct = Store.json('gb_acct_' + user.uid, null);
+  try { acct = await FCab.myAccount(); if (acct) Store.put('gb_acct_' + user.uid, acct); }
+  catch (e) { /* offline: use the copy on the phone */ }
+  if (!acct) {
+    S.setup = { name: (user.displayName || '').split(' ')[0].slice(0, 16), team: null, played: null };
+    S.stack = []; S.screen = 'setupName'; render(); return;
+  }
+  S.account = acct;
+  FCab.isAdmin().then(a => { S.admin = a; }).catch(() => {});
+  S.stack = []; S.screen = 'home'; render();
+  try { await loadClubs(); } catch (e) { S.scope = S.scope || 'mine'; }
+  loadHome();
+}
+
+// ════════════ Taps ════════════
+const ACT = {
+  info: id => { S.info = S.info === id ? null : id; render(); },
+  back, go: s => { S.draft = {}; go(s); },
+  toast: t => toast(t),
+  closeSheet: () => { S.sheet = null; render(); },
+  openSheet: (name, arg) => { S.sheet = { name, arg }; S.q = ''; render(); },
+  tab: t => { S.stack = []; go(t === 'games' ? 'home' : t, {}, false); },
+  signIn: async () => {
+    if (!navigator.onLine) { S.offlineFirst = true; render(); return; }
+    S.busy = true; render();
+    try { await FB.signIn(); } catch (e) { if (e.code !== 'auth/popup-closed-by-user' && e.code !== 'auth/cancelled-popup-request') toast('Sign-in didn’t finish — try again', true); }
+    S.busy = false; render();
+  },
+  signOut: async () => { await FB.signOut(); },
+
+  // setup
+  setupNext: () => {
+    if (S.screen === 'setupName') { if (!S.setup.name.trim()) return; S.q = ''; go('setupTeam'); }
+    else if (S.screen === 'setupTeam') { S.q = ''; go('setupPlayed'); }
+  },
+  setupBack: () => back(),
+  setupPickTeam: t => { S.setup.team = S.setup.team === t ? null : t; buzz(); render(); },
+  setupSkipTeam: () => { S.setup.team = null; go('setupPlayed'); },
+  setupPlayed: v => { S.setup.played = v; render(); },
+  shareName: async () => {
+    const text = `I'm on Guess Ball as ${S.setup.name.trim()} — you can link my guest games to my account.`;
+    try { if (navigator.share) await navigator.share({ text }); else { await navigator.clipboard.writeText(text); toast('Copied — paste it in a text'); } } catch (e) { /* cancelled */ }
+  },
+  setupFinish: async () => {
+    S.busy = true; render();
+    try {
+      await FCab.saveProfile({ name: S.setup.name.trim(), team: S.setup.team });
+      S.account = { name: S.setup.name.trim(), team: S.setup.team };
+      Store.put('gb_acct_' + S.user.uid, S.account);
+      S.busy = false;
+      const played = S.setup.played;
+      S.stack = [];
+      if (played === 'no') { S.screen = 'tutorial'; S.params = { card: 0, after: 'home' }; render(); }
+      else { S.screen = 'home'; render(); }
+      await loadClubs().catch(() => { S.scope = 'mine'; }); loadHome();
+    } catch (e) { fail(e); }
+  },
+
+  // walkthrough
+  tutNext: () => { S.params.card = Math.min(TUTORIAL.length - 1, (S.params.card || 0) + 1); render(); },
+  tutPrev: () => { S.params.card = Math.max(0, (S.params.card || 0) - 1); render(); },
+  tutDone: () => { if (S.params.from === 'settings') back(); else { S.stack = []; S.screen = 'home'; S.params = {}; render(); if (S.scope) loadHome(); } },
+  howToPlay: () => go('tutorial', { card: 0, from: 'settings' }),
+
+  // home + clubs
+  newGame: () => toast('The live game arrives in test build 2.'),
+  openSwitcher: async () => { S.sheet = { name: 'switcher' }; render(); loadClubs().then(render).catch(() => {}); },
+  pickScope: k => { S.scope = k; Store.setItem('gb_scope_' + S.user.uid, k); S.sheet = null; buzz(); if (S.screen !== 'home') go('home', {}, false); loadHome(); },
+  clubCta: async code => {
+    const c = S.found.find(x => x.code === code);
+    const mine = S.clubs.find(x => x.code === code);
+    if (mine && mine.status === 'member') return ACT.pickScope(code);
+    if (!c.public) { S.draft = {}; S.sheet = { name: 'request', arg: code }; render(); return; }
+    S.busy = true; render();
+    try { await FCab.joinClub(code); await afterJoin(code, `You joined ${c.name}`); }
+    catch (e) { S.busy = false; if (e.code === 'NAME_TAKEN') { S.draft = {}; S.sheet = { name: 'nickname', arg: code }; render(); } else fail(e); }
+  },
+  joinWithNick: async code => {
+    S.busy = true; render();
+    try { await FCab.joinClub(code, { nickname: S.draft.nick.trim() }); await afterJoin(code, 'You’re in!'); }
+    catch (e) { S.busy = false; if (e.code === 'NAME_TAKEN') toast('That nickname is taken too', true); else fail(e); }
+  },
+  sendRequest: async code => {
+    S.busy = true; render();
+    try { await FCab.joinClub(code, { note: S.draft.note || '' }); S.busy = false; S.sheet = null; await loadClubs(); toast('Request sent — a captain will answer it'); }
+    catch (e) { fail(e); }
+  },
+  setPriv: v => { S.draft.priv = v === 'private'; render(); },
+  createClub: async () => {
+    const name = (S.draft.club || '').trim(); if (!name) return;
+    S.busy = true; S.draft.clubErr = ''; render();
+    try { const code = await FCab.createClub(name, S.draft.priv === false); await afterJoin(code, `${name} is ready — you're the captain`); }
+    catch (e) { S.busy = false; S.draft.clubErr = e.message; render(); }
+  },
+
+  // settings + profile
+  setting: k => { S.settings[k] = !S.settings[k]; Store.put('gb_settings', S.settings); buzz(); render(); },
+  pickTeam: t => { S.draft.team = t || null; S.sheet = null; buzz(); render(); },
+  saveProfile: async () => {
+    const name = (S.draft.name == null ? S.account.name : S.draft.name).trim();
+    const team = S.draft.team === undefined ? S.account.team : S.draft.team;
+    if (!name) return toast('Your name can’t be empty', true);
+    S.busy = true;
+    try { await FCab.saveProfile({ name, team }); S.account = { ...S.account, name, team }; Store.put('gb_acct_' + S.user.uid, S.account); S.busy = false; back(); toast('Saved'); }
+    catch (e) { fail(e); }
+  },
+  deleteAccount: async () => {
+    S.busy = true; render();
+    try { await FCab.unlinkAccount(); Store.removeItem('gb_acct_' + S.user.uid); S.busy = false; await FB.signOut(); }
+    catch (e) { fail(e); }
+  },
+  exportAll: async () => {
+    try {
+      const data = await FCab.exportAll();
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+      a.download = 'guessball-export-' + new Date().toISOString().slice(0, 10) + '.json'; a.click();
+    } catch (e) { fail(e); }
+  },
+};
+async function afterJoin(code, msg) {
+  S.busy = false; await loadClubs(); S.scope = code; Store.setItem('gb_scope_' + S.user.uid, code);
+  S.sheet = null; S.draft = {}; S.stack = []; go('home', {}, false); toast(msg); loadHome();
+}
+
+// ── Wire up taps and typing once ──
+function wire() {
+  const el = $app();
+  el.addEventListener('click', e => {
+    const b = e.target.closest('[data-act]');
+    if (!b || b.disabled || !el.contains(b)) return;
+    const fn = ACT[b.dataset.act];
+    if (fn) { e.preventDefault(); fn(b.dataset.arg, b); }
+  });
+  el.addEventListener('input', e => {
+    const i = e.target; if (!i.dataset || !i.dataset.model) return;
+    setPath(i.dataset.model, i.value);
+    const c = el.querySelector(`[data-count="${i.dataset.model}"]`); if (c) c.textContent = `${i.value.length}/16`;
+    if (i.dataset.rerender) render(); else syncEnables();
+  });
+  window.addEventListener('online', () => { S.offlineFirst = false; if (S.screen === 'signin') render(); });
+}
+
+// ════════════ Start ════════════
+// Called by the Firebase loader at the bottom of the page.
+const App = {
+  start(fb) {
+    const began = Date.now();
+    FCab = FilingCabinet.create({ db: fb.adapter, storage: Store, deviceId });
+    FCab.onStatus(s => { S.online = s.online; S.pending = s.pending; });
+    fb.onUser(async user => {
+      const wait = Math.max(0, 900 - (Date.now() - began));   // let the loading line show for a moment
+      await new Promise(r => setTimeout(r, wait));
+      if (!user) { S.user = null; S.account = null; S.admin = false; S.stack = []; S.sheet = null; S.screen = 'signin'; render(); return; }
+      afterSignIn(user).catch(fail);
+    });
+  },
+  failed(e) { S.screen = 'signin'; render(); toast('Couldn’t load — check your connection and reopen', true); console.error(e); },
+};
+
+// Show the loading line immediately, before Firebase arrives
+wire(); render();
+
+</script>
+<script type="module">
+// ── Firebase: loaded last so the loading line shows right away ──
+try {
+  const V = '10.12.2';
+  const { initializeApp } = await import(`https://www.gstatic.com/firebasejs/${V}/firebase-app.js`);
+  const A = await import(`https://www.gstatic.com/firebasejs/${V}/firebase-auth.js`);
+  const D = await import(`https://www.gstatic.com/firebasejs/${V}/firebase-database.js`);
+  const app = initializeApp({
+    apiKey: "AIzaSyB3VLeSJyIVS5yn2Jn-u_YNN4sqIdRaWSU", authDomain: "guessball-888cd.firebaseapp.com",
+    databaseURL: "https://guessball-888cd-default-rtdb.firebaseio.com", projectId: "guessball-888cd",
+    storageBucket: "guessball-888cd.firebasestorage.app", messagingSenderId: "485572357359",
+    appId: "1:485572357359:web:f312002c77140c94c5ff1a" });
+  const auth = A.initializeAuth(app, { persistence: [A.indexedDBLocalPersistence, A.browserLocalPersistence],
+    popupRedirectResolver: A.browserPopupRedirectResolver });
+  const database = D.getDatabase(app);
+  window.FB = {
+    adapter: FilingCabinet.firebaseAdapter(D, database),
+    onUser: cb => A.onAuthStateChanged(auth, cb),
+    signIn: () => { const p = new A.GoogleAuthProvider(); p.setCustomParameters({ prompt: 'select_account' }); return A.signInWithPopup(auth, p); },
+    signOut: () => A.signOut(auth),
+  };
+  App.start(window.FB);
+} catch (e) { App.failed(e); }
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+</script>
+</body>
+</html>
