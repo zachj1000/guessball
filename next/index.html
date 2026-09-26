@@ -114,7 +114,7 @@ a { color: var(--link); text-decoration: none; -webkit-tap-highlight-color: tran
 
 /* ── Sheets, toasts ── */
 .scrim { position: absolute; inset: 0; background: var(--scrim); z-index: 20; }
-.sheet { position: absolute; left: 0; right: 0; bottom: 0; max-height: 88%; overflow-y: auto; z-index: 21; background: var(--sheet); border-radius: 28px 28px 0 0;
+.sheet { position: absolute; left: 0; right: 0; bottom: var(--kb, 0px); max-height: min(88%, calc(var(--vh, 100vh) - 30px)); transition: bottom .2s; overflow-y: auto; z-index: 21; background: var(--sheet); border-radius: 28px 28px 0 0;
          padding: 10px 20px calc(var(--safe-bot) + 24px); display: flex; flex-direction: column; gap: 12px; }
 .sheet > * { flex-shrink: 0; min-width: 0; max-width: 100%; }
 .sheet [style*="grid"] > * { min-width: 0; overflow: hidden; }
@@ -1445,10 +1445,12 @@ const FilingCabinet = (() => {
       const ch = {};
       allowed.forEach(k => { if (k in fields) { g[k] = fields[k]; ch['games/' + g.id + '/' + k] = fields[k]; } });
       if ('date' in fields) Object.assign(ch, indexChanges(g, { date: g.date, seq: g.seq }));
+      gameCache.delete(g.id);                          // don't serve the old copy
       await queue(ch);
     }
     // Delete a game (captains of its clubs, whoever hand-added it, or Xaq). Stats and awards recalculate.
     async function deleteGame(g) {
+      gameCache.delete(g.id);
       await queue({ ['games/' + g.id]: null });
       await queue(indexChanges(g, null));
     }
@@ -1538,7 +1540,7 @@ const FilingCabinet = (() => {
 //  that returns HTML. Buttons carry data-act="…" and the matching
 //  function in ACT runs when tapped, then the screen redraws.
 // ════════════════════════════════════════════════════════════════
-const VERSION = '2.0 · test build 3';
+const VERSION = '2.0 · test build 3.1';
 const RULES_JSON = {
   "rules": {
     "v2": {
@@ -2068,7 +2070,7 @@ function render() {
   document.body.classList.toggle('bigtext', !!S.settings.big);
   el.dataset.screen = S.screen;
   el.innerHTML = `<div class="screen">${(SCREENS[S.screen] || SCREENS.home)()}</div>`
-    + (S.sheet ? `<div class="scrim" ${act('closeSheet')}></div><div class="sheet up"><div class="sheet-top"><span class="grab"></span><button class="sheet-x press" aria-label="Close" ${act('closeSheet')}>✕</button></div>${SHEETS[S.sheet.name]()}</div>` : '')
+    + (S.sheet ? `<div class="scrim" ${act('closeSheet')}></div><div class="sheet up"><div class="sheet-top"><span class="grab"></span></div>${SHEETS[S.sheet.name]()}</div>` : '')
     + (S.toast ? `<div class="toast fade ${S.toast.bad ? 'bad' : ''}">${esc(S.toast.text)}</div>` : '');
   const p2 = el.querySelector('.page, .fixedpage'); if (p2 && keep) p2.scrollTop = keep;
   if (focus) { const i = el.querySelector(`[data-model="${focus}"]`); if (i) { i.focus(); try { i.setSelectionRange(caret, caret); } catch (e) { /* ok */ } } }
@@ -3520,6 +3522,15 @@ async function loadRoster() {
 // ════════════ Start-up ════════════
 // Show the loading line immediately. If someone was signed in on this phone, open straight to
 // their saved Home — no waiting on Firebase or the internet.
+// When the keyboard opens, lift sheets so their lists stay above it
+if (window.visualViewport) {
+  const kb = () => {
+    const v = visualViewport, gap = Math.max(0, innerHeight - v.height - v.offsetTop);
+    document.documentElement.style.setProperty('--kb', gap + 'px');
+    document.documentElement.style.setProperty('--vh', v.height + 'px');
+  };
+  visualViewport.addEventListener('resize', kb); visualViewport.addEventListener('scroll', kb); kb();
+}
 wire();
 (() => {
   const u = Store.json('gb_last_user', null), acct = u && Store.json('gb_acct_' + u.uid, null);
