@@ -114,6 +114,8 @@ a { color: var(--link); text-decoration: none; -webkit-tap-highlight-color: tran
 
 /* ── Sheets, toasts ── */
 .scrim { position: absolute; inset: 0; background: var(--scrim); z-index: 20; }
+@keyframes scrimin { from { opacity: 0 } to { opacity: 1 } }
+.scrim.fadein { animation: scrimin .25s ease-out both; }
 .sheet { position: absolute; left: 0; right: 0; bottom: var(--kb, 0px); max-height: min(88%, calc(var(--vh, 100vh) - 30px)); transition: bottom .2s; overflow-y: auto; z-index: 21; background: var(--sheet); border-radius: 28px 28px 0 0;
          padding: 10px 20px calc(var(--safe-bot) + 24px); display: flex; flex-direction: column; gap: 12px; }
 .sheet > * { flex-shrink: 0; min-width: 0; max-width: 100%; }
@@ -1543,7 +1545,7 @@ const FilingCabinet = (() => {
 //  that returns HTML. Buttons carry data-act="…" and the matching
 //  function in ACT runs when tapped, then the screen redraws.
 // ════════════════════════════════════════════════════════════════
-const VERSION = '2.0 · test build 4.1';
+const VERSION = '2.0 · test build 4.2';
 const RULES_JSON = {
   "rules": {
     "v2": {
@@ -2065,36 +2067,73 @@ const SHEETS = { switcher: switcherSheet, request: requestSheet, nickname: nickn
 const $app = () => document.getElementById('app');
 // The loading line always gets its moment (2.5s from opening), even when the app is ready sooner
 const SPLASH_UNTIL = Date.now() + 2500;
+// The app is drawn in three layers — screen, sheet, toast — and a layer is only rebuilt when its
+// content actually changed. Opening or closing a sheet no longer rebuilds the page underneath,
+// so its scroll position and iPhone's scrolling stay intact.
+function layers(el) {
+  if (!el.firstElementChild || !el.firstElementChild.classList.contains('screen') || el.children.length !== 3) {
+    el.innerHTML = '<div class="screen"></div><div class="sheet-layer" style="display:contents"></div><div class="toast-layer" style="display:contents"></div>';
+    render.last = {};
+  }
+  return el.children;
+}
 function render() {
   const el = $app();
+  const [scr, shl, tl] = layers(el);
+  render.last = render.last || {};
   if (Date.now() < SPLASH_UNTIL) {
-    if (el.dataset.screen !== 'loading') { el.dataset.screen = 'loading'; el.innerHTML = `<div class="screen">${SCREENS.loading()}</div>`; }
+    if (el.dataset.screen !== 'loading') { el.dataset.screen = 'loading'; scr.innerHTML = SCREENS.loading(); render.last.screen = null; }
     clearTimeout(render.t); render.t = setTimeout(render, SPLASH_UNTIL - Date.now() + 10); return;
   }
-  const page = el.querySelector('.page, .fixedpage');
-  const keep = page && el.dataset.screen === S.screen ? page.scrollTop : 0;
-  const focus = document.activeElement && document.activeElement.dataset && document.activeElement.dataset.model;
-  const caret = focus ? document.activeElement.selectionStart : null;
+  const L = render.last;
+  const focusEl = document.activeElement, focus = focusEl && focusEl.dataset && focusEl.dataset.model;
+  const caret = focus ? focusEl.selectionStart : null;
   document.body.classList.toggle('bigtext', !!S.settings.big);
-  el.dataset.screen = S.screen;
-  el.innerHTML = `<div class="screen">${(SCREENS[S.screen] || SCREENS.home)()}</div>`
-    + (S.sheet ? `<div class="scrim" ${act('closeSheet')}></div><div class="sheet up"><div class="sheet-top"><span class="grab"></span></div>${SHEETS[S.sheet.name]()}</div>` : '')
-    + (S.toast ? `<div class="toast fade ${S.toast.bad ? 'bad' : ''}">${esc(S.toast.text)}</div>` : '');
-  const p2 = el.querySelector('.page, .fixedpage'); if (p2 && keep) p2.scrollTop = keep;
-  if (focus) { const i = el.querySelector(`[data-model="${focus}"]`); if (i) { i.focus(); try { i.setSelectionRange(caret, caret); } catch (e) { /* ok */ } } }
+  // Screen
+  const screenHtml = (SCREENS[S.screen] || SCREENS.home)();
+  if (screenHtml !== L.screen || el.dataset.screen !== S.screen) {
+    const page = scr.querySelector('.page, .fixedpage');
+    const keep = page && el.dataset.screen === S.screen ? page.scrollTop : 0;
+    el.dataset.screen = S.screen; scr.innerHTML = screenHtml; L.screen = screenHtml;
+    const p2 = scr.querySelector('.page, .fixedpage'); if (p2 && keep) p2.scrollTop = keep;
+  }
+  // Sheet (slides up only when it first opens)
+  const sheetName = S.sheet ? S.sheet.name + ':' + S.sheet.arg : null;
+  const sheetHtml = S.sheet ? SHEETS[S.sheet.name]() : '';
+  if (sheetHtml !== L.sheet || sheetName !== L.sheetName) {
+    const old = shl.querySelector('.sheet'), same = old && sheetName === L.sheetName, keepS = same ? old.scrollTop : 0;
+    shl.innerHTML = S.sheet ? `<div class="scrim ${same ? '' : 'fadein'}" ${act('closeSheet')}></div><div class="sheet ${same ? '' : 'up'}"><div class="sheet-top"><span class="grab"></span></div>${sheetHtml}</div>` : '';
+    L.sheet = sheetHtml; L.sheetName = sheetName;
+    const ns = shl.querySelector('.sheet'); if (ns && keepS) ns.scrollTop = keepS;
+  }
+  // Toast
+  const toastHtml = S.toast ? `<div class="toast fade ${S.toast.bad ? 'bad' : ''}">${esc(S.toast.text)}</div>` : '';
+  if (toastHtml !== L.toast) { tl.innerHTML = toastHtml; L.toast = toastHtml; }
+  if (focus && !el.contains(focusEl)) { const i = el.querySelector(`[data-model="${focus}"]`); if (i) { i.focus(); try { i.setSelectionRange(caret, caret); } catch (e) { /* ok */ } } }
   syncEnables();
+}
+// Slide the open sheet down and away (used by swipe-down, tapping outside, and Done/Keep buttons)
+function dismissSheet() {
+  const el = $app(), sh = el.querySelector('.sheet'), sc = el.querySelector('.scrim'), cur = S.sheet;
+  if (!sh || !cur || dismissSheet.busy) { S.sheet = null; render(); return; }
+  dismissSheet.busy = true;
+  sh.style.animation = 'none'; sh.style.transition = 'transform .24s cubic-bezier(.4,0,1,1)'; sh.style.transform = 'translateY(100%)';
+  if (sc) { sc.style.transition = 'opacity .24s'; sc.style.opacity = '0'; }
+  setTimeout(() => { dismissSheet.busy = false; if (S.sheet === cur) { S.sheet = null; render(); } }, 230);
 }
 // Redraw one marked part of the screen (a search's result list) without touching the text box you're typing in
 function renderRegion(name) {
   const tmp = document.createElement('div');
   tmp.innerHTML = `<div class="screen">${(SCREENS[S.screen] || SCREENS.home)()}</div>` + (S.sheet ? `<div class="sheet">${SHEETS[S.sheet.name]()}</div>` : '');
   const fresh = tmp.querySelector(`[data-region="${name}"]:not(input)`), live = $app().querySelector(`[data-region="${name}"]:not(input)`);
-  if (fresh && live) live.innerHTML = fresh.innerHTML; else render();
+  if (fresh && live) { live.innerHTML = fresh.innerHTML; if (render.last) render.last.screen = render.last.sheet = null; } else render();
   syncEnables();
 }
 const getPath = p => p.split('.').reduce((o, k) => (o ? o[k] : undefined), S);
 const setPath = (p, v) => { const ks = p.split('.'); const last = ks.pop(); ks.reduce((o, k) => o[k] = o[k] || {}, S)[last] = v; };
+const CHECKS = {};
 function syncEnables() {
+  $app().querySelectorAll('[data-check]').forEach(b => { const f = CHECKS[b.dataset.check]; if (f) b.disabled = S.busy || !f(); });
   $app().querySelectorAll('[data-enable]').forEach(b => { const v = getPath(b.dataset.enable); b.disabled = S.busy || !(v && String(v).trim()); });
 }
 function toast(text, bad = false) {
@@ -2178,7 +2217,7 @@ const ACT = {
   info: id => { S.info = S.info === id ? null : id; render(); },
   back, go: s => { S.draft = {}; go(s); },
   toast: t => toast(t),
-  closeSheet: () => { S.sheet = null; render(); },
+  closeSheet: () => dismissSheet(),
   openSheet: (name, arg) => { const [n, a] = name.split(':'); S.sheet = { name: n, arg: a !== undefined ? a : arg }; S.q = ''; render(); },
   tab: t => { S.stack = []; go(t === 'games' ? 'home' : t, {}, false); if (t === 'stats' && FCab) loadScopeGames(true); if (t === 'awards' && FCab && S.aw && S.aw.key === S.scope) loadAwards(); },
   signIn: async () => {
@@ -2318,24 +2357,38 @@ function wire() {
     else if (i.dataset.rerender) render();
     else syncEnables();
   });
+  // Swipe a sheet down: it follows the thumb. While dragging, iPhone's own scrolling is held off
+  // (otherwise the sheet's bounce fights the drag and can leave scrolling stuck afterwards).
   let drag = null;
   el.addEventListener('touchstart', e => {
     const sh = e.target.closest('.sheet'); if (!sh || e.target.closest('input,textarea')) return;
-    sh.style.animation = 'none';   // the slide-in animation would otherwise pin the sheet in place
-    drag = { sh, y: e.touches[0].clientY, top: sh.scrollTop <= 0, dy: 0 };
+    const y = e.touches[0].clientY;
+    drag = { sh, y, last: y, t: Date.now(), v: 0, dy: 0, top: sh.scrollTop <= 0, on: false };
   }, { passive: true });
   el.addEventListener('touchmove', e => {
     if (!drag) return;
-    const y = e.touches[0].clientY; drag.v = y - (drag.last == null ? drag.y : drag.last); drag.last = y;
+    const y = e.touches[0].clientY, now = Date.now();
+    drag.v = (y - drag.last) / Math.max(1, now - drag.t); drag.last = y; drag.t = now;
     drag.dy = y - drag.y;
-    if (drag.top && drag.dy > 0 && drag.sh.scrollTop <= 0) { drag.sh.style.transform = `translateY(${drag.dy}px)`; drag.sh.style.transition = 'none'; }
-  }, { passive: true });
-  el.addEventListener('touchend', () => {
+    if (!drag.on && drag.top && drag.dy > 4 && drag.sh.scrollTop <= 0) {
+      drag.on = true; drag.y = y - 1; drag.dy = 1;
+      drag.sh.style.animation = 'none'; drag.sh.style.transition = 'none';
+    }
+    if (drag.on) {
+      if (e.cancelable) e.preventDefault();
+      drag.sh.style.transform = `translateY(${Math.max(0, drag.dy)}px)`;
+      const sc = drag.sh.parentNode.querySelector('.scrim'); if (sc) { sc.style.transition = 'none'; sc.style.opacity = String(Math.max(0.2, 1 - drag.dy / 500)); }
+    }
+  }, { passive: false });
+  const endDrag = () => {
     if (!drag) return;
     const d = drag; drag = null;
-    if (d.top && d.dy > 90 && (d.v || 0) >= 0) { d.sh.style.transition = 'transform .18s ease-in'; d.sh.style.transform = 'translateY(100%)'; setTimeout(() => { S.sheet = null; render(); }, 170); }
-    else { d.sh.style.transition = 'transform .2s'; d.sh.style.transform = ''; }
-  });
+    if (!d.on) return;
+    if (d.dy > 110 || (d.dy > 30 && d.v > 0.5)) return dismissSheet();
+    d.sh.style.transition = 'transform .28s cubic-bezier(.2,1,.3,1)'; d.sh.style.transform = '';
+    const sc = d.sh.parentNode.querySelector('.scrim'); if (sc) { sc.style.transition = 'opacity .28s'; sc.style.opacity = ''; }
+  };
+  el.addEventListener('touchend', endDrag); el.addEventListener('touchcancel', endDrag);
   window.addEventListener('online', () => { S.offlineFirst = false; if (S.screen === 'signin') render(); });
 }
 
@@ -2709,22 +2762,23 @@ const Popup = (() => {
     let y0 = null, dy = 0, t0 = 0, lastY = 0, lastT = 0, v = 0;
     c.addEventListener('pointerdown', e => {
       if (gone) return; clearTimeout(timer);
-      y0 = e.clientY; dy = 0; t0 = lastT = Date.now(); lastY = e.clientY; v = 0;
-      c.style.transition = 'none'; try { c.setPointerCapture(e.pointerId); } catch (x) { /* ok */ }
+      const m = new DOMMatrix(getComputedStyle(c).transform);     // catch it mid-glide without a jump
+      y0 = e.clientY - m.m42; dy = m.m42; t0 = lastT = Date.now(); lastY = e.clientY; v = 0;
+      c.style.transition = 'none'; c.style.transform = `translateY(${dy}px)`; c.style.opacity = '1'; try { c.setPointerCapture(e.pointerId); } catch (x) { /* ok */ }
     });
     c.addEventListener('pointermove', e => {
       if (y0 == null || gone) return;
       const now = Date.now(); v = (e.clientY - lastY) / Math.max(1, now - lastT); lastY = e.clientY; lastT = now;
       const raw = e.clientY - y0; dy = raw < 0 ? raw : raw * 0.25;     // up moves freely, down resists
-      c.style.transform = `translateY(${dy}px)`;
+      c.style.transform = `translateY(${dy}px)`; c.style.opacity = String(Math.max(0.35, 1 + Math.min(0, dy) / 160));
     });
     const up = () => {
       if (y0 == null || gone) return; y0 = null;
-      if (dy < -30 || v < -0.4) return hide(dy);                     // swiped up: keep going from where the thumb left it
+      if (dy < -30 || (dy < -8 && v < -0.3)) return hide(dy);                     // swiped up: keep going from where the thumb left it
       if (Math.abs(dy) < 8 && Date.now() - t0 < 350) {                // tap: open the award
         queue = [a]; hide(0); S.sheet = { name: 'award', arg: a.award.id + '|' + a.playerId }; render(); return;
       }
-      c.style.transition = 'transform .3s cubic-bezier(.2,1.1,.3,1)'; c.style.transform = 'translateY(0)';
+      c.style.transition = 'transform .3s cubic-bezier(.2,1.1,.3,1), opacity .2s'; c.style.transform = 'translateY(0)'; c.style.opacity = '1';
       wait(2000);                                                      // held: 2 more seconds after letting go
     };
     c.addEventListener('pointerup', up); c.addEventListener('pointercancel', up);
@@ -3332,6 +3386,8 @@ function h2hPickSheet() {
 }
 
 // ════════════ Past game ════════════
+// Buttons whose on/off depends on what's typed are re-checked on every keystroke (no redraw needed)
+CHECKS.addGame = () => { const d = S.ag; return !!(d && d.players.length >= 2 && d.players.every(p => String(p.score).trim() !== '' && !isNaN(+p.score)) && d.date); };
 SCREENS.pastGame = () => {
   const games = scopeGames() || [];
   const g = games.find(x => x.id === S.params.id) || (S.params.game);
@@ -3385,7 +3441,7 @@ function deleteGameSheet() {
 // ════════════ Add / edit a past game (final scores only) ════════════
 SCREENS.addGame = () => {
   const d = S.ag, editing = !!d.id;
-  const ok = d.players.length >= 2 && d.players.every(p => p.score !== '' && !isNaN(+p.score)) && d.date;
+  const ok = CHECKS.addGame();
   return `<div class="page">
   <div class="topbar">${backBtn()}<h1 class="cond h1">${editing ? 'EDIT GAME' : 'ADD A PAST GAME'}</h1></div>
   ${info('agWhy', '<span class="courier" style="font-size:13px;font-weight:700;color:var(--text2)">Final scores only</span>', 'For games you played without the app. They count toward wins, standings, rivalries and travel, but not in-game awards. Anyone in the game can see who added it.', '')}
@@ -3404,7 +3460,7 @@ SCREENS.addGame = () => {
     <button class="row press" ${act('openSheet', 'park')}><span class="cond" style="width:48px;font-size:15px;font-weight:800;color:var(--text3)">PARK</span><span style="flex-grow:1;font-size:16px;color:${d.park || TEAMS[d.home] ? 'var(--text)' : 'var(--text4)'}">${esc(d.park || TEAMS[d.home] || 'Ballpark')}</span>${ICON.chev}</button></div>
   <span class="cond label">NOTE · OPTIONAL</span>
   <label class="field"><input data-model="ag.note" value="${attr(d.note)}" maxlength="280" placeholder="Anything worth remembering"></label>
-  <button class="big-btn cond press" style="margin-top:6px" ${act('agSave')} data-ok="${ok ? 1 : 0}" ${ok && !S.busy ? '' : 'disabled'}>${editing ? 'SAVE CHANGES' : 'ADD GAME'}</button>
+  <button class="big-btn cond press" style="margin-top:6px" ${act('agSave')} data-check="addGame" data-ok="${ok ? 1 : 0}" ${ok && !S.busy ? '' : 'disabled'}>${editing ? 'SAVE CHANGES' : 'ADD GAME'}</button>
 </div>`;
 };
 
