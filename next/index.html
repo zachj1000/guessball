@@ -1536,7 +1536,7 @@ const FilingCabinet = (() => {
 //  that returns HTML. Buttons carry data-act="…" and the matching
 //  function in ACT runs when tapped, then the screen redraws.
 // ════════════════════════════════════════════════════════════════
-const VERSION = '2.0 · test build 2.2';
+const VERSION = '2.0 · test build 2.3';
 const RULES_JSON = {
   "rules": {
     "v2": {
@@ -2165,8 +2165,14 @@ const ACT = {
   signIn: async () => {
     if (!navigator.onLine) { S.offlineFirst = true; render(); return; }
     S.busy = true; render();
-    try { await FB.signIn(); } catch (e) { if (e.code !== 'auth/popup-closed-by-user' && e.code !== 'auth/cancelled-popup-request') toast('Sign-in didn’t finish — try again', true); }
-    S.busy = false; render();
+    // If the Google window never opens, don't leave the button stuck
+    const unstick = setTimeout(() => { if (S.busy && S.screen === 'signin') { S.busy = false; render(); toast('Nothing opened? Tap Continue with Google again.'); } }, 12000);
+    try { await FB.signIn(); }
+    catch (e) {
+      if (e.code === 'auth/popup-blocked') toast('The Google window was blocked — tap again', true);
+      else if (e.code !== 'auth/popup-closed-by-user' && e.code !== 'auth/cancelled-popup-request') toast('Sign-in didn’t finish (' + (e.code || e.message) + ')', true);
+    }
+    clearTimeout(unstick); S.busy = false; render();
   },
   signOut: async () => {
     try { await FB.signOut(); } catch (e) { return toast('Sign out didn’t work: ' + (e.code || e.message), true); }
@@ -3103,8 +3109,14 @@ try {
     databaseURL: "https://guessball-888cd-default-rtdb.firebaseio.com", projectId: "guessball-888cd",
     storageBucket: "guessball-888cd.firebasestorage.app", messagingSenderId: "485572357359",
     appId: "1:485572357359:web:f312002c77140c94c5ff1a" });
-  // No popup helper at start-up: it needs the internet and would stall the app with no signal.
-  const auth = A.initializeAuth(app, { persistence: [A.indexedDBLocalPersistence, A.browserLocalPersistence] });
+  // The Google popup helper must be loaded before the sign-in button is tapped, or iPhone blocks the
+  // popup. It needs the internet, though, and would stall the app offline — so only load it when online.
+  const online = navigator.onLine;
+  const auth = A.initializeAuth(app, online
+    ? { persistence: [A.indexedDBLocalPersistence, A.browserLocalPersistence], popupRedirectResolver: A.browserPopupRedirectResolver }
+    : { persistence: [A.indexedDBLocalPersistence, A.browserLocalPersistence] });
+  // Came online later? Warm the helper up then, so the popup still opens on the first tap.
+  if (!online) addEventListener('online', () => { A.getRedirectResult(auth, A.browserPopupRedirectResolver).catch(() => {}); }, { once: true });
   const database = D.getDatabase(app);
   window.FB = {
     adapter: FilingCabinet.firebaseAdapter(D, database),
