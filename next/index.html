@@ -59,9 +59,9 @@ a { color: var(--link); text-decoration: none; -webkit-tap-highlight-color: tran
 .page { position: absolute; inset: 0; overflow-y: auto; -webkit-overflow-scrolling: touch;
         padding: calc(var(--safe-top) + 14px) 20px calc(var(--safe-bot) + 24px); display: flex; flex-direction: column; gap: 14px; }
 .page > * { flex-shrink: 0; }
-.page.tabbed { padding-bottom: calc(var(--safe-bot) * .5 + 120px);
-  -webkit-mask-image: linear-gradient(180deg, #000 0, #000 calc(100% - var(--safe-bot) * .5 - 104px), transparent calc(100% - var(--safe-bot) * .5 - 76px));
-          mask-image: linear-gradient(180deg, #000 0, #000 calc(100% - var(--safe-bot) * .5 - 104px), transparent calc(100% - var(--safe-bot) * .5 - 76px)); }
+.page.tabbed { --bar: max(12px, calc(var(--safe-bot) - 13px)); padding-bottom: calc(var(--bar) + 110px);
+  -webkit-mask-image: linear-gradient(180deg, #000 0, #000 calc(100% - var(--bar) - 94px), transparent calc(100% - var(--bar) - 66px));
+          mask-image: linear-gradient(180deg, #000 0, #000 calc(100% - var(--bar) - 94px), transparent calc(100% - var(--bar) - 66px)); }
 .fixedpage { position: absolute; inset: 0; padding: calc(var(--safe-top) + 14px) 20px calc(var(--safe-bot) + 20px); display: flex; flex-direction: column; gap: 14px; overflow-y: auto; }
 .fixedpage > * { flex-shrink: 0; }
 .grow { flex-grow: 1 !important; flex-shrink: 1 !important; }
@@ -104,7 +104,7 @@ a { color: var(--link); text-decoration: none; -webkit-tap-highlight-color: tran
 .bubble::before { content: ""; position: absolute; top: -6px; left: 14px; border: 6px solid transparent; border-top: 0; border-bottom-color: #2C2C31; }
 
 /* ── Tab bar (floating glass capsule) ── */
-.tabbar { z-index: 10; position: absolute; left: 16px; right: 16px; bottom: calc(var(--safe-bot) * .5 + 10px); height: 64px; padding: 6px; display: flex; gap: 4px; border-radius: 32px;
+.tabbar { z-index: 10; position: absolute; left: 16px; right: 16px; bottom: max(12px, calc(var(--safe-bot) - 13px)); height: 64px; padding: 6px; display: flex; gap: 4px; border-radius: 32px;
   background: var(--nav); -webkit-backdrop-filter: blur(24px) saturate(160%); backdrop-filter: blur(24px) saturate(160%);
   border: 1px solid rgba(255,255,255,.10); box-shadow: 0 10px 30px rgba(0,0,0,.45); }
 .tabbar button { flex: 1; height: 52px; border-radius: 26px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
@@ -118,7 +118,7 @@ a { color: var(--link); text-decoration: none; -webkit-tap-highlight-color: tran
 .sheet > * { flex-shrink: 0; }
 .grab { align-self: center; width: 38px; height: 5px; border-radius: 3px; background: var(--grab); }
 .sheet .list { background: var(--sheetcard); }
-.toast { position: absolute; left: 20px; right: 20px; bottom: calc(var(--safe-bot) * .5 + 86px); z-index: 30; background: #2C2C31; color: var(--text); border-radius: 16px;
+.toast { position: absolute; left: 20px; right: 20px; bottom: calc(max(12px, calc(var(--safe-bot) - 13px)) + 76px); z-index: 30; background: #2C2C31; color: var(--text); border-radius: 16px;
          padding: 12px 16px; font-size: 15px; font-weight: 600; box-shadow: 0 10px 30px rgba(0,0,0,.5); }
 .toast.bad { color: var(--orange); }
 .spinner { width: 22px; height: 22px; }
@@ -1527,7 +1527,7 @@ const FilingCabinet = (() => {
 //  that returns HTML. Buttons carry data-act="…" and the matching
 //  function in ACT runs when tapped, then the screen redraws.
 // ════════════════════════════════════════════════════════════════
-const VERSION = '2.0 · test build 1.1';
+const VERSION = '2.0 · test build 1.2';
 const RULES_JSON = {
   "rules": {
     "v2": {
@@ -2116,10 +2116,12 @@ async function loadFound() {
   S.foundLoading = false; render();
 }
 async function afterSignIn(user) {
+  Store.put('gb_last_user', { uid: user.uid, email: user.email, displayName: user.displayName });
+  const sameAsCached = S.user && S.user.uid === user.uid && S.screen === 'home';
   S.user = user;
   FCab.setUser(user.uid);
   let acct = Store.json('gb_acct_' + user.uid, null);
-  if (acct) {                                   // known phone: open straight to Home from the saved copy
+  if (acct && !sameAsCached) {                 // known phone: open straight to Home from the saved copy
     S.account = acct; S.clubs = Store.json('gb_clubs_' + user.uid, []);
     S.scope = Store.getItem('gb_scope_' + user.uid) || 'mine';
     S.stack = []; S.screen = 'home'; S.home = Store.json('gb_home_' + user.uid + '_' + S.scope, S.home); render();
@@ -2192,8 +2194,8 @@ const ACT = {
 
   // home + clubs
   newGame: () => toast('The live game arrives in test build 2.'),
-  openSwitcher: async () => { S.sheet = { name: 'switcher' }; render(); loadClubs().then(render).catch(() => {}); },
-  pickScope: k => { S.scope = k; Store.setItem('gb_scope_' + S.user.uid, k); S.sheet = null; buzz(); render(); loadHome(); },
+  openSwitcher: async () => { S.sheet = { name: 'switcher' }; render(); if (FCab) loadClubs().then(render).catch(() => {}); },
+  pickScope: k => { S.scope = k; Store.setItem('gb_scope_' + S.user.uid, k); S.sheet = null; buzz(); render(); if (FCab) loadHome(); else { S.home = Store.json('gb_home_' + S.user.uid + '_' + k, { rows: [], recent: [], games: 0 }); render(); } },
   clubCta: async code => {
     const c = S.found.find(x => x.code === code);
     const mine = S.clubs.find(x => x.code === code);
@@ -2262,7 +2264,11 @@ function wire() {
     const b = e.target.closest('[data-act]');
     if (!b || b.disabled || !el.contains(b)) return;
     const fn = ACT[b.dataset.act];
-    if (fn) { e.preventDefault(); fn(b.dataset.arg, b); }
+    if (!fn) return;
+    e.preventDefault();
+    if (!FCab && !['info', 'back', 'go', 'toast', 'closeSheet', 'openSheet', 'tab', 'setting', 'howToPlay', 'tutNext', 'tutPrev', 'tutDone', 'openSwitcher', 'pickScope'].includes(b.dataset.act))
+      return toast('Still connecting — try again in a moment');
+    fn(b.dataset.arg, b);
   });
   el.addEventListener('input', e => {
     const i = e.target; if (!i.dataset || !i.dataset.model) return;
@@ -2281,17 +2287,32 @@ const App = {
     FCab = FilingCabinet.create({ db: fb.adapter, storage: Store, deviceId });
     FCab.onStatus(s => { S.online = s.online; S.pending = s.pending; });
     fb.onUser(async user => {
+      if (!user) Store.removeItem('gb_last_user');
       const wait = Math.max(0, 900 - (Date.now() - began));   // let the loading line show for a moment
       await new Promise(r => setTimeout(r, wait));
       if (!user) { S.user = null; S.account = null; S.admin = false; S.stack = []; S.sheet = null; S.screen = 'signin'; render(); return; }
       afterSignIn(user).catch(fail);
     });
   },
-  failed(e) { S.screen = 'signin'; render(); toast('Couldn’t load — check your connection and reopen', true); console.error(e); },
+  failed(e) {
+    console.error(e);
+    if (S.screen === 'home') { toast('Offline — showing what’s saved on your phone'); return; }
+    S.screen = 'signin'; render(); toast('Couldn’t load — check your connection and reopen', true);
+  },
 };
 
-// Show the loading line immediately, before Firebase arrives
-wire(); render();
+// Show the loading line immediately. If someone was signed in on this phone, open straight to
+// their saved Home — no waiting on Firebase or the internet.
+wire();
+(() => {
+  const u = Store.json('gb_last_user', null), acct = u && Store.json('gb_acct_' + u.uid, null);
+  if (u && acct) {
+    S.user = u; S.account = acct; S.clubs = Store.json('gb_clubs_' + u.uid, []);
+    S.scope = Store.getItem('gb_scope_' + u.uid) || 'mine'; S.admin = Store.getItem('gb_admin') === '1';
+    S.home = Store.json('gb_home_' + u.uid + '_' + S.scope, S.home); S.home.loading = false; S.screen = 'home';
+  }
+  render();
+})();
 
 </script>
 <script type="module">
@@ -2306,13 +2327,13 @@ try {
     databaseURL: "https://guessball-888cd-default-rtdb.firebaseio.com", projectId: "guessball-888cd",
     storageBucket: "guessball-888cd.firebasestorage.app", messagingSenderId: "485572357359",
     appId: "1:485572357359:web:f312002c77140c94c5ff1a" });
-  const auth = A.initializeAuth(app, { persistence: [A.indexedDBLocalPersistence, A.browserLocalPersistence],
-    popupRedirectResolver: A.browserPopupRedirectResolver });
+  // No popup helper at start-up: it needs the internet and would stall the app with no signal.
+  const auth = A.initializeAuth(app, { persistence: [A.indexedDBLocalPersistence, A.browserLocalPersistence] });
   const database = D.getDatabase(app);
   window.FB = {
     adapter: FilingCabinet.firebaseAdapter(D, database),
     onUser: cb => A.onAuthStateChanged(auth, cb),
-    signIn: () => { const p = new A.GoogleAuthProvider(); p.setCustomParameters({ prompt: 'select_account' }); return A.signInWithPopup(auth, p); },
+    signIn: () => { const p = new A.GoogleAuthProvider(); p.setCustomParameters({ prompt: 'select_account' }); return A.signInWithPopup(auth, p, A.browserPopupRedirectResolver); },
     signOut: () => A.signOut(auth),
   };
   App.start(window.FB);
