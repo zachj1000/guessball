@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
 <meta name="apple-mobile-web-app-title" content="GB Next">
 <meta name="theme-color" content="#000000">
 <title>Guess Ball</title>
@@ -54,7 +54,7 @@ a { color: var(--link); text-decoration: none; -webkit-tap-highlight-color: tran
 .spin { animation: spin 1s linear infinite; transform-origin: center; }
 
 /* ── Layout ── */
-#app { position: fixed; top: 0; left: 0; right: 0; height: var(--app-h, 100%); max-width: 520px; margin: 0 auto; overflow: hidden; }
+#app { position: fixed; top: 0; left: 0; right: 0; height: 100%; max-width: 520px; margin: 0 auto; overflow: hidden; }
 .screen { position: absolute; inset: 0; display: flex; flex-direction: column; }
 .page { position: absolute; inset: 0; overflow-y: auto; -webkit-overflow-scrolling: touch;
         padding: calc(var(--safe-top) + 14px) 20px calc(var(--safe-bot) + 24px); display: flex; flex-direction: column; gap: 14px; }
@@ -1534,7 +1534,7 @@ const FilingCabinet = (() => {
 //  that returns HTML. Buttons carry data-act="…" and the matching
 //  function in ACT runs when tapped, then the screen redraws.
 // ════════════════════════════════════════════════════════════════
-const VERSION = '2.0 · test build 2';
+const VERSION = '2.0 · test build 2.1';
 const RULES_JSON = {
   "rules": {
     "v2": {
@@ -2374,7 +2374,7 @@ function scoreCard() {
   const s = S.g.s, g = S.g.game;
   return `<div class="card" style="border-radius:20px;padding:12px 16px 10px;display:flex;flex-direction:column">
     ${g.players.map((p, i) => `<div style="display:flex;align-items:center;justify-content:space-between;height:44px;${i ? 'border-top:1px solid var(--line)' : ''}">
-      <div style="display:flex;align-items:center;gap:8px;min-width:0"><span style="font-size:18px;font-weight:700;color:${s.priority === i ? 'var(--text)' : 'var(--text2)'};overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(p.name)}</span>${s.priority === i ? PRI() : ''}</div>
+      <div style="display:flex;align-items:center;gap:8px;min-width:0"><span style="font-size:18px;font-weight:700;color:${s.priority === i ? 'var(--text)' : 'var(--text2)'};overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(p.name)}</span>${s.priority === i ? PRI() : ''}${Umpire.p3Live(s, i) ? P3B() + `<span class="courier meta" style="white-space:nowrap">${s.p3.picks[i].map((x, k) => (k === s.ab - 1 ? '<b style="color:var(--text)">' + code(x) + '</b>' : code(x))).join(' · ')}</span>` : ''}</div>
       <span class="shoulders num" style="font-size:40px;font-weight:900;color:${s.priority === i ? 'var(--text)' : 'var(--text2)'}">${s.scores[i]}</span></div>`).join('')}
     ${G.mlbLine(g) ? `<span class="courier meta" style="margin-top:4px;font-size:12px;color:var(--text2)">${esc(G.mlbLine(g))}</span>` : ''}</div>`;
 }
@@ -2499,11 +2499,11 @@ SCREENS.pick3 = () => {
 // ════════════ Make a pick ════════════
 SCREENS.pick = () => {
   const s = S.g.s, g = S.g.game, i = G.pickNext(), p = g.players[i];
-  const taken = {};
-  Object.entries(Umpire.lockedPicks(s)).forEach(([j, v]) => { taken[v.pick] = g.players[j].name; });
+  const taken = {}, viaP3 = {};
+  Object.entries(Umpire.lockedPicks(s)).forEach(([j, v]) => { taken[v.pick] = g.players[j].name; if (v.fromP3) viaP3[v.pick] = true; });
   Object.entries(S.g.pending.picks).forEach(([j, v]) => { taken[v.pick] = g.players[j].name; });
   const sel = S.g.sel || {};
-  const holders = Object.entries(taken).map(([o, who]) => `${esc(who)} has ${code(o)}`).join(' · ');
+  const holders = Object.entries(taken).map(([o, who]) => `${esc(who)} has ${code(o)}${viaP3[o] ? ' (Pick 3)' : ''}`).join(' · ');
   return `<div class="fixedpage" style="gap:12px">
   ${gameTop(backBtn('gBack'), halfName(s))}
   ${scoreCard()}
@@ -2514,7 +2514,7 @@ SCREENS.pick = () => {
     return `<button class="press" ${who ? 'disabled' : act('pickSel', o)} style="height:70px;border-radius:14px;padding:8px 10px;display:flex;flex-direction:column;justify-content:space-between;text-align:left;position:relative;background:${on ? 'var(--accent)' : 'var(--card)'};${who ? 'opacity:.3' : ''}">
       <span class="shoulders" style="font-size:28px;font-weight:900;line-height:1;color:${on ? '#fff' : 'var(--text)'}">${code(o)}</span>
       <span class="shoulders" style="position:absolute;top:8px;right:10px;font-size:16px;font-weight:800;color:${on ? 'rgba(255,255,255,.85)' : 'var(--text2)'}">${ptsOf(o)}</span>
-      <span class="courier" style="font-size:10px;font-weight:700;color:${on ? 'rgba(255,255,255,.85)' : 'var(--text2)'};white-space:nowrap;overflow:hidden">${who ? esc(who) + '’s pick' : OC[o][1]}</span></button>`;
+      <span class="courier" style="font-size:10px;font-weight:700;color:${on ? 'rgba(255,255,255,.85)' : 'var(--text2)'};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%">${who ? (viaP3[o] ? 'Pick 3 · ' : '') + esc(who) : OC[o][1]}</span></button>`;
   }).join('')}</div>
   <div class="card" style="border-radius:16px;padding:10px 14px;display:flex;align-items:center;gap:12px">
     <div style="flex-grow:1;display:flex;flex-direction:column"><span style="font-size:16px;font-weight:600">Confidence</span><span class="courier meta">+5 if right · −2 if wrong</span></div>${toggle(!!sel.conf, 'pickConf')}</div>
@@ -3057,16 +3057,6 @@ function afterP3Choice() {
 }
 
 // ════════════ Start-up ════════════
-// iPhone home-screen apps can report a window that's shorter than the screen, which floats the
-// tab bar up. Size the app to the real screen when that happens.
-function fitScreen() {
-  const standalone = navigator.standalone || matchMedia('(display-mode: standalone)').matches;
-  const portrait = Math.abs(innerWidth - screen.width) < 2;
-  const root = document.documentElement.style;
-  if (standalone && portrait && innerHeight < screen.height) root.setProperty('--app-h', screen.height + 'px');
-  else root.removeProperty('--app-h');
-}
-fitScreen(); addEventListener('resize', fitScreen); addEventListener('orientationchange', () => setTimeout(fitScreen, 300));
 // Show the loading line immediately. If someone was signed in on this phone, open straight to
 // their saved Home — no waiting on Firebase or the internet.
 wire();
