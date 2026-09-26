@@ -1475,12 +1475,13 @@ const FilingCabinet = (() => {
     // Every game a set of players has played (awards need each person's full history)
     async function historyOf(pids) {
       const ids = new Set(), all = new Set(pids);
-      for (const p of pids) {                        // only guests a captain actually approved for this person
-        for (const a of Object.keys(((await get('profiles/' + p)) || {}).aliases || {})) {
-          if (((await get('profiles/' + a)) || {}).claimedBy === p) all.add(a);
-        }
-      }
-      for (const p of all) Object.keys((await get('playerGames/' + p)) || {}).forEach(id => ids.add(id));
+      // Everything fetched side by side rather than one after another (much faster on a phone)
+      await Promise.all(pids.map(async p => {        // only guests a captain actually approved for this person
+        const aliases = Object.keys(((await get('profiles/' + p)) || {}).aliases || {});
+        await Promise.all(aliases.map(async a => { if (((await get('profiles/' + a)) || {}).claimedBy === p) all.add(a); }));
+      }));
+      const lists = await Promise.all([...all].map(p => get('playerGames/' + p)));
+      lists.forEach(l => Object.keys(l || {}).forEach(id => ids.add(id)));
       return prepare(await fetchGames([...ids]));
     }
     const gameCache = new Map();                     // finished games never change, so keep them
@@ -1545,7 +1546,7 @@ const FilingCabinet = (() => {
 //  that returns HTML. Buttons carry data-act="…" and the matching
 //  function in ACT runs when tapped, then the screen redraws.
 // ════════════════════════════════════════════════════════════════
-const VERSION = '2.0 · test build 4.2';
+const VERSION = '2.0 · test build 4.3';
 const RULES_JSON = {
   "rules": {
     "v2": {
@@ -2092,10 +2093,9 @@ function render() {
   // Screen
   const screenHtml = (SCREENS[S.screen] || SCREENS.home)();
   if (screenHtml !== L.screen || el.dataset.screen !== S.screen) {
-    const page = scr.querySelector('.page, .fixedpage');
-    const keep = page && el.dataset.screen === S.screen ? page.scrollTop : 0;
-    el.dataset.screen = S.screen; scr.innerHTML = screenHtml; L.screen = screenHtml;
-    const p2 = scr.querySelector('.page, .fixedpage'); if (p2 && keep) p2.scrollTop = keep;
+    if (el.dataset.screen === S.screen && L.screen != null) patchScreen(scr, screenHtml);   // same screen: only swap the parts that changed
+    else { el.dataset.screen = S.screen; scr.innerHTML = screenHtml; }
+    L.screen = screenHtml;
   }
   // Sheet (slides up only when it first opens)
   const sheetName = S.sheet ? S.sheet.name + ':' + S.sheet.arg : null;
@@ -2111,6 +2111,24 @@ function render() {
   if (toastHtml !== L.toast) { tl.innerHTML = toastHtml; L.toast = toastHtml; }
   if (focus && !el.contains(focusEl)) { const i = el.querySelector(`[data-model="${focus}"]`); if (i) { i.focus(); try { i.setSelectionRange(caret, caret); } catch (e) { /* ok */ } } }
   syncEnables();
+}
+// Update a screen in place: the scrolling page element itself is kept (so a scroll or swipe in
+// progress on iPhone isn't cut off), and only the pieces whose content changed are replaced.
+function patchScreen(scr, html) {
+  const t = document.createElement('div'); t.innerHTML = html;
+  const was = [...scr.children], now = [...t.children];
+  const shape = (a, b) => a.length === b.length && a.every((o, i) => o.tagName === b[i].tagName && o.className === b[i].className);
+  if (!shape(was, now)) { scr.replaceChildren(...now); return; }
+  was.forEach((o, i) => {
+    const n = now[i];
+    if (o.outerHTML === n.outerHTML) return;
+    if (o.matches('.page, .fixedpage')) {
+      if (o.getAttribute('style') !== n.getAttribute('style')) o.setAttribute('style', n.getAttribute('style') || '');
+      const a = [...o.children], b = [...n.children];
+      if (a.length !== b.length) { const top = o.scrollTop; o.replaceChildren(...b); o.scrollTop = top; return; }
+      a.forEach((x, k) => { if (x.outerHTML !== b[k].outerHTML) x.replaceWith(b[k]); });
+    } else o.replaceWith(n);
+  });
 }
 // Slide the open sheet down and away (used by swipe-down, tapping outside, and Done/Keep buttons)
 function dismissSheet() {
@@ -3022,13 +3040,14 @@ function afterPlayFx() {
   const { entries } = lastPlayInfo();
   const right = entries.some(e => e.correct);
   Sound.play(right ? 'right' : 'miss'); if (right) buzz();
-  if (S.g.history) {
-    const cp = G.copy();
-    const got = Statistician.awardsInGame(S.g.history.concat([cp]), cp).filter(a => a.at === idx);
-    if (got.length) {
-      Popup.show(got); Sound.play('award'); buzz();
-    }
-  }
+  showAwardsAt(idx);
+}
+// Pop up any awards earned on scorebook event `idx` (after a play, or after REDO puts one back)
+function showAwardsAt(idx) {
+  if (!S.g.history) return;
+  const cp = G.copy();
+  const got = Statistician.awardsInGame(S.g.history.concat([cp]), cp).filter(a => a.at === idx);
+  if (got.length) { Popup.show(got); Sound.play('award'); buzz(); }
 }
 function describeEvent(ev) {
   const g = S.g.game;
@@ -3163,6 +3182,7 @@ Object.assign(ACT, {
     S.g.pending = { p3: {}, picks: {} }; S.g.res = { outcome: null, runs: 0, extraOuts: 0 };
     S.g.view = u.ev.type === 'play' || u.ev.type === 'nextHalf' ? (u.ev.type === 'play' ? 'after' : null) : null;
     render();
+    if (u.ev.type === 'play') showAwardsAt(S.g.game.events.length - 1);
   },
 
   // Menu actions
@@ -3802,7 +3822,7 @@ SCREENS.awards = () => {
           <span class="shoulders" style="font-size:18px;font-weight:800;color:var(--text2)">${n} / ${items.length}</span></div>
         <div class="list">${items.map(a => awardRow(a)).join('')}</div></div>`;
     }).join('');
-    body = `<span class="courier meta" style="padding:0 2px">${got} of ${list.length} earned${aw.loading ? ' · updating…' : ''} · tap one for details</span>${recent}${secs}`;
+    body = `<span class="courier meta" style="padding:0 2px">${got} of ${list.length} earned · tap one for details</span>${recent}${secs}`;
   }
   const chips = [['ALL', 'ALL']].concat(AWARD_CATS).map(([c, label]) => `<button class="press cond" ${act('awCat', c)} style="flex-shrink:0;height:30px;padding:0 12px;border-radius:15px;font-size:14px;font-weight:800;letter-spacing:.6px;background:${c === cat ? 'var(--text)' : 'var(--card)'};color:${c === cat ? 'var(--bg)' : 'var(--text5)'}">${label}</button>`).join('');
   return `<div class="page tabbed">
