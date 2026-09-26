@@ -1546,7 +1546,7 @@ const FilingCabinet = (() => {
 //  that returns HTML. Buttons carry data-act="…" and the matching
 //  function in ACT runs when tapped, then the screen redraws.
 // ════════════════════════════════════════════════════════════════
-const VERSION = '2.0 · test build 4.3';
+const VERSION = '2.0 · test build 4.4';
 const RULES_JSON = {
   "rules": {
     "v2": {
@@ -2116,19 +2116,22 @@ function render() {
 // progress on iPhone isn't cut off), and only the pieces whose content changed are replaced.
 function patchScreen(scr, html) {
   const t = document.createElement('div'); t.innerHTML = html;
-  const was = [...scr.children], now = [...t.children];
-  const shape = (a, b) => a.length === b.length && a.every((o, i) => o.tagName === b[i].tagName && o.className === b[i].className);
-  if (!shape(was, now)) { scr.replaceChildren(...now); return; }
-  was.forEach((o, i) => {
-    const n = now[i];
-    if (o.outerHTML === n.outerHTML) return;
-    if (o.matches('.page, .fixedpage')) {
-      if (o.getAttribute('style') !== n.getAttribute('style')) o.setAttribute('style', n.getAttribute('style') || '');
-      const a = [...o.children], b = [...n.children];
-      if (a.length !== b.length) { const top = o.scrollTop; o.replaceChildren(...b); o.scrollTop = top; return; }
-      a.forEach((x, k) => { if (x.outerHTML !== b[k].outerHTML) x.replaceWith(b[k]); });
-    } else o.replaceWith(n);
-  });
+  const pick = root => [...root.children].find(c => c.matches('.page, .fixedpage'));
+  const o = pick(scr), n = pick(t);
+  if (!o || !n || o.className !== n.className) { scr.replaceChildren(...t.children); return; }
+  // The page: keep the element, swap only changed pieces inside it
+  if (o.getAttribute('style') !== n.getAttribute('style')) o.setAttribute('style', n.getAttribute('style') || '');
+  const a = [...o.children], b = [...n.children];
+  if (a.length === b.length && a.every((x, k) => x.tagName === b[k].tagName)) a.forEach((x, k) => { if (x.outerHTML !== b[k].outerHTML) x.replaceWith(b[k]); });
+  else { const top = o.scrollTop; o.replaceChildren(...b); o.scrollTop = top; }
+  // Everything around the page (tab bar, LIVE bar, popups): rebuild only if it changed
+  const around = root => [...root.children].filter(c => !c.matches('.page, .fixedpage')).map(c => c.outerHTML).join('');
+  if (around(scr) !== around(t)) {
+    [...scr.children].forEach(c => { if (c !== o) c.remove(); });
+    const kids = [...t.children], at = kids.indexOf(n);
+    kids.slice(0, at).forEach(c => scr.insertBefore(c, o));
+    kids.slice(at + 1).forEach(c => scr.appendChild(c));
+  }
 }
 // Slide the open sheet down and away (used by swipe-down, tapping outside, and Done/Keep buttons)
 function dismissSheet() {
