@@ -1238,6 +1238,7 @@ const FilingCabinet = (() => {
       }
       return out;
     }
+    const clubInfo = code => get('clubs/' + code + '/info');
     async function roster(code) {
       const m = (await get('clubs/' + code + '/members')) || {};
       return Object.entries(m).map(([pid, x]) => ({ pid, ...x })).sort((a, b) => a.joinedAt - b.joinedAt);
@@ -1329,7 +1330,38 @@ const FilingCabinet = (() => {
       need();
       const me = await get('profiles/' + uid);
       await queue({ ['clubs/' + code + '/claims/' + guestPid]: { uid, name: me.name, at: now() },
-        ['users/' + uid + '/claims/' + guestPid]: code });
+        ['users/' + uid + '/claims/' + guestPid]: code, ['offers/' + uid + '/' + guestPid]: null });
+    }
+    // People with accounts (for "Link to an account"). Names only.
+    async function accounts(text = '') {
+      const all = (await get('profiles')) || {}, q = text.trim().toLowerCase();
+      return Object.entries(all).filter(([, p]) => p.account === true && (!q || (p.name || '').toLowerCase().includes(q)))
+        .map(([pid, p]) => ({ pid, name: p.name, createdAt: p.createdAt || null })).sort((a, b) => a.name.localeCompare(b.name));
+    }
+    // A club member points a guest at someone's account: it shows up on their Home as CLAIM YOUR GAMES
+    async function offerGuest(code, guestPid, toUid) {
+      need();
+      const [info, g, me] = await Promise.all([get('clubs/' + code + '/info'), get('clubs/' + code + '/members/' + guestPid), get('profiles/' + uid)]);
+      if (!g || !g.guest) throw new Error('That guest is no longer in this club');
+      await queue({ ['offers/' + toUid + '/' + guestPid]: { code, club: info.name, guestName: g.name, by: uid, byName: me.name, at: now() } });
+    }
+    async function myOffers() {
+      need();
+      const o = (await get('offers/' + uid)) || {};
+      return Object.entries(o).map(([guest, x]) => ({ guest, ...x })).sort((a, b) => b.at - a.at);
+    }
+    const dismissOffer = guestPid => queue({ ['offers/' + uid + '/' + guestPid]: null });
+    // Claims you've sent that a captain hasn't answered yet
+    async function myClaims() {
+      need();
+      const list = (await get('users/' + uid + '/claims')) || {}, out = [];
+      await Promise.all(Object.entries(list).map(async ([guest, code]) => {
+        const p = await get('profiles/' + guest);
+        if (p && p.claimedBy === uid) return;                 // approved
+        let c = null; try { c = await get('clubs/' + code + '/claims/' + guest); } catch (e) { /* gone */ }
+        if (c && c.uid === uid) out.push({ guest, code, name: (p || {}).name || 'Guest' });
+      }));
+      return out;
     }
     // Captain approves: the guest's games now count as the claimer's, and they join the club.
     async function answerClaim(code, guestPid, accept) {
@@ -1516,8 +1548,8 @@ const FilingCabinet = (() => {
 
     return { setUser, onStatus: f => { listeners.add(f); f(status()); return () => listeners.delete(f); }, status, flush,
       myAccount, saveProfile, unlinkAccount, profiles,
-      createClub, findClubs, myClubs, roster, joinClub, requests, answerRequest, leaveClub, setCaptain, removeMember, updateClub,
-      addGuest, renameGuest, claimGuest, answerClaim, myAliases,
+      createClub, findClubs, myClubs, clubInfo, roster, joinClub, requests, answerRequest, leaveClub, setCaptain, removeMember, updateClub,
+      addGuest, renameGuest, claimGuest, answerClaim, myAliases, accounts, offerGuest, myOffers, dismissOffer, myClaims,
       startGame, liveGame, addEvent, undo, takeOver, updateGameInfo, endGame, addHandGame, editHandGame, deleteGame,
       loadGames, historyOf, exportAll, isAdmin };
   }
@@ -1546,7 +1578,7 @@ const FilingCabinet = (() => {
 //  that returns HTML. Buttons carry data-act="…" and the matching
 //  function in ACT runs when tapped, then the screen redraws.
 // ════════════════════════════════════════════════════════════════
-const VERSION = '2.0 · test build 4.4';
+const VERSION = '2.0 · test build 5';
 const RULES_JSON = {
   "rules": {
     "v2": {
@@ -1614,6 +1646,7 @@ const RULES_JSON = {
           "claims": {
             ".read": "(root.child('v2').child('clubs').child($code).child('members').child(auth.uid).child('captain').val() === true) || (root.child('v2').child('admins').child(auth.uid).val() === true)",
             "$guest": {
+              ".read": "data.child('uid').val() === auth.uid",
               ".write": "((newData.child('uid').val() === auth.uid) && (!data.exists())) || ((data.child('uid').val() === auth.uid) && (!newData.exists())) || (root.child('v2').child('clubs').child($code).child('members').child(auth.uid).child('captain').val() === true) || (root.child('v2').child('admins').child(auth.uid).val() === true)"
             }
           },
@@ -1636,6 +1669,14 @@ const RULES_JSON = {
         "$pid": {
           "$gid": {
             ".write": "(root.child('v2').child('games').child($gid).child('host').val() === auth.uid) || (!root.child('v2').child('games').child($gid).exists()) || (root.child('v2').child('admins').child(auth.uid).val() === true)"
+          }
+        }
+      },
+      "offers": {
+        "$uid": {
+          ".read": "auth.uid === $uid",
+          "$guest": {
+            ".write": "((auth.uid === $uid) && (!newData.exists())) || ((newData.exists()) && (root.child('v2').child('clubs').child(newData.child('code').val()).child('members').child($guest).child('guest').val() === true) && (root.child('v2').child('clubs').child(newData.child('code').val()).child('members').child(auth.uid).exists()) && (newData.child('by').val() === auth.uid)) || (root.child('v2').child('admins').child(auth.uid).val() === true)"
           }
         }
       },
@@ -1865,7 +1906,9 @@ SCREENS.tutorial = () => {
 
 // ── Tab bar ──
 function tabbar(on) {
-  const t = (id, label) => `<button class="cond ${on === id ? 'on' : ''}" ${act('tab', id)}>${ICON.tabs[id]}${label}</button>`;
+  const waiting = (S.clubs || []).reduce((n, c) => n + (c.captain && c.requests ? c.requests : 0), 0);   // requests for captains
+  const badge = id => (id === 'club' && waiting ? `<span class="cond" style="position:absolute;top:4px;left:calc(50% + 6px);min-width:18px;height:18px;border-radius:9px;padding:0 5px;background:var(--goldfill);color:#1A1406;font-size:12px;font-weight:800;display:flex;align-items:center;justify-content:center">${waiting}</span>` : '');
+  const t = (id, label) => `<button class="cond ${on === id ? 'on' : ''}" style="position:relative" ${act('tab', id)}>${ICON.tabs[id]}${label}${badge(id)}</button>`;
   return `<nav class="tabbar">${t('games', 'GAMES')}${t('stats', 'STATS')}${t('awards', 'AWARDS')}${t('club', 'CLUB')}</nav>`;
 }
 const scopeName = () => (S.scope === 'mine' ? 'ALL MY GAMES' : ((S.clubs.find(c => c.code === S.scope) || {}).name || 'ALL MY GAMES').toUpperCase());
@@ -1906,6 +1949,7 @@ SCREENS.home = () => {
       <button class="press" aria-label="Settings" ${act('go', 'settings')} style="width:38px;height:38px;border-radius:19px;background:var(--card2);display:flex;align-items:center;justify-content:center">${ICON.gear}</button>
     </div>
     ${scopeChip()}
+    ${claimCard()}
     ${typeof resumeCard === 'function' ? resumeCard() : ''}
     <button class="press cond mid-btn" ${act('newGame')}>${ICON.plus} NEW GAME</button>
     ${body}
@@ -1917,7 +1961,6 @@ const later = (tab, title, what) => () => `<div class="page tabbed">
   <div class="topbar"><h1 class="cond h1" style="font-size:34px">${title}</h1></div>${tab === 'stats' || tab === 'club' ? scopeChip() : ''}
   <div class="card" style="padding:18px;display:flex;flex-direction:column;gap:6px"><span class="cond" style="font-size:20px;font-weight:800;letter-spacing:.6px;color:var(--text2)">COMING IN A LATER TEST</span>
   <span style="font-size:15px;line-height:1.45;color:var(--text2)">${what}</span></div></div>${tabbar(tab)}${liveBar()}`;
-SCREENS.club = later('club', 'CLUB', 'Roster, requests, guests and club settings arrive in test build 5. For now, switch clubs from the chip above.');
 
 // ── Club switcher sheet ──
 function switcherSheet() {
@@ -2231,6 +2274,15 @@ async function afterSignIn(user) {
   else if (!S.g.history) loadGameHistory();
   render();
   loadHome();
+  loadClaims();
+  // Opened from an invite link: take them to that club
+  const join = Store.getItem('gb_join');
+  if (join) {
+    Store.removeItem('gb_join');
+    const mine = S.clubs.find(c => c.code === join);
+    if (mine && mine.status === 'member') { ACT.pickScope(join); ACT.tab('club'); }
+    else { try { S.found = await FCab.findClubs(''); if (S.found.some(c => c.code === join)) { go('findClub'); ACT.clubCta(join); } else toast('That club no longer exists', true); } catch (e) { /* offline */ } }
+  }
 }
 
 // ════════════ Taps ════════════
@@ -2239,8 +2291,9 @@ const ACT = {
   back, go: s => { S.draft = {}; go(s); },
   toast: t => toast(t),
   closeSheet: () => dismissSheet(),
-  openSheet: (name, arg) => { const [n, a] = name.split(':'); S.sheet = { name: n, arg: a !== undefined ? a : arg }; S.q = ''; render(); },
-  tab: t => { S.stack = []; go(t === 'games' ? 'home' : t, {}, false); if (t === 'stats' && FCab) loadScopeGames(true); if (t === 'awards' && FCab && S.aw && S.aw.key === S.scope) loadAwards(); },
+  openSheet: (name, arg) => { const k = name.indexOf(':'), n = k < 0 ? name : name.slice(0, k), a = k < 0 ? undefined : name.slice(k + 1);   // ids can contain ':'
+    S.sheet = { name: n, arg: a !== undefined ? a : arg }; S.q = ''; render(); },
+  tab: t => { S.stack = []; go(t === 'games' ? 'home' : t, {}, false); if (t === 'stats' && FCab) loadScopeGames(true); if (t === 'awards' && FCab && S.aw && S.aw.key === S.scope) loadAwards(); if (t === 'club' && FCab) loadClub(true); },
   signIn: async () => {
     if (!navigator.onLine) { S.offlineFirst = true; render(); return; }
     S.busy = true; render();
@@ -3932,6 +3985,367 @@ Object.assign(ACT, {
   awGame: id => { S.sheet = null; ACT.openGame(id); },
 });
 
+// ════════════ Club tab ════════════
+// Club card (name, privacy, invite, captain settings) · REQUESTS (captains) · ROSTER · GUESTS · Leave club.
+// Tap a person → Roster member sheet. Tap a guest → Guest sheet (claim link, link to an account, rename).
+const clubOf = code => S.clubs.find(c => c.code === code) || null;
+const initialDot = (name, color = 'var(--card3)', dashed = false) => `<span style="width:32px;height:32px;border-radius:16px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;${dashed ? 'border:1.5px dashed var(--text4)' : 'background:' + color}">${esc((name || '?')[0].toUpperCase())}</span>`;
+const baseUrl = () => location.origin + location.pathname.replace(/index\.html$/, '');
+const plural = (n, w) => `${n} ${w}${n === 1 ? '' : 's'}`;
+
+async function loadClub(force) {
+  const code = S.scope; if (code === 'mine' || !FCab) return;
+  const key = 'gb_club_' + S.user.uid + '_' + code;
+  if (!S.club || S.club.code !== code) S.club = Store.json(key, null) || { code, roster: null, req: { joins: [], claims: [] } };
+  if (!force && S.club.fresh) return;
+  render();
+  try {
+    const [roster] = await Promise.all([withTimeout(FCab.roster(code), 12000), loadScopeGames()]);
+    if (S.scope !== code) return;
+    const me = roster.find(m => m.pid === S.user.uid);
+    let req = { joins: [], claims: [] };
+    if (me && me.captain) { try { req = await withTimeout(FCab.requests(code), 8000); } catch (e) { /* offline */ } }
+    S.club = { code, roster, req, fresh: true };
+    const c = clubOf(code); if (c) { c.captain = !!(me && me.captain); c.requests = req.joins.length + req.claims.length; }
+    try { Store.put(key, { code, roster, req }); } catch (e) { /* storage full */ }
+  } catch (e) { if (!S.club.roster) toast('Couldn’t load the club — check your connection', true); }
+  render();
+}
+const clubData = () => (S.club && S.club.code === S.scope ? S.club : null);
+const amCaptain = () => { const d = clubData(); const me = d && d.roster && d.roster.find(m => m.pid === S.user.uid); return me ? !!me.captain : !!(clubOf(S.scope) || {}).captain; };
+
+SCREENS.club = () => {
+  if (S.scope === 'mine') return clubPicker();
+  const d = clubData();
+  if (FCab && S.user && (!d || !d.fresh)) setTimeout(() => loadClub(), 0);
+  const c = clubOf(S.scope) || { name: scopeName(), public: false };
+  const loaded = !!scopeGames(), games = scopeGames() || [];
+  const cap = amCaptain();
+  // Club card
+  const years = games.map(g => +g.date.slice(0, 4)), since = years.length ? Math.min(...years) : (c.createdAt ? new Date(c.createdAt).getFullYear() : null);
+  const parks = {}; games.forEach(g => { if (g.park) parks[g.park] = (parks[g.park] || 0) + 1; });
+  const topPark = Object.entries(parks).sort((a, b) => b[1] - a[1])[0];
+  const meta = [since && 'Since ' + since, plural(games.length, 'game'), years.length && plural(new Set(years).size, 'season'), topPark && topPark[0]].filter(Boolean).join(' · ');
+  const card = `<div class="card" style="padding:16px;display:flex;flex-direction:column;gap:10px">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
+      <button class="press cond" ${act('openSwitcher')} style="display:flex;align-items:center;gap:8px;min-width:0;font-size:34px;font-weight:800;letter-spacing:.4px;line-height:1"><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(c.name.toUpperCase())}</span>${ICON.down}</button>
+      <span class="cond tag" style="display:inline-flex;align-items:center;gap:4px;height:22px">${c.public ? '' : ICON.lock}${c.public ? 'PUBLIC' : 'PRIVATE'}</span></div>
+    <span class="courier meta" style="font-size:12px;color:var(--text2);min-height:14px">${loaded ? esc(meta) : ''}</span>
+    <div style="display:flex;gap:10px">
+      <button class="press cond big-btn" style="flex:1;height:48px;font-size:20px" ${act('invite')}>INVITE TO CLUB</button>
+      ${cap ? `<button class="press" aria-label="Club settings" ${act('clubSettings')} style="width:48px;height:48px;border-radius:24px;background:var(--card2);display:flex;align-items:center;justify-content:center">${ICON.gear}</button>` : ''}
+    </div></div>`;
+  let body = '';
+  if (!d || !d.roster) body = `<div class="card" style="padding:28px;display:flex;justify-content:center">${ICON.spinner}</div>`;
+  else {
+    const rows = Statistician.standings(games), count = id => ((rows.find(r => r.id === id) || {}).games || 0);
+    const people = d.roster.filter(m => !m.guest).sort((a, b) => (b.captain - a.captain) || count(b.pid) - count(a.pid) || a.name.localeCompare(b.name));
+    const guests = d.roster.filter(m => m.guest).sort((a, b) => count(b.pid) - count(a.pid) || a.name.localeCompare(b.name));
+    // Requests (captains only)
+    const R = d.req || { joins: [], claims: [] };
+    const reqRow = (who, line1, line2, arg, k) => `<div style="display:flex;align-items:center;gap:10px;padding:10px 0;${k ? 'border-top:1px solid rgba(242,193,78,.18)' : ''}">
+        ${initialDot(who)}
+        <div style="flex-grow:1;min-width:0;display:flex;flex-direction:column;gap:2px"><span style="font-size:15px;font-weight:700;line-height:1.25">${line1}</span><span class="courier meta">${line2}</span></div>
+        <button class="press" aria-label="Decline" ${act('answerReq', arg + '|0')} style="width:34px;height:34px;border-radius:17px;background:var(--card2);color:var(--text2);font-size:15px;flex-shrink:0">✕</button>
+        <button class="press" aria-label="Approve" ${act('answerReq', arg + '|1')} style="width:34px;height:34px;border-radius:17px;background:var(--goldfill);display:flex;align-items:center;justify-content:center;flex-shrink:0">${ICON.check('#1A1406')}</button></div>`;
+    const reqs = cap && (R.joins.length || R.claims.length) ? `<div class="card" style="padding:12px 14px 4px;border:1.5px solid rgba(242,193,78,.55)">
+        <div style="display:flex;justify-content:space-between;align-items:baseline"><span class="cond" style="font-size:16px;font-weight:800;letter-spacing:.8px;color:var(--gold)">REQUESTS · ${R.joins.length + R.claims.length}</span><span class="courier meta">Captains only</span></div>
+        ${R.joins.map((j, k) => reqRow(j.name, `${esc(j.name)} wants to join`, j.note ? '“' + esc(j.note) + '”' : 'New member request', 'join|' + j.uid, k)).join('')}
+        ${R.claims.map((c, k) => { const g = d.roster.find(m => m.pid === c.guest) || {}; const r = rows.find(x => x.id === c.guest) || { games: 0, w: 0 };
+          return reqRow(c.name, `${esc(c.name)} says they’re guest “${esc(g.name || 'Guest')}”`, loaded ? `Claim · ${plural(r.games, 'game')}, ${plural(r.w, 'win')} move to them` : 'Guest claim', 'claim|' + c.guest, k + R.joins.length); }).join('')}
+      </div>` : '';
+    body = `${reqs}
+      <div style="display:flex;align-items:baseline;justify-content:space-between;margin-top:4px"><h2 class="cond h2">ROSTER</h2><span class="shoulders" style="font-size:20px;font-weight:800;color:var(--text2)">${people.length}</span></div>
+      <div class="list">${people.map(m => `<button class="row press" ${act('openSheet', 'member:' + m.pid)} style="min-height:52px">
+        ${initialDot(m.name, m.pid === S.user.uid ? 'var(--accent)' : 'var(--card3)')}
+        <span style="flex-grow:1;min-width:0;font-size:17px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(m.name)}</span>
+        ${m.captain ? '<span class="cond tag gold">CAPTAIN</span>' : ''}<span class="courier meta" style="min-width:58px;text-align:right">${loaded ? plural(count(m.pid), 'game') : ''}</span></button>`).join('')}</div>
+      ${guests.length ? `<div style="display:flex;align-items:baseline;justify-content:space-between;margin-top:4px"><h2 class="cond h2">GUESTS</h2><span class="shoulders" style="font-size:20px;font-weight:800;color:var(--text2)">${guests.length}</span></div>
+      <div style="display:flex;flex-wrap:wrap;gap:8px">${guests.map(m => `<button class="press" ${act('openSheet', 'guest:' + m.pid)} style="height:36px;padding:0 14px 0 6px;border-radius:18px;background:var(--card);display:flex;align-items:center;gap:8px;font-size:15px;font-weight:600">
+        <span style="width:24px;height:24px;border-radius:12px;border:1.5px dashed var(--text4);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700">${esc(m.name[0].toUpperCase())}</span>${esc(m.name)}</button>`).join('')}</div>
+      ${info('guestWhy', '<span class="courier meta">What’s a guest?</span>', 'Someone who plays on another person’s phone without an account. Tap a guest to send them a claim link — when they sign up, their games move to their account.', '')}` : ''}
+      <button class="press cond mid-btn" style="margin-top:10px;color:var(--orange);font-size:18px" ${act('openSheet', 'leave')}>LEAVE CLUB</button>`;
+  }
+  return `<div class="page tabbed">
+  <div style="display:flex;align-items:center;justify-content:space-between"><h1 class="cond" style="margin:0;font-size:34px;font-weight:800;letter-spacing:.4px">CLUB</h1><a class="cond" style="font-size:17px;font-weight:800;letter-spacing:.6px" ${act('go', 'findClub')}>FIND A CLUB</a></div>
+  ${card}${body}
+</div>${tabbar('club')}${liveBar()}`;
+};
+// "All my games" is selected: pick one of your clubs
+function clubPicker() {
+  const mine = S.clubs.filter(c => c.status === 'member'), pending = S.clubs.filter(c => c.status === 'pending');
+  return `<div class="page tabbed">
+  <h1 class="cond" style="margin:0;font-size:34px;font-weight:800;letter-spacing:.4px">CLUB</h1>
+  <span style="font-size:15px;line-height:1.45;color:var(--text2)">You’re looking at All my games. ${mine.length ? 'Pick a club to see its roster.' : 'You’re not in a club yet.'}</span>
+  ${mine.length || pending.length ? `<div class="list">${mine.map(c => `<button class="row press" ${act('clubOpen', c.code)} style="min-height:58px">
+    <div style="flex-grow:1;min-width:0;display:flex;flex-direction:column;gap:2px"><span style="font-size:17px;font-weight:700">${esc(c.name)}</span><span class="courier meta">${c.public ? 'Public' : 'Private'}${c.captain ? ' · you’re a captain' : ''}</span></div>
+    ${c.requests ? `<span class="cond" style="min-width:22px;height:22px;border-radius:11px;background:var(--goldfill);color:#1A1406;font-size:14px;font-weight:800;display:flex;align-items:center;justify-content:center;padding:0 6px">${c.requests}</span>` : ''}${ICON.chev}</button>`).join('')}
+    ${pending.map(c => `<div class="row" style="min-height:58px;opacity:.6"><div style="flex-grow:1;display:flex;flex-direction:column;gap:2px"><span style="font-size:17px;font-weight:700">${esc(c.name)}</span><span class="courier meta">Request sent · waiting for a captain</span></div><span class="cond tag">PENDING</span></div>`).join('')}</div>` : ''}
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><button class="press cond small-btn" style="height:46px;border-radius:23px;font-size:17px" ${act('go', 'findClub')}>FIND A CLUB</button><button class="press cond small-btn" style="height:46px;border-radius:23px;font-size:17px" ${act('go', 'createClub')}>CREATE A CLUB</button></div>
+</div>${tabbar('club')}${liveBar()}`;
+}
+
+// ── Roster member sheet ──
+function memberSheet() {
+  const pid = S.sheet.arg, d = clubData() || { roster: [] }, m = (d.roster || []).find(x => x.pid === pid) || { name: 'Player' };
+  const games = scopeGames() || [], row = Statistician.standings(games).find(r => r.id === pid) || { w: 0, l: 0, t: 0, games: 0, winPct: null, avgPts: null, accuracy: null };
+  const tile = (label, big, small) => `<div style="background:var(--sheetcard);border-radius:16px;padding:10px 14px;display:flex;flex-direction:column;gap:2px"><span class="cond" style="font-size:13px;font-weight:800;letter-spacing:.8px;color:var(--text3)">${label}</span><span class="shoulders num" style="font-size:30px;font-weight:900;line-height:1.05">${big}</span><span class="courier meta">${small}</span></div>`;
+  const me = S.user.uid, cap = amCaptain();
+  let vs = '';
+  if (pid !== me && games.some(g => g.players.some(p => p.id === me) && g.players.some(p => p.id === pid))) {
+    const h = Statistician.h2h(games, me, pid);
+    const lead = h.leader === 'a' ? 'You lead' : h.leader === 'b' ? esc(m.name) + ' leads' : 'All square';
+    vs = `<div style="background:var(--sheetcard);border-radius:16px;padding:12px 14px;display:flex;align-items:center;gap:12px">
+      <div style="display:flex;flex-direction:column;gap:2px;flex-grow:1"><span class="cond" style="font-size:13px;font-weight:800;letter-spacing:.8px;color:var(--text3)">YOU VS ${esc(m.name.toUpperCase())}</span>
+      <div style="display:flex;align-items:baseline;gap:8px"><span class="shoulders num" style="font-size:30px;font-weight:900;color:${H2H_A}">${h.a.wins}</span><span class="shoulders" style="color:var(--text4)">–</span><span class="shoulders num" style="font-size:30px;font-weight:900;color:${H2H_B}">${h.b.wins}</span><span class="courier meta">${lead}</span></div></div>
+      <button class="press cond" ${act('memberH2H', pid)} style="font-size:16px;font-weight:800;letter-spacing:.6px;color:var(--link);white-space:nowrap">HEAD TO HEAD ›</button></div>`;
+  }
+  const recent = games.filter(g => g.players.some(p => p.id === pid)).sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : (b.seq || 0) - (a.seq || 0))).slice(0, 3);
+  const line = g => { const i = g.players.findIndex(p => p.id === pid), sc = Statistician.result(g).scores, o = Statistician.outcomeFor(g, i);
+    const others = g.players.filter((_, k) => k !== i), best = Math.max(...sc.filter((_, k) => k !== i));
+    return `<button class="row press" ${act('memberGame', g.id)} style="min-height:52px;gap:12px">
+      <span class="cond" style="width:16px;font-size:18px;font-weight:800;color:${o === 'W' ? 'var(--green)' : o === 'L' ? 'var(--orange)' : 'var(--text2)'}">${o}</span>
+      <div style="flex-grow:1;min-width:0;display:flex;flex-direction:column"><span style="font-size:15px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">vs ${esc(others.map(p => p.name).join(', '))}</span><span class="courier meta">${niceDate(g.date)}${g.park ? ' · ' + esc(g.park) : ''}</span></div>
+      <span class="shoulders num" style="font-size:20px;font-weight:900">${sc[i]}–${best}</span></button>`; };
+  const since = m.joinedAt ? new Date(m.joinedAt).getFullYear() : null;
+  return `<div style="display:flex;align-items:center;gap:12px">
+    <span style="width:52px;height:52px;border-radius:26px;background:var(--card3);display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:800;flex-shrink:0">${esc(m.name[0].toUpperCase())}</span>
+    <div style="display:flex;flex-direction:column;gap:3px;min-width:0"><div style="display:flex;align-items:center;gap:8px"><span class="cond" style="font-size:28px;font-weight:800;line-height:1">${esc(m.name)}</span>${m.captain ? '<span class="cond tag gold">CAPTAIN</span>' : ''}</div>
+    <span class="courier meta">In ${esc((clubOf(S.scope) || {}).name || 'the club')}${since ? ' since ' + since : ''}</span></div></div>
+  <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px">
+    ${tile('RECORD', `${row.w}–${row.l}${row.t ? '–' + row.t : ''}`, plural(row.games, 'game'))}${tile('WIN %', row.winPct == null ? '—' : Math.round(row.winPct * 100) + '%', 'All seasons')}
+    ${tile('AVG POINTS', row.avgPts == null ? '—' : row.avgPts.toFixed(1), 'Per game')}${tile('ACCURACY', row.accuracy == null ? '—' : Math.round(row.accuracy * 100) + '%', 'Correct calls')}</div>
+  ${vs}
+  ${recent.length ? `<span class="cond label" style="padding:0">RECENT GAMES</span><div class="list">${recent.map(line).join('')}</div>` : ''}
+  <span class="courier meta">${esc((clubOf(S.scope) || {}).name || '')} games only</span>
+  ${cap && pid !== me ? `<button class="press cond mid-btn" style="background:var(--sheetcard);color:var(--orange);font-size:17px" ${act('openSheet', 'removeMember:' + pid)}>REMOVE FROM CLUB <span class="cond tag gold" style="font-size:10px;margin-left:4px">CAPTAINS</span></button>` : ''}`;
+}
+function removeMemberSheet() {
+  const m = ((clubData() || {}).roster || []).find(x => x.pid === S.sheet.arg) || { name: 'them' };
+  return `<h2 class="cond" style="margin:0;font-size:28px;font-weight:800">REMOVE ${esc(m.name.toUpperCase())}?</h2>
+  <span style="font-size:15px;line-height:1.5;color:var(--text2)">${esc(m.name)} leaves ${esc((clubOf(S.scope) || {}).name || 'the club')}. Games already played stay in the club’s stats. ${(clubOf(S.scope) || {}).public ? 'They can join again any time.' : 'They’d need to ask to join again.'}</span>
+  <button class="big-btn cond press" style="background:#E0502F" ${act('removeMember', S.sheet.arg)} ${S.busy ? 'disabled' : ''}>REMOVE</button>
+  <button class="press cond mid-btn" ${act('closeSheet')}>KEEP ${esc(m.name.toUpperCase())}</button>`;
+}
+
+// ── Guest sheet ──
+function guestSheet() {
+  const pid = S.sheet.arg, d = clubData() || { roster: [] }, m = (d.roster || []).find(x => x.pid === pid) || { name: 'Guest' };
+  const row = Statistician.standings(scopeGames() || []).find(r => r.id === pid) || { w: 0, l: 0, t: 0, games: 0, points: 0 };
+  const gi = S.guestInfo && S.guestInfo.pid === pid ? S.guestInfo : null;
+  const cap = amCaptain(), open = S.guestOpen;
+  const tile = (big, label) => `<div style="background:var(--sheetcard);border-radius:14px;padding:8px 12px;display:flex;flex-direction:column"><span class="shoulders num" style="font-size:26px;font-weight:900;line-height:1.1">${big}</span><span class="cond" style="font-size:13px;font-weight:800;letter-spacing:.8px;color:var(--text3)">${label}</span></div>`;
+  const q = (S.gq || '').trim().toLowerCase();
+  const inClub = new Set((d.roster || []).filter(x => !x.guest).map(x => x.pid));
+  const accts = (S.accounts || []).filter(a => !q || a.name.toLowerCase().includes(q));
+  const linkBox = open === 'link' ? `<div style="display:flex;flex-direction:column;gap:8px;padding:4px 0 12px">
+      <label class="field search" style="background:var(--card2)">${ICON.search}<input data-model="gq" data-region="accts" value="${attr(S.gq || '')}" placeholder="Search people with accounts" maxlength="20"></label>
+      <div data-region="accts" style="display:flex;flex-direction:column">${S.accounts == null ? `<div style="display:flex;justify-content:center;padding:10px">${ICON.spinner}</div>`
+        : accts.length ? accts.slice(0, 12).map(a => `<div class="row" style="min-height:50px">${initialDot(a.name, 'var(--accent)')}
+          <div style="flex-grow:1;min-width:0;display:flex;flex-direction:column"><span style="font-size:16px;font-weight:600">${esc(a.name)}</span><span class="courier meta">${a.createdAt ? 'Joined ' + niceDate(new Date(a.createdAt).toISOString().slice(0, 10)) : 'Has an account'}${inClub.has(a.pid) ? ' · in this club' : ''}</span></div>
+          <button class="press cond small-btn" style="background:var(--accent);color:var(--onaccent)" ${act('offerGuest', a.pid)}>SEND</button></div>`).join('')
+        : `<span class="courier meta" style="padding:8px 2px">Nobody with an account matches. Try Send claim link instead.</span>`}</div></div>` : '';
+  const renameBox = open === 'rename' ? `<div style="display:flex;gap:8px;padding:4px 0 12px"><label class="field" style="flex:1;background:var(--card2);height:46px"><input data-model="draft.gname" value="${attr((S.draft && S.draft.gname) || '')}" maxlength="16" placeholder="New name"></label>
+      <button class="press cond small-btn" style="height:46px;border-radius:23px;background:var(--accent);color:var(--onaccent)" data-enable="draft.gname" ${act('renameGuest', pid)}>SAVE</button></div>` : '';
+  const actionRow = (a, icon, title, sub, extra = '') => `<button class="row press" ${act(a, pid)} style="min-height:58px;gap:12px"><span style="width:22px;display:flex;justify-content:center;color:var(--text2)">${icon}</span>
+    <div style="flex-grow:1;min-width:0;display:flex;flex-direction:column;gap:2px"><span style="font-size:16px;font-weight:700">${title}</span>${sub ? `<span class="courier meta">${sub}</span>` : ''}</div>${extra}</button>`;
+  const shareIc = '<svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M8 10V2M5 4.5L8 1.5l3 3M3 8v5.5h10V8"/></svg>';
+  const linkIc = '<svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M6.5 9.5l3-3M7 4.5l1-1a2.8 2.8 0 014 4l-1 1M9 11.5l-1 1a2.8 2.8 0 01-4-4l1-1"/></svg>';
+  const penIc = '<svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M10.5 2.5l3 3L6 13H3v-3z"/></svg>';
+  const waiting = ((d.req || {}).claims || []).find(c => c.guest === pid);
+  return `<div style="display:flex;align-items:center;gap:12px">
+    <span style="width:52px;height:52px;border-radius:26px;border:2px dashed var(--text4);display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:800;flex-shrink:0">${esc(m.name[0].toUpperCase())}</span>
+    <div style="display:flex;flex-direction:column;gap:3px;min-width:0"><div style="display:flex;align-items:center;gap:8px"><span class="cond" style="font-size:30px;font-weight:800;line-height:1">${esc(m.name.toUpperCase())}</span><span class="cond tag">GUEST</span></div>
+    <span class="courier meta">${gi && gi.by ? 'Added by ' + esc(gi.by) + ' · ' : ''}${esc((clubOf(S.scope) || {}).name || '')}</span></div></div>
+  <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px">${tile(row.games, row.games === 1 ? 'GAME' : 'GAMES')}${tile(`${row.w}–${row.l}${row.t ? '–' + row.t : ''}`, 'RECORD')}${tile(row.points, 'POINTS')}</div>
+  ${waiting ? `<div class="card" style="background:var(--sheetcard);padding:10px 14px;border:1.5px solid rgba(242,193,78,.45);font-size:14px;line-height:1.4"><b>${esc(waiting.name)}</b> says this is them — waiting for a captain in the Club tab’s REQUESTS.</div>` : ''}
+  <div class="list">
+    ${actionRow('guestShare', shareIc, 'Send claim link', 'Text it to them. Works before or after they sign up.')}
+    ${actionRow('guestLinkOpen', linkIc, 'Link to an account', 'If they’ve already signed up', `<span style="transform:rotate(${open === 'link' ? 90 : 0}deg);transition:transform .2s">${ICON.chev}</span>`)}
+    ${linkBox}
+    ${cap ? actionRow('guestRenameOpen', penIc, 'Rename guest', '', '<span class="cond tag gold">CAPTAINS</span>') + renameBox : ''}
+  </div>`;
+}
+
+// ── Leave club ──
+function leaveSheet() {
+  const d = clubData() || { roster: [] }, c = clubOf(S.scope) || { name: 'this club' };
+  const people = (d.roster || []).filter(m => !m.guest), me = people.find(m => m.pid === S.user.uid);
+  const last = people.length <= 1, lastCap = me && me.captain && !people.some(m => m.pid !== S.user.uid && m.captain);
+  const msg = last ? `You’re the last member, so leaving <b>deletes ${esc(c.name)}</b> — its name frees up for anyone. Your games stay in All my games.`
+    : lastCap ? `You’re the only captain. Name another captain in Club settings first, then you can leave.`
+      : `Your games stay in ${esc(c.name)}’s stats. ${c.public ? 'You can join again any time.' : 'To come back you’d ask to join again.'}`;
+  return `<h2 class="cond" style="margin:0;font-size:28px;font-weight:800">LEAVE ${esc(c.name.toUpperCase())}?</h2>
+  <span style="font-size:15px;line-height:1.5;color:var(--text2)">${msg}</span>
+  ${lastCap && !last ? `<button class="big-btn cond press" ${act('clubSettings')}>CLUB SETTINGS</button>`
+    : `<button class="big-btn cond press" style="background:#E0502F" ${act('leaveClub')} ${S.busy ? 'disabled' : ''}>${last ? 'LEAVE AND DELETE' : 'LEAVE CLUB'}</button>`}
+  <button class="press cond mid-btn" ${act('closeSheet')}>STAY</button>`;
+}
+
+// ── Club settings (captains) ──
+SCREENS.clubSettings = () => {
+  const cs = S.cs, d = clubData() || { roster: [] };
+  if (!cs) return SCREENS.club();
+  const people = (d.roster || []).filter(m => !m.guest);
+  const caps = people.filter(m => cs.caps[m.pid]), others = people.filter(m => !cs.caps[m.pid]);
+  const onlyOne = caps.length <= 1;
+  const capRow = m => `<div class="row" style="min-height:54px">${initialDot(m.name, m.pid === S.user.uid ? 'var(--accent)' : 'var(--card3)')}
+    <span style="flex-grow:1;font-size:17px;font-weight:600">${esc(m.name)}</span>
+    <button class="press cond small-btn" style="color:var(--orange);${onlyOne ? 'opacity:.35' : ''}" ${onlyOne ? `${act('toast', 'A club needs at least one captain')}` : act('csCap', m.pid + '|0')}>${m.pid === S.user.uid ? 'STEP DOWN' : 'REMOVE'}</button></div>`;
+  return `<div class="page">
+  <div class="topbar">${backBtn()}<h1 class="cond h1" style="font-size:28px;white-space:nowrap">CLUB SETTINGS</h1><span class="cond tag gold">CAPTAINS</span></div>
+  <span class="cond label">CLUB NAME</span>
+  <label class="field"><input data-model="cs.name" value="${attr(cs.name)}" maxlength="30"></label>
+  ${cs.err ? `<span style="color:var(--orange);font-size:14px;font-weight:600;padding:0 4px">${esc(cs.err)}</span>` : ''}
+  ${info('csJoin', 'WHO CAN JOIN', cs.pub ? 'Anyone can find the club by name and join right away. Roster, games and stats are visible to anyone signed in.' : 'Anyone can find the club by name, but must ask to join. Roster, games and stats stay hidden until a captain accepts.')}
+  <div class="seg"><button class="${cs.pub ? 'on' : ''}" ${act('csPub', '1')}>PUBLIC</button><button class="${cs.pub ? '' : 'on'}" ${act('csPub', '0')}>PRIVATE</button></div>
+  ${info('csCaps', 'CAPTAINS', 'Captains approve requests and claims, rename guests, remove members, delete club games, and change these settings. At least one is required.')}
+  <div class="list">${caps.map(capRow).join('')}
+    <button class="row press" ${act('csAddOpen')} style="min-height:54px;color:var(--link)">${ICON.plus}<span class="cond" style="flex-grow:1;font-size:18px;font-weight:800;letter-spacing:.6px">ADD A CAPTAIN</span><span style="transform:rotate(${cs.addOpen ? 90 : 0}deg);transition:transform .2s">${ICON.chev}</span></button>
+    ${cs.addOpen ? (others.length ? `<span class="courier meta" style="display:block;padding:4px 0 8px">Roster members who aren’t captains</span>${others.map(m => `<div class="row" style="min-height:50px;border-top:0">${initialDot(m.name)}<span style="flex-grow:1;font-size:16px;font-weight:600">${esc(m.name)}</span><button class="press cond small-btn" style="color:var(--gold)" ${act('csCap', m.pid + '|1')}>MAKE CAPTAIN</button></div>`).join('')}`
+      : `<span class="courier meta" style="display:block;padding:4px 0 12px">Everyone on the roster is already a captain.</span>`) : ''}
+  </div>
+  <button class="big-btn cond press" style="margin-top:8px" ${act('csSave')} ${S.busy ? 'disabled' : ''}>${S.busy ? 'SAVING…' : 'SAVE'}</button>
+</div>`;
+};
+
+// ── Claim your games (Home card) ──
+async function loadClaims() {
+  if (!FCab || !S.user) return;
+  try {
+    const [offers, claims] = await Promise.all([withTimeout(FCab.myOffers(), 8000), withTimeout(FCab.myClaims(), 8000)]);
+    const link = Store.json('gb_linkclaim', null);            // opened a claim link on this phone
+    if (link && !offers.some(o => o.guest === link.guest) && !claims.some(c => c.guest === link.guest)) {
+      const [prof, info] = await Promise.all([FCab.profiles([link.guest]), withTimeout(FCab.clubInfo ? FCab.clubInfo(link.code) : Promise.resolve(null), 8000).catch(() => null)]);
+      const p = prof[link.guest];
+      if (p && p.account === false && !p.claimedBy) offers.unshift({ guest: link.guest, code: link.code, guestName: p.name, club: (info && info.name) || 'a club', byName: null, link: true });
+      else Store.removeItem('gb_linkclaim');
+    }
+    S.claimOffers = offers; S.claimWaiting = claims;
+    const o = offers[0];
+    if (o && (!S.claimStats || S.claimStats.guest !== o.guest)) {
+      S.claimStats = { guest: o.guest, row: null };
+      FCab.historyOf([o.guest]).then(h => { const r = Statistician.standings(h).find(x => x.id === o.guest);
+        const recent = h.slice().sort((a, b) => (a.date < b.date ? 1 : -1)).slice(0, 2).map(g => { const i = g.players.findIndex(p => p.id === o.guest), sc = Statistician.result(g).scores;
+          return `${niceDate(g.date).replace(/, \d{4}$/, '')} vs ${g.players.filter((_, k) => k !== i).map(p => p.name).join(', ')} ${sc[i]}–${Math.max(...sc.filter((_, k) => k !== i))}`; });
+        S.claimStats = { guest: o.guest, row: r || { games: 0, w: 0, l: 0, t: 0, accuracy: null }, recent }; render(); }).catch(() => {});
+    }
+  } catch (e) { /* offline: try next time */ }
+  render();
+}
+function claimCard() {
+  const o = (S.claimOffers || [])[0];
+  if (o) {
+    const st = S.claimStats && S.claimStats.guest === o.guest ? S.claimStats : null, r = st && st.row;
+    const tile = (big, label) => `<div style="background:var(--card2);border-radius:14px;padding:8px 12px;display:flex;flex-direction:column"><span class="shoulders num" style="font-size:26px;font-weight:900;line-height:1.1">${big}</span><span class="cond" style="font-size:13px;font-weight:800;letter-spacing:.8px;color:var(--text3)">${label}</span></div>`;
+    return `<div class="card fade" style="padding:14px 16px;display:flex;flex-direction:column;gap:10px;border:1.5px solid rgba(242,193,78,.6)">
+      <span class="cond" style="font-size:16px;font-weight:800;letter-spacing:.8px;color:var(--gold)">CLAIM YOUR GAMES</span>
+      <span style="font-size:17px;font-weight:600;line-height:1.35">${o.byName ? esc(o.byName) + ' linked' : 'You opened a claim link for'} the guest “${esc(o.guestName)}” in ${esc(o.club)}${o.byName ? ' to your account' : ''}.</span>
+      ${r ? `<div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px">${tile(r.games, r.games === 1 ? 'GAME' : 'GAMES')}${tile(`${r.w}–${r.l}${r.t ? '–' + r.t : ''}`, 'RECORD')}${tile(r.accuracy == null ? '—' : Math.round(r.accuracy * 100) + '%', 'ACCURACY')}</div>
+        ${st.recent && st.recent.length ? `<span class="courier meta">${esc(st.recent.join(' · '))}</span>` : ''}` : `<div style="display:flex;justify-content:center;padding:6px">${ICON.spinner}</div>`}
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px"><button class="press cond mid-btn" style="background:var(--card2);height:48px" ${act('claimNo', o.guest)}>NOT ME</button>
+        <button class="press cond mid-btn" style="background:var(--goldfill);color:#1A1406;height:48px" ${act('claimYes', o.guest)} ${S.busy ? 'disabled' : ''}>THAT’S ME</button></div>
+      ${info('claimWhy', '<span class="courier meta">What happens?</span>', 'A captain of the club approves it. Then those games count as yours — your stats, records and awards include them — and you join the club.', '')}</div>`;
+  }
+  const w = (S.claimWaiting || [])[0];
+  if (w) return `<div class="card" style="padding:12px 16px;display:flex;flex-direction:column;gap:4px;border:1.5px solid rgba(242,193,78,.35)">
+      <span class="cond" style="font-size:15px;font-weight:800;letter-spacing:.8px;color:var(--gold)">CLAIM SENT</span>
+      <span style="font-size:15px;line-height:1.4;color:var(--text2)">Waiting for a captain of ${esc((clubOf(w.code) || {}).name || 'the club')} to approve “${esc(w.name)}”.</span></div>`;
+  return '';
+}
+
+Object.assign(SHEETS, { member: memberSheet, removeMember: removeMemberSheet, guest: guestSheet, leave: leaveSheet });
+Object.assign(ACT, {
+  clubOpen: code => { ACT.pickScope(code); S.club = null; render(); },
+  invite: async () => {
+    const c = clubOf(S.scope); if (!c) return;
+    const url = baseUrl() + '?join=' + S.scope;
+    const text = `Join ${c.name} on Guess Ball`;
+    try { if (navigator.share) { await navigator.share({ title: text, text, url }); return; } } catch (e) { if (e.name === 'AbortError') return; }
+    try { await navigator.clipboard.writeText(text + ': ' + url); toast('Invite link copied — paste it in a text'); } catch (e) { toast(url); }
+  },
+  answerReq: async arg => {
+    const [kind, who, yes] = arg.split('|'); const code = S.scope;
+    try {
+      if (kind === 'join') await FCab.answerRequest(code, who, yes === '1'); else await FCab.answerClaim(code, who, yes === '1');
+      buzz(); toast(yes === '1' ? (kind === 'join' ? 'Approved — they’re in' : 'Claim approved — the games are theirs now') : 'Declined');
+      S.club.fresh = false; await loadClub(true); loadScopeGames(true);
+    } catch (e) { fail(e); }
+  },
+  memberH2H: pid => { S.sheet = null; S.h2hA = S.user.uid; S.h2hB = pid; S.statTab = 'H2H'; ACT.tab('stats'); },
+  memberGame: id => { S.sheet = null; ACT.openGame(id); },
+  removeMember: async pid => {
+    S.busy = true; render();
+    try { await FCab.removeMember(S.scope, pid); S.busy = false; S.sheet = null; toast('Removed from the club'); await loadClub(true); } catch (e) { fail(e); }
+  },
+  guestShare: async pid => {
+    const m = ((clubData() || {}).roster || []).find(x => x.pid === pid) || { name: 'your' };
+    const url = baseUrl() + '?claim=' + S.scope + '.' + pid;
+    const text = `Your Guess Ball games as “${m.name}” are waiting — open this to claim them`;
+    try { if (navigator.share) { await navigator.share({ title: 'Claim your Guess Ball games', text, url }); return; } } catch (e) { if (e.name === 'AbortError') return; }
+    try { await navigator.clipboard.writeText(text + ': ' + url); toast('Claim link copied — paste it in a text'); } catch (e) { toast(url); }
+  },
+  guestLinkOpen: async () => {
+    S.guestOpen = S.guestOpen === 'link' ? null : 'link'; S.gq = ''; render();
+    if (S.guestOpen === 'link' && !S.accounts) { try { S.accounts = await withTimeout(FCab.accounts(''), 10000); } catch (e) { S.accounts = []; toast('Couldn’t load people — check your connection', true); } render(); }
+  },
+  offerGuest: async to => {
+    const pid = S.sheet.arg;
+    try { await FCab.offerGuest(S.scope, pid, to); buzz(); const a = (S.accounts || []).find(x => x.pid === to); S.guestOpen = null; toast(`Sent — ${a ? a.name : 'they'}’ll see it on their Home`); } catch (e) { fail(e); }
+  },
+  guestRenameOpen: pid => { S.guestOpen = S.guestOpen === 'rename' ? null : 'rename'; const m = ((clubData() || {}).roster || []).find(x => x.pid === pid); S.draft = { gname: m ? m.name : '' }; render(); },
+  renameGuest: async pid => {
+    const name = (S.draft.gname || '').trim(); if (!name) return;
+    try { await FCab.renameGuest(S.scope, pid, name); S.guestOpen = null; toast('Renamed — past games show the new name'); await loadClub(true); loadScopeGames(true); } catch (e) { fail(e); }
+  },
+  leaveClub: async () => {
+    const c = clubOf(S.scope); S.busy = true; render();
+    try {
+      await FCab.leaveClub(S.scope); S.busy = false; S.sheet = null; S.club = null;
+      await loadClubs(); ACT.pickScope((S.clubs.find(x => x.status === 'member') || {}).code || 'mine'); go('club', {}, false);
+      toast(`You left ${c ? c.name : 'the club'}`);
+    } catch (e) { S.busy = false; if (e.code === 'LAST_CAPTAIN') { S.sheet = { name: 'leave' }; render(); toast('Name another captain first', true); } else fail(e); }
+  },
+  clubSettings: () => {
+    const d = clubData() || { roster: [] }, c = clubOf(S.scope) || {};
+    S.sheet = null;
+    S.cs = { name: c.name || '', pub: !!c.public, caps: Object.fromEntries((d.roster || []).filter(m => !m.guest).map(m => [m.pid, !!m.captain])), addOpen: false, err: '' };
+    go('clubSettings');
+  },
+  csPub: v => { S.cs.pub = v === '1'; render(); },
+  csAddOpen: () => { S.cs.addOpen = !S.cs.addOpen; render(); },
+  csCap: arg => { const [pid, on] = arg.split('|'); S.cs.caps[pid] = on === '1'; if (on === '1') S.cs.addOpen = false; buzz(); render(); },
+  csSave: async () => {
+    const cs = S.cs, code = S.scope, c = clubOf(code) || {}, d = clubData() || { roster: [] };
+    const name = cs.name.trim();
+    if (!name) { cs.err = 'The club needs a name'; render(); return; }
+    if (!Object.values(cs.caps).some(Boolean)) { cs.err = 'A club needs at least one captain'; render(); return; }
+    S.busy = true; cs.err = ''; render();
+    try {
+      const ch = {}; if (name !== c.name) ch.name = name; if (cs.pub !== !!c.public) ch.public = cs.pub;
+      if (Object.keys(ch).length) await FCab.updateClub(code, ch);
+      const was = Object.fromEntries((d.roster || []).map(m => [m.pid, !!m.captain]));
+      const adds = Object.keys(cs.caps).filter(p => cs.caps[p] && !was[p]), drops = Object.keys(cs.caps).filter(p => !cs.caps[p] && was[p]);
+      for (const p of adds) await FCab.setCaptain(code, p, true);
+      for (const p of drops.filter(p => p !== S.user.uid)) await FCab.setCaptain(code, p, false);
+      if (drops.includes(S.user.uid)) await FCab.setCaptain(code, S.user.uid, false);   // step down last, so you can still save the rest
+      S.busy = false; back(); toast('Club settings saved');
+      await loadClubs(); await loadClub(true);
+    } catch (e) { S.busy = false; cs.err = e.message; render(); }
+  },
+  claimYes: async guest => {
+    const o = (S.claimOffers || []).find(x => x.guest === guest); if (!o) return;
+    S.busy = true; render();
+    try { await FCab.claimGuest(o.code, guest); Store.removeItem('gb_linkclaim'); S.busy = false; buzz(); toast('Sent — a captain will approve it'); await loadClaims(); }
+    catch (e) { fail(e); }
+  },
+  claimNo: async guest => {
+    const o = (S.claimOffers || []).find(x => x.guest === guest);
+    S.claimOffers = (S.claimOffers || []).filter(x => x.guest !== guest); render();
+    if (o && o.link) Store.removeItem('gb_linkclaim'); else { try { await FCab.dismissOffer(guest); } catch (e) { /* ok */ } }
+  },
+});
+
 // ════════════ Start-up ════════════
 // Show the loading line immediately. If someone was signed in on this phone, open straight to
 // their saved Home — no waiting on Firebase or the internet.
@@ -3945,6 +4359,13 @@ if (window.visualViewport) {
   visualViewport.addEventListener('resize', kb); visualViewport.addEventListener('scroll', kb); kb();
 }
 wire();
+// Invite and claim links: ?join=CODE or ?claim=CODE.GUEST — remember them until sign-in, then tidy the address bar
+(() => {
+  const q = new URLSearchParams(location.search), join = q.get('join'), claim = q.get('claim');
+  if (join) Store.setItem('gb_join', join.slice(0, 12));
+  if (claim && claim.includes('.')) { const [code, guest] = claim.split('.'); Store.put('gb_linkclaim', { code: code.slice(0, 12), guest: guest.slice(0, 40) }); }
+  if (join || claim) history.replaceState(null, '', location.pathname);
+})();
 (() => {
   const u = Store.json('gb_last_user', null), acct = u && Store.json('gb_acct_' + u.uid, null);
   if (u && acct) {
