@@ -59,9 +59,9 @@ a { color: var(--link); text-decoration: none; -webkit-tap-highlight-color: tran
 .page { position: absolute; inset: 0; overflow-y: auto; -webkit-overflow-scrolling: touch;
         padding: calc(var(--safe-top) + 14px) 20px calc(var(--safe-bot) + 24px); display: flex; flex-direction: column; gap: 14px; }
 .page > * { flex-shrink: 0; }
-.page.tabbed { padding-bottom: calc(var(--safe-bot) + 130px);
-  -webkit-mask-image: linear-gradient(180deg, #000 0, #000 calc(100% - var(--safe-bot) - 110px), transparent calc(100% - var(--safe-bot) - 82px));
-          mask-image: linear-gradient(180deg, #000 0, #000 calc(100% - var(--safe-bot) - 110px), transparent calc(100% - var(--safe-bot) - 82px)); }
+.page.tabbed { padding-bottom: calc(var(--safe-bot) * .5 + 120px);
+  -webkit-mask-image: linear-gradient(180deg, #000 0, #000 calc(100% - var(--safe-bot) * .5 - 104px), transparent calc(100% - var(--safe-bot) * .5 - 76px));
+          mask-image: linear-gradient(180deg, #000 0, #000 calc(100% - var(--safe-bot) * .5 - 104px), transparent calc(100% - var(--safe-bot) * .5 - 76px)); }
 .fixedpage { position: absolute; inset: 0; padding: calc(var(--safe-top) + 14px) 20px calc(var(--safe-bot) + 20px); display: flex; flex-direction: column; gap: 14px; overflow-y: auto; }
 .fixedpage > * { flex-shrink: 0; }
 .grow { flex-grow: 1 !important; flex-shrink: 1 !important; }
@@ -104,7 +104,7 @@ a { color: var(--link); text-decoration: none; -webkit-tap-highlight-color: tran
 .bubble::before { content: ""; position: absolute; top: -6px; left: 14px; border: 6px solid transparent; border-top: 0; border-bottom-color: #2C2C31; }
 
 /* ── Tab bar (floating glass capsule) ── */
-.tabbar { z-index: 10; position: absolute; left: 16px; right: 16px; bottom: calc(var(--safe-bot) + 12px); height: 64px; padding: 6px; display: flex; gap: 4px; border-radius: 32px;
+.tabbar { z-index: 10; position: absolute; left: 16px; right: 16px; bottom: calc(var(--safe-bot) * .5 + 10px); height: 64px; padding: 6px; display: flex; gap: 4px; border-radius: 32px;
   background: var(--nav); -webkit-backdrop-filter: blur(24px) saturate(160%); backdrop-filter: blur(24px) saturate(160%);
   border: 1px solid rgba(255,255,255,.10); box-shadow: 0 10px 30px rgba(0,0,0,.45); }
 .tabbar button { flex: 1; height: 52px; border-radius: 26px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
@@ -118,7 +118,7 @@ a { color: var(--link); text-decoration: none; -webkit-tap-highlight-color: tran
 .sheet > * { flex-shrink: 0; }
 .grab { align-self: center; width: 38px; height: 5px; border-radius: 3px; background: var(--grab); }
 .sheet .list { background: var(--sheetcard); }
-.toast { position: absolute; left: 20px; right: 20px; bottom: calc(var(--safe-bot) + 96px); z-index: 30; background: #2C2C31; color: var(--text); border-radius: 16px;
+.toast { position: absolute; left: 20px; right: 20px; bottom: calc(var(--safe-bot) * .5 + 86px); z-index: 30; background: #2C2C31; color: var(--text); border-radius: 16px;
          padding: 12px 16px; font-size: 15px; font-weight: 600; box-shadow: 0 10px 30px rgba(0,0,0,.5); }
 .toast.bad { color: var(--orange); }
 .spinner { width: 22px; height: 22px; }
@@ -128,6 +128,10 @@ body.bigtext .page { zoom: 1.08; }
 </head>
 <body>
 <div id="app"></div>
+<script>
+// Register the offline helper first thing, so the app can open with no signal
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+</script>
 <script>
 // ════════════════════════════════════════════════════════════════
 //  GUESS BALL — one file, five sections:
@@ -1192,8 +1196,13 @@ const FilingCabinet = (() => {
       let code = newCode();
       while (await get('clubs/' + code + '/info')) code = newCode();
       const me = await get('profiles/' + uid);
-      await queue({ ['clubs/' + code + '/info']: { name, public: !!isPublic, createdAt: now(), createdBy: uid },
-        ['clubNames/' + key]: code, ['clubList/' + code]: { name, public: !!isPublic } });
+      try {
+        await queue({ ['clubs/' + code + '/info']: { name, public: !!isPublic, createdAt: now(), createdBy: uid },
+          ['clubNames/' + key]: code, ['clubList/' + code]: { name, public: !!isPublic } });
+      } catch (e) {                                  // Firebase is the final judge of unique names
+        if (e.code === 'PERMISSION_DENIED') throw new Error(`There's already a club called "${name}"`);
+        throw e;
+      }
       await queue({ ['clubs/' + code + '/members/' + uid]: { name: me.name, captain: true, guest: false, joinedAt: now() },
         ['users/' + uid + '/clubs/' + code]: true });
       return code;
@@ -1518,7 +1527,112 @@ const FilingCabinet = (() => {
 //  that returns HTML. Buttons carry data-act="…" and the matching
 //  function in ACT runs when tapped, then the screen redraws.
 // ════════════════════════════════════════════════════════════════
-const VERSION = '2.0 · test build 1';
+const VERSION = '2.0 · test build 1.1';
+const RULES_JSON = {
+  "rules": {
+    "v2": {
+      ".read": "root.child('v2').child('admins').child(auth.uid).val() === true",
+      "admins": {
+        ".read": "auth != null",
+        ".write": false
+      },
+      "users": {
+        "$uid": {
+          ".read": "auth.uid === $uid",
+          ".write": "auth.uid === $uid"
+        }
+      },
+      "profiles": {
+        ".read": "auth != null",
+        "$pid": {
+          ".write": "(auth.uid === $pid) || ((!data.exists()) && (newData.child('createdBy').val() === auth.uid) && (newData.child('account').val() === false)) || ((data.child('account').val() === false) && (((data.child('club').exists()) && (root.child('v2').child('clubs').child(data.child('club').val()).child('members').child(auth.uid).child('captain').val() === true)) || ((!data.child('club').exists()) && (data.child('createdBy').val() === auth.uid)))) || (root.child('v2').child('admins').child(auth.uid).val() === true)",
+          "name": {
+            ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 16"
+          }
+        }
+      },
+      "clubNames": {
+        ".read": "auth != null",
+        "$key": {
+          ".write": "((!data.exists()) && (newData.exists())) || ((data.exists()) && (!newData.exists()) && ((root.child('v2').child('clubs').child(data.val()).child('members').child(auth.uid).child('captain').val() === true) || (root.child('v2').child('admins').child(auth.uid).val() === true)))"
+        }
+      },
+      "clubList": {
+        ".read": "auth != null",
+        "$code": {
+          ".write": "(root.child('v2').child('clubs').child($code).child('members').child(auth.uid).child('captain').val() === true) || ((!data.exists()) && (newData.parent().parent().child('clubs').child($code).child('info/createdBy').val() === auth.uid)) || (root.child('v2').child('admins').child(auth.uid).val() === true)"
+        }
+      },
+      "clubs": {
+        "$code": {
+          ".write": "((!newData.exists()) && (root.child('v2').child('clubs').child($code).child('members').child(auth.uid).child('captain').val() === true)) || ((!newData.exists()) && (root.child('v2').child('admins').child(auth.uid).val() === true))",
+          "info": {
+            ".read": "auth != null",
+            ".write": "((!data.exists()) && (newData.child('createdBy').val() === auth.uid)) || (root.child('v2').child('clubs').child($code).child('members').child(auth.uid).child('captain').val() === true) || (root.child('v2').child('admins').child(auth.uid).val() === true)",
+            "name": {
+              ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 30"
+            },
+            "public": {
+              ".validate": "newData.isBoolean()"
+            }
+          },
+          "members": {
+            ".read": "(root.child('v2').child('clubs').child($code).child('members').child(auth.uid).exists()) || (root.child('v2').child('clubs').child($code).child('info/public').val() === true) || (root.child('v2').child('admins').child(auth.uid).val() === true)",
+            "$pid": {
+              ".write": "(root.child('v2').child('clubs').child($code).child('members').child(auth.uid).child('captain').val() === true) || (root.child('v2').child('admins').child(auth.uid).val() === true) || (($pid === auth.uid) && (!data.exists()) && (root.child('v2').child('clubs').child($code).child('info/createdBy').val() === auth.uid) && (!root.child('v2').child('clubs').child($code).child('members').exists())) || (($pid === auth.uid) && (!data.exists()) && (root.child('v2').child('clubs').child($code).child('info/public').val() === true) && (newData.child('captain').val() !== true)) || ((root.child('v2').child('clubs').child($code).child('members').child(auth.uid).exists()) && (!data.exists()) && (newData.child('guest').val() === true) && (newData.child('captain').val() !== true)) || (($pid === auth.uid) && (!newData.exists()))",
+              "name": {
+                ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 16"
+              }
+            }
+          },
+          "requests": {
+            ".read": "(root.child('v2').child('clubs').child($code).child('members').child(auth.uid).child('captain').val() === true) || (root.child('v2').child('admins').child(auth.uid).val() === true)",
+            "$uid": {
+              ".read": "auth.uid === $uid",
+              ".write": "((auth.uid === $uid) && ((!newData.exists()) || (!root.child('v2').child('clubs').child($code).child('members').child(auth.uid).exists()))) || (root.child('v2').child('clubs').child($code).child('members').child(auth.uid).child('captain').val() === true) || (root.child('v2').child('admins').child(auth.uid).val() === true)"
+            }
+          },
+          "claims": {
+            ".read": "(root.child('v2').child('clubs').child($code).child('members').child(auth.uid).child('captain').val() === true) || (root.child('v2').child('admins').child(auth.uid).val() === true)",
+            "$guest": {
+              ".write": "((newData.child('uid').val() === auth.uid) && (!data.exists())) || ((data.child('uid').val() === auth.uid) && (!newData.exists())) || (root.child('v2').child('clubs').child($code).child('members').child(auth.uid).child('captain').val() === true) || (root.child('v2').child('admins').child(auth.uid).val() === true)"
+            }
+          },
+          "games": {
+            ".read": "(root.child('v2').child('clubs').child($code).child('members').child(auth.uid).exists()) || (root.child('v2').child('clubs').child($code).child('info/public').val() === true) || (root.child('v2').child('admins').child(auth.uid).val() === true)",
+            "$gid": {
+              ".write": "(root.child('v2').child('clubs').child($code).child('members').child(auth.uid).exists()) || (!root.child('v2').child('games').child($gid).exists()) || (root.child('v2').child('admins').child(auth.uid).val() === true)"
+            }
+          }
+        }
+      },
+      "games": {
+        "$gid": {
+          ".read": "auth != null",
+          ".write": "((!data.exists()) && (newData.child('host').val() === auth.uid)) || ((data.child('host').val() === auth.uid) && (newData.exists()) && ((data.child('ended').val() !== true) || (data.child('era').val() === 'hand')) && (newData.child('host').val() === auth.uid)) || ((data.child('host').val() === auth.uid) && (!newData.exists()) && ((data.child('era').val() === 'hand') || (data.child('ended').val() !== true))) || ((!newData.exists()) && (((data.child('clubList/0').exists()) && (root.child('v2').child('clubs').child(data.child('clubList/0').val()).child('members').child(auth.uid).child('captain').val() === true)) || ((data.child('clubList/1').exists()) && (root.child('v2').child('clubs').child(data.child('clubList/1').val()).child('members').child(auth.uid).child('captain').val() === true)) || ((data.child('clubList/2').exists()) && (root.child('v2').child('clubs').child(data.child('clubList/2').val()).child('members').child(auth.uid).child('captain').val() === true)))) || (root.child('v2').child('admins').child(auth.uid).val() === true)"
+        }
+      },
+      "playerGames": {
+        ".read": "auth != null",
+        "$pid": {
+          "$gid": {
+            ".write": "(root.child('v2').child('games').child($gid).child('host').val() === auth.uid) || (!root.child('v2').child('games').child($gid).exists()) || (root.child('v2').child('admins').child(auth.uid).val() === true)"
+          }
+        }
+      },
+      "live": {
+        ".read": "auth != null",
+        "$pid": {
+          ".write": "(newData.child('host').val() === auth.uid) || (data.child('host').val() === auth.uid) || (root.child('v2').child('admins').child(auth.uid).val() === true)"
+        }
+      }
+    },
+    "$old": {
+      ".read": "$old !== 'v2'",
+      ".write": "$old !== 'v2'"
+    }
+  }
+};
 
 const TEAMS = {
   'Arizona Diamondbacks': 'Chase Field', 'Athletics': 'Sutter Health Park', 'Atlanta Braves': 'Truist Park',
@@ -1924,6 +2038,7 @@ SCREENS.admin = () => `<div class="page">
   <div class="topbar">${backBtn()}<h1 class="cond h1">ADMIN TOOLS</h1></div>
   <div class="list">
     <button class="row press" ${act('exportAll')}><div style="flex-grow:1;display:flex;flex-direction:column;gap:2px;padding:8px 0"><span style="font-size:16px;font-weight:600">Export all data</span><span class="courier meta">Downloads everything in Firebase as one file</span></div>${ICON.chev}</button>
+    <button class="row press" ${act('copyRules')}><div style="flex-grow:1;display:flex;flex-direction:column;gap:2px;padding:8px 0"><span style="font-size:16px;font-weight:600">Copy security rules</span><span class="courier meta">Paste into Firebase → Realtime Database → Rules</span></div>${ICON.chev}</button>
     <button class="row press" ${act('toast', 'Deleting games arrives with History in test build 3.')}><div style="flex-grow:1;display:flex;flex-direction:column;gap:2px;padding:8px 0"><span style="font-size:16px;font-weight:600">Delete a game</span><span class="courier meta">Any club · stats and awards recalculate</span></div>${ICON.chev}</button>
   </div></div>`;
 
@@ -1971,9 +2086,11 @@ const buzz = () => { if (S.settings.haptic && navigator.vibrate) navigator.vibra
 const fail = e => { console.error(e); S.busy = false; toast(e && e.message ? e.message : 'Something went wrong — try again', true); };
 
 // ════════════ Data ════════════
+const withTimeout = (p, ms = 9000) => Promise.race([p, new Promise((_, no) => setTimeout(() => no(new Error('offline')), ms))]);
 async function loadClubs() {
-  S.clubs = await FCab.myClubs();
-  for (const c of S.clubs) if (c.captain) { try { const r = await FCab.requests(c.code); c.requests = r.joins.length + r.claims.length; } catch (e) { /* ignore */ } }
+  try { S.clubs = await withTimeout(FCab.myClubs()); Store.put('gb_clubs_' + S.user.uid, S.clubs); }
+  catch (e) { S.clubs = Store.json('gb_clubs_' + S.user.uid, S.clubs || []); }
+  if (S.online) for (const c of S.clubs) if (c.captain) { try { const r = await withTimeout(FCab.requests(c.code), 5000); c.requests = r.joins.length + r.claims.length; } catch (e) { /* ignore */ } }
   const saved = Store.getItem('gb_scope_' + S.user.uid);
   const ok = k => k === 'mine' || S.clubs.some(c => c.code === k && c.status === 'member');
   S.scope = ok(saved) ? saved : ((S.clubs.find(c => c.status === 'member') || {}).code || 'mine');
@@ -1984,7 +2101,7 @@ async function loadHome() {
   S.home = cached ? { ...cached, loading: true } : { loading: true, rows: [], recent: [], games: 0 };
   render();
   try {
-    const games = await FCab.loadGames(S.scope === 'mine' ? { mine: true } : { club: S.scope });
+    const games = await withTimeout(FCab.loadGames(S.scope === 'mine' ? { mine: true } : { club: S.scope }), 15000);
     const done = games.filter(g => g.ended !== false);
     const hist = Statistician.history(done);
     const recent = hist.length ? hist[0].games.concat(hist[1] ? hist[1].games : []).slice(0, 2) : [];
@@ -2002,16 +2119,21 @@ async function afterSignIn(user) {
   S.user = user;
   FCab.setUser(user.uid);
   let acct = Store.json('gb_acct_' + user.uid, null);
-  try { acct = await FCab.myAccount(); if (acct) Store.put('gb_acct_' + user.uid, acct); }
-  catch (e) { /* offline: use the copy on the phone */ }
+  if (acct) {                                   // known phone: open straight to Home from the saved copy
+    S.account = acct; S.clubs = Store.json('gb_clubs_' + user.uid, []);
+    S.scope = Store.getItem('gb_scope_' + user.uid) || 'mine';
+    S.stack = []; S.screen = 'home'; S.home = Store.json('gb_home_' + user.uid + '_' + S.scope, S.home); render();
+  }
+  try { const fresh = await withTimeout(FCab.myAccount()); if (fresh) { acct = fresh; Store.put('gb_acct_' + user.uid, acct); } }
+  catch (e) { /* offline: keep the copy on the phone */ }
   if (!acct) {
     S.setup = { name: (user.displayName || '').split(' ')[0].slice(0, 16), team: null, played: null };
     S.stack = []; S.screen = 'setupName'; render(); return;
   }
   S.account = acct;
-  FCab.isAdmin().then(a => { S.admin = a; }).catch(() => {});
-  S.stack = []; S.screen = 'home'; render();
-  try { await loadClubs(); } catch (e) { S.scope = S.scope || 'mine'; }
+  FCab.isAdmin().then(a => { S.admin = a; Store.setItem('gb_admin', a ? '1' : ''); }).catch(() => { S.admin = Store.getItem('gb_admin') === '1'; });
+  if (S.screen !== 'home') { S.stack = []; S.screen = 'home'; render(); }
+  await loadClubs(); render();
   loadHome();
 }
 
@@ -2029,7 +2151,10 @@ const ACT = {
     try { await FB.signIn(); } catch (e) { if (e.code !== 'auth/popup-closed-by-user' && e.code !== 'auth/cancelled-popup-request') toast('Sign-in didn’t finish — try again', true); }
     S.busy = false; render();
   },
-  signOut: async () => { await FB.signOut(); },
+  signOut: async () => {
+    try { await FB.signOut(); } catch (e) { return toast('Sign out didn’t work: ' + (e.code || e.message), true); }
+    S.user = null; S.account = null; S.admin = false; S.clubs = []; S.scope = null; S.stack = []; S.sheet = null; S.screen = 'signin'; render();
+  },
 
   // setup
   setupNext: () => {
@@ -2068,7 +2193,7 @@ const ACT = {
   // home + clubs
   newGame: () => toast('The live game arrives in test build 2.'),
   openSwitcher: async () => { S.sheet = { name: 'switcher' }; render(); loadClubs().then(render).catch(() => {}); },
-  pickScope: k => { S.scope = k; Store.setItem('gb_scope_' + S.user.uid, k); S.sheet = null; buzz(); if (S.screen !== 'home') go('home', {}, false); loadHome(); },
+  pickScope: k => { S.scope = k; Store.setItem('gb_scope_' + S.user.uid, k); S.sheet = null; buzz(); render(); loadHome(); },
   clubCta: async code => {
     const c = S.found.find(x => x.code === code);
     const mine = S.clubs.find(x => x.code === code);
@@ -2111,6 +2236,10 @@ const ACT = {
     S.busy = true; render();
     try { await FCab.unlinkAccount(); Store.removeItem('gb_acct_' + S.user.uid); S.busy = false; await FB.signOut(); }
     catch (e) { fail(e); }
+  },
+  copyRules: async () => {
+    try { await navigator.clipboard.writeText(JSON.stringify(RULES_JSON, null, 2)); toast('Rules copied — paste them in Firebase and Publish'); }
+    catch (e) { toast('Couldn’t copy: ' + e.message, true); }
   },
   exportAll: async () => {
     try {
@@ -2188,7 +2317,6 @@ try {
   };
   App.start(window.FB);
 } catch (e) { App.failed(e); }
-if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
 </script>
 </body>
 </html>
