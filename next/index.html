@@ -1226,17 +1226,23 @@ const FilingCabinet = (() => {
     async function myClubs() {
       need();
       const listed = Object.keys((await get('users/' + uid + '/clubs')) || {});
-      const out = [];
-      for (const code of listed) {
+      const claims = Object.entries((await get('users/' + uid + '/claims')) || {});
+      const found = await Promise.all(listed.map(async code => {
         const info = await get('clubs/' + code + '/info');
-        if (!info) { await queue({ ['users/' + uid + '/clubs/' + code]: null }); continue; }
+        if (!info) return { code, drop: true };
         let me = null; try { me = await get('clubs/' + code + '/members/' + uid); } catch (e) { /* private, not a member */ }
-        const req = await get('clubs/' + code + '/requests/' + uid);
-        if (me) out.push({ code, ...info, status: 'member', captain: !!me.captain });
-        else if (req) out.push({ code, ...info, status: 'pending' });
-        else await queue({ ['users/' + uid + '/clubs/' + code]: null });
-      }
-      return out;
+        if (me) return { code, ...info, status: 'member', captain: !!me.captain };
+        if (await get('clubs/' + code + '/requests/' + uid)) return { code, ...info, status: 'pending' };
+        for (const [guest, c] of claims) {                 // "That's me" sent, waiting for a captain
+          if (c !== code) continue;
+          let cl = null; try { cl = await get('clubs/' + code + '/claims/' + guest); } catch (e) { /* gone */ }
+          if (cl && cl.uid === uid) return { code, ...info, status: 'pending', claim: true };
+        }
+        return { code, drop: true };
+      }));
+      const drop = {}; found.filter(c => c.drop).forEach(c => { drop['users/' + uid + '/clubs/' + c.code] = null; });
+      if (Object.keys(drop).length) await queue(drop);
+      return found.filter(c => !c.drop);
     }
     const clubInfo = code => get('clubs/' + code + '/info');
     async function roster(code) {
@@ -1330,7 +1336,8 @@ const FilingCabinet = (() => {
       need();
       const me = await get('profiles/' + uid);
       await queue({ ['clubs/' + code + '/claims/' + guestPid]: { uid, name: me.name, at: now() },
-        ['users/' + uid + '/claims/' + guestPid]: code, ['offers/' + uid + '/' + guestPid]: null });
+        ['users/' + uid + '/claims/' + guestPid]: code, ['users/' + uid + '/clubs/' + code]: true,   // so the club shows up (pending, then yours)
+        ['offers/' + uid + '/' + guestPid]: null });
     }
     // People with accounts (for "Link to an account"). Names only.
     async function accounts(text = '') {
@@ -1374,6 +1381,7 @@ const FilingCabinet = (() => {
         const guest = await get('clubs/' + code + '/members/' + guestPid);
         const already = await get('clubs/' + code + '/members/' + c.uid);
         if (!already) ch['clubs/' + code + '/members/' + c.uid] = { name: (guest && guest.name) || c.name, captain: false, guest: false, joinedAt: (guest && guest.joinedAt) || now() };
+        ch['clubs/' + code + '/requests/' + c.uid] = null;           // a join request they also sent is answered by this
       }
       await queue(ch);
     }
@@ -1578,7 +1586,7 @@ const FilingCabinet = (() => {
 //  that returns HTML. Buttons carry data-act="…" and the matching
 //  function in ACT runs when tapped, then the screen redraws.
 // ════════════════════════════════════════════════════════════════
-const VERSION = '2.0 · test build 5';
+const VERSION = '2.0 · test build 5.1';
 const RULES_JSON = {
   "rules": {
     "v2": {
@@ -1965,7 +1973,7 @@ const later = (tab, title, what) => () => `<div class="page tabbed">
 // ── Club switcher sheet ──
 function switcherSheet() {
   const rows = [...S.clubs.map(c => ({ key: c.code, name: c.name, priv: c.public ? 'PUBLIC' : 'PRIVATE', cap: c.captain, pending: c.status === 'pending',
-      sub: c.status === 'pending' ? 'Request sent · waiting for a captain' : 'Club', req: c.requests || 0 })),
+      sub: c.status === 'pending' ? (c.claim ? 'Claim sent · waiting for a captain' : 'Request sent · waiting for a captain') : 'Club', req: c.requests || 0 })),
     { key: 'mine', name: 'All my games', sub: 'Every game you play, any club' }];
   return `<h2 class="cond" style="margin:0;font-size:28px;font-weight:800;letter-spacing:.4px">SHOWING</h2>
   <div class="list">${rows.map(r => `<button class="row press" ${r.pending ? '' : act('pickScope', r.key)} style="min-height:62px;padding:8px 0;${r.pending ? 'opacity:.55' : ''}">
@@ -2249,7 +2257,17 @@ async function loadFound() {
   try { S.found = await FCab.findClubs(''); } catch (e) { toast('Couldn’t load clubs', true); }
   S.foundLoading = false; render();
 }
+// Everything that belongs to one account — cleared when a different account signs in (or signs out),
+// so nothing from the last person (club list, claim cards, stats) shows up for the next one.
+function resetUserState() {
+  if (typeof Popup !== 'undefined') Popup.clear();
+  Object.assign(S, { g: null, account: null, admin: false, clubs: [], scope: 'mine', sheet: null, info: null,
+    home: { loading: true, rows: [], recent: [], games: 0 }, data: null, aw: null, club: null, cs: null, final: null,
+    claimOffers: null, claimWaiting: null, claimStats: null, accounts: null, guestOpen: null, found: [], adminGames: null,
+    statSeason: null, h2hA: null, h2hB: null, setup: null });
+}
 async function afterSignIn(user) {
+  if (S.user && S.user.uid !== user.uid) resetUserState();
   Store.put('gb_last_user', { uid: user.uid, email: user.email, displayName: user.displayName });
   const sameAsCached = S.user && S.user.uid === user.uid && S.screen === 'home';
   S.user = user;
@@ -2335,7 +2353,7 @@ const ACT = {
       S.stack = [];
       if (played === 'no') { S.screen = 'tutorial'; S.params = { card: 0, after: 'home' }; render(); }
       else { S.screen = 'home'; render(); }
-      await loadClubs().catch(() => { S.scope = 'mine'; }); loadHome();
+      await loadClubs().catch(() => { S.scope = 'mine'; }); loadHome(); loadClaims();   // a guest may already be linked to this new account
     } catch (e) { fail(e); }
   },
 
@@ -2474,7 +2492,7 @@ const App = {
     FCab.onStatus(s => { S.online = s.online; S.pending = s.pending; });
     fb.onUser(async user => {
       if (!user) Store.removeItem('gb_last_user');
-            if (!user) { S.g = null; S.user = null; S.account = null; S.admin = false; S.stack = []; S.sheet = null; S.screen = 'signin'; render(); return; }
+            if (!user) { resetUserState(); S.user = null; S.stack = []; S.screen = 'signin'; render(); return; }
       afterSignIn(user).catch(fail);
     });
   },
