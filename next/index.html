@@ -103,6 +103,9 @@ a { color: var(--link); text-decoration: none; -webkit-tap-highlight-color: tran
           mask-image: linear-gradient(180deg, #000 0, #000 calc(100% - var(--bar) - 94px - var(--dock, 0px)), transparent calc(100% - var(--bar) - 66px - var(--dock, 0px))); }
 /* Leave room for the LIVE bar so it never covers the bottom of a page */
 .screen:has(.livebar) .page.tabbed { --dock: 56px; }
+/* The outcome the scorekeeper chose: neutral — a lighter card with a thin light edge (not a player's or accent color) */
+.picked { box-shadow: inset 0 0 0 1.5px rgba(255,255,255,.55); }
+html[data-theme="light"] .picked { box-shadow: inset 0 0 0 1.5px rgba(0,0,0,.35); }
 /* Buttons pinned just above the tab bar (Club: FIND A CLUB / CREATE A CLUB), within easy thumb reach */
 .dock { position: absolute; z-index: 11; left: 16px; right: 16px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .dock button { height: 48px; border-radius: 24px; background: var(--nav); -webkit-backdrop-filter: blur(24px) saturate(160%); backdrop-filter: blur(24px) saturate(160%);
@@ -1472,7 +1475,7 @@ const FilingCabinet = (() => {
     const localDate = t => { const d = new Date(t); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
 
     // Start a live game. players: [{ id, name }] in seat order.
-    async function startGame({ players, priority = 0, away = '', home = '', park = '' }) {
+    async function startGame({ players, priority = 0, away = '', home = '', park = '', colors = null }) {
       need();
       for (const p of players) {                           // one live game per player
         const l = await get('live/' + p.id);
@@ -1487,7 +1490,7 @@ const FilingCabinet = (() => {
       const t = now();
       const clubList = await clubsFor(players.map(p => p.id));
       const g = { id: db.newId(), host: uid, device: deviceId, era: 'app', date: localDate(t), seq: t, startedAt: t,
-        players: players.map(p => ({ id: p.id, name: p.name })), setup: { priority }, events: [],
+        players: players.map(p => ({ id: p.id, name: p.name })), setup: colors ? { priority, colors } : { priority }, events: [],
         away, home, park, clubList, ended: false };
       const ch = { ['games/' + g.id]: g, ...indexChanges(g, { date: g.date, seq: g.seq }) };
       players.forEach(p => { ch['live/' + p.id] = { gameId: g.id, host: uid, at: t }; });
@@ -1654,7 +1657,7 @@ const FilingCabinet = (() => {
 //  that returns HTML. Buttons carry data-act="…" and the matching
 //  function in ACT runs when tapped, then the screen redraws.
 // ════════════════════════════════════════════════════════════════
-const VERSION = '2.0 · test build 6.5';
+const VERSION = '2.0 · test build 6.6';
 const RULES_JSON = {
   "rules": {
     "v2": {
@@ -2658,6 +2661,15 @@ const ptsOf = o => Umpire.outcome(o).pts;
 const halfName = s => (s.bottom ? 'BOT ' : 'TOP ') + s.inning;
 const halfWords = s => (s.bottom ? 'bottom' : 'top') + ' of the ' + ordinal(s.inning);
 const ordinal = n => n + (['th', 'st', 'nd', 'rd'][(n % 100 - 20) % 10] || ['th', 'st', 'nd', 'rd'][n % 100] || 'th');
+// ── Player colors (chosen on New game, just for that game) ──
+// Deep cardinal and forest are darker than the game's own red (outs) and green (points), so they never read as "bad" or "points".
+const PCOLORS = [['blue', '#2F6FE4'], ['cardinal', '#9E1B32'], ['purple', '#7B4FE0'], ['yellow', '#E3B21B'], ['pink', '#D6337F'],
+  ['sky', '#1FA2DE'], ['silver', '#A3A8B2'], ['orange', '#E8731A'], ['forest', '#1E6B3A']];
+const PCOLOR = Object.fromEntries(PCOLORS);
+const onColor = hex => { const [r, g, b] = [1, 3, 5].map(k => parseInt(hex.slice(k, k + 2), 16)); return (0.299 * r + 0.587 * g + 0.114 * b) > 165 ? '#111114' : '#FFFFFF'; };
+const tint = (hex, a) => { const [r, g, b] = [1, 3, 5].map(k => parseInt(hex.slice(k, k + 2), 16)); return `rgba(${r},${g},${b},${a})`; };
+const freeColor = players => (PCOLORS.find(([k]) => !players.some(p => p.color === k)) || PCOLORS[0])[0];
+const pcol = i => { const c = S.g && S.g.game.setup && S.g.game.setup.colors; return PCOLOR[(c && c[i]) || PCOLORS[i % PCOLORS.length][0]] || PCOLORS[0][1]; };
 const signed = n => (n > 0 ? '+' + n : n < 0 ? '−' + Math.abs(n) : '0');
 
 // ── Game state on screen ──
@@ -2745,16 +2757,17 @@ SCREENS.newGame = () => {
     <span class="courier meta" style="font-size:12px">${esc([park, today].filter(Boolean).join(' · '))}</span>
     <a ${act('openSheet', 'park')} style="font-size:14px;font-weight:600">Different ballpark?</a></div>
   <h2 class="cond label" style="margin:6px 0 0;font-size:18px">PLAYERS</h2>
-  <div class="list">${n.players.map((p, i) => `<div class="row" style="min-height:62px">
+  <div class="list">${n.players.map((p, i) => { const c = PCOLOR[p.color || PCOLORS[i][0]]; return `<div class="row" style="min-height:62px">
+      <button class="press" aria-label="Color for ${attr(p.name)}" ${act('openSheet', 'ngColor:' + i)} style="width:40px;height:40px;border-radius:20px;background:${c};color:${onColor(c)};display:flex;align-items:center;justify-content:center;font-weight:800;flex-shrink:0;position:relative">${esc(p.name[0].toUpperCase())}
+        <span style="position:absolute;right:-3px;bottom:-3px;width:17px;height:17px;border-radius:9px;background:var(--card2);border:2px solid var(--card);display:flex;align-items:center;justify-content:center"><svg width="9" height="9" viewBox="0 0 12 12" fill="none" stroke="var(--text2)" stroke-width="2" stroke-linecap="round"><path d="M8.5 1.5l2 2L4 10H2V8z"/></svg></span></button>
       <button class="press" ${act('ngPriority', i)} style="flex-grow:1;display:flex;align-items:center;gap:12px;text-align:left;min-width:0">
-        <span style="width:36px;height:36px;border-radius:18px;background:${i === n.priority ? 'var(--accent)' : 'var(--card3)'};color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;flex-shrink:0">${esc(p.name[0].toUpperCase())}</span>
         <div style="display:flex;flex-direction:column;min-width:0"><span style="font-size:17px;font-weight:700">${esc(p.name)}${p.guest ? ' <span class="cond tag" style="font-size:10px">GUEST</span>' : ''}</span>
         <span class="courier meta">${i === n.priority ? 'Picks first' : 'Tap to give priority'}</span></div></button>
       ${i === n.priority ? PRI() : ''}
-      ${i > 0 ? `<button class="press" aria-label="Remove ${attr(p.name)}" ${act('ngRemove', i)} style="width:28px;height:28px;border-radius:14px;background:var(--card2);display:flex;align-items:center;justify-content:center;color:var(--text2);font-size:15px">✕</button>` : ''}</div>`).join('')}
+      ${i > 0 ? `<button class="press" aria-label="Remove ${attr(p.name)}" ${act('ngRemove', i)} style="width:28px;height:28px;border-radius:14px;background:var(--card2);display:flex;align-items:center;justify-content:center;color:var(--text2);font-size:15px">✕</button>` : ''}</div>`; }).join('')}
     ${n.players.length < 3 ? `<button class="row press" ${act('openSheet', 'addPlayer')} style="min-height:54px;color:var(--link)"><span style="width:36px;height:36px;border-radius:18px;border:1.5px dashed var(--text4);display:flex;align-items:center;justify-content:center">${ICON.plus}</span><span style="font-size:17px;font-weight:600">${n.players.length === 1 ? 'Add a player' : 'Add a third player'}</span></button>` : ''}
   </div>
-  <span class="courier meta" style="padding:0 4px">Pick from club members, or type a guest name.</span>
+  <span class="courier meta" style="padding:0 4px">Pick from club members, or type a guest name. Tap a player’s circle to change their color.</span>
   <div class="grow"></div>
   <button class="big-btn cond press" ${act('startGame')} ${n.players.length >= 2 && !S.busy ? '' : 'disabled'}>${S.busy ? 'STARTING…' : 'PLAY BALL'}</button>
 </div>`;
@@ -2817,13 +2830,13 @@ SCREENS.pick3 = () => {
     <span class="cond" style="font-size:13px;font-weight:800;letter-spacing:.8px;color:${x ? 'var(--green)' : 'var(--text4)'}">${x ? 'LOCKED' : 'SKIP'}</span></div>`; }).join('')}
   <h1 class="cond onphoto" style="margin:4px 0 0;font-size:36px;font-weight:800;line-height:1">${esc(p.name.toUpperCase())}, PICK 3</h1>
   ${info('p3why', '<span class="courier" style="font-size:13px;font-weight:700;color:var(--text2)">First three at-bats, in order</span>', 'Call the first three at-bats in order. All three right = +7 bonus. Miss one and you pick one at a time for the rest of the half-inning. Only your first call has to be different from everyone else’s.', '')}
-  <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px">${[0, 1, 2].map(k => `<button class="press" ${k < mine.length ? act('p3Unpick', k) : ''} style="height:76px;border-radius:16px;background:var(--card);border:2px solid ${k === slot ? 'var(--accent)' : 'transparent'};display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px">
+  <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px">${[0, 1, 2].map(k => `<button class="press" ${k < mine.length ? act('p3Unpick', k) : ''} style="height:76px;border-radius:16px;background:${mine[k] ? tint(pcol(i), .3) : 'var(--card)'};border:2px solid ${k === slot ? pcol(i) : mine[k] ? tint(pcol(i), .8) : 'transparent'};display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px">
     <span class="cond" style="font-size:13px;font-weight:800;letter-spacing:.8px;color:var(--text3)">AT-BAT ${k + 1}</span>
     <span class="shoulders" style="font-size:26px;font-weight:900;line-height:1;color:${mine[k] ? 'var(--text)' : 'var(--text4)'}">${mine[k] ? code(mine[k]) : '—'}</span></button>`).join('')}</div>
   <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px">${PICK_GRID.map(o => {
     const blocked = slot === 0 && firsts.includes(o);
-    const owner = blocked ? g.players[done.find(j => S.g.pending.p3[j] && S.g.pending.p3[j][0] === o)].name : '';
-    return `<button class="press" ${blocked || slot > 2 ? 'disabled' : act('p3Pick', o)} style="height:56px;border-radius:12px;background:var(--card);padding:6px 9px;display:flex;flex-direction:column;justify-content:center;align-items:flex-start;text-align:left;${blocked ? 'opacity:.3' : ''}">
+    const oj = blocked ? done.find(j => S.g.pending.p3[j] && S.g.pending.p3[j][0] === o) : null, owner = blocked ? g.players[oj].name : '';
+    return `<button class="press" ${blocked || slot > 2 ? 'disabled' : act('p3Pick', o)} style="height:56px;border-radius:12px;background:${blocked ? tint(pcol(oj), .22) : 'var(--card)'};padding:6px 9px;display:flex;flex-direction:column;justify-content:center;align-items:flex-start;text-align:left;${blocked ? `box-shadow:inset 0 0 0 2px ${tint(pcol(oj), .9)};opacity:.75` : ''}">
       <span class="shoulders" style="font-size:22px;font-weight:900;line-height:1">${code(o)}</span><span class="courier" style="font-size:10px;font-weight:700;color:var(--text2);white-space:nowrap;overflow:hidden;max-width:100%">${blocked ? esc(owner) + '’s AB 1' : ptsOf(o) + (ptsOf(o) === 1 ? ' pt' : ' pts')}</span></button>`;
   }).join('')}</div>
   <div class="grow"></div>
@@ -2837,8 +2850,10 @@ SCREENS.pick3 = () => {
 SCREENS.pick = () => {
   const s = S.g.s, g = S.g.game, i = G.pickNext(), p = g.players[i];
   const taken = {}, viaP3 = {};
-  Object.entries(Umpire.lockedPicks(s)).forEach(([j, v]) => { taken[v.pick] = g.players[j].name; if (v.fromP3) viaP3[v.pick] = true; });
-  Object.entries(S.g.pending.picks).forEach(([j, v]) => { taken[v.pick] = g.players[j].name; });
+  const owner = {};
+  Object.entries(Umpire.lockedPicks(s)).forEach(([j, v]) => { taken[v.pick] = g.players[j].name; owner[v.pick] = +j; if (v.fromP3) viaP3[v.pick] = true; });
+  Object.entries(S.g.pending.picks).forEach(([j, v]) => { taken[v.pick] = g.players[j].name; owner[v.pick] = +j; });
+  const mine = pcol(i), mineText = onColor(mine);
   const sel = S.g.sel || {};
   const holders = Object.entries(taken).map(([o, who]) => `${esc(who)} has ${code(o)}${viaP3[o] ? ' (Pick 3)' : ''}`).join(' · ');
   return `<div class="fixedpage" style="gap:12px">
@@ -2848,10 +2863,11 @@ SCREENS.pick = () => {
   <h1 class="cond onphoto" style="margin:-6px 0 0;font-size:36px;font-weight:800;line-height:1">${esc(p.name.toUpperCase())}, YOUR PICK</h1>
   <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px">${PICK_GRID.map(o => {
     const who = taken[o], on = sel.pick === o;
-    return `<button class="press" ${who ? 'disabled' : act('pickSel', o)} style="height:70px;border-radius:14px;padding:8px 10px;display:flex;flex-direction:column;justify-content:space-between;text-align:left;position:relative;background:${on ? 'var(--accent)' : 'var(--card)'};${who ? 'opacity:.3' : ''}">
-      <span class="shoulders" style="font-size:28px;font-weight:900;line-height:1;color:${on ? '#fff' : 'var(--text)'}">${code(o)}</span>
-      <span class="shoulders" style="position:absolute;top:8px;right:10px;font-size:16px;font-weight:800;color:${on ? 'rgba(255,255,255,.85)' : 'var(--text2)'}">${ptsOf(o)}</span>
-      <span class="courier" style="font-size:10px;font-weight:700;color:${on ? 'rgba(255,255,255,.85)' : 'var(--text2)'};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%">${who ? (viaP3[o] ? 'Pick 3 · ' : '') + esc(who) : OC[o][1]}</span></button>`;
+    const oc = who ? pcol(owner[o]) : null;          // a taken pick shows whose it is in their color
+    return `<button class="press" ${who ? 'disabled' : act('pickSel', o)} style="height:70px;border-radius:14px;padding:8px 10px;display:flex;flex-direction:column;justify-content:space-between;text-align:left;position:relative;background:${on ? mine : who ? tint(oc, .22) : 'var(--card)'};${who ? `box-shadow:inset 0 0 0 2px ${tint(oc, .9)};opacity:.75` : ''}">
+      <span class="shoulders" style="font-size:28px;font-weight:900;line-height:1;color:${on ? mineText : 'var(--text)'}">${code(o)}</span>
+      <span class="shoulders" style="position:absolute;top:8px;right:10px;font-size:16px;font-weight:800;color:${on ? mineText : 'var(--text2)'};${on ? 'opacity:.85' : ''}">${ptsOf(o)}</span>
+      <span class="courier" style="font-size:10px;font-weight:700;color:${on ? mineText : who ? 'var(--text)' : 'var(--text2)'};${on ? 'opacity:.85;' : ''}white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%">${who ? (viaP3[o] ? 'Pick 3 · ' : '') + esc(who) : OC[o][1]}</span></button>`;
   }).join('')}</div>
   <div class="card" style="border-radius:16px;padding:10px 14px;display:flex;align-items:center;gap:12px">
     <div style="flex-grow:1;display:flex;flex-direction:column"><span style="font-size:16px;font-weight:600">Confidence</span><span class="courier meta">+5 if right · −2 if wrong</span></div>${toggle(!!sel.conf, 'pickConf')}</div>
@@ -2889,9 +2905,9 @@ SCREENS.result = () => {
   <h1 class="cond onphoto" style="margin:2px 0 0;font-size:36px;font-weight:800;line-height:1">WHAT HAPPENED?</h1>
   <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px">${RESULT_GRID.map(o => {
     const on = r.outcome === o;
-    return `<button class="press" ${act('resSel', o)} style="height:56px;border-radius:14px;padding:6px 10px;display:flex;flex-direction:column;justify-content:center;text-align:left;background:${on ? 'var(--accent)' : 'var(--card)'}">
-      <span class="shoulders" style="font-size:24px;font-weight:900;line-height:1;color:${on ? '#fff' : 'var(--text)'}">${code(o)}</span>
-      <span class="courier" style="font-size:10px;font-weight:700;color:${on ? 'rgba(255,255,255,.85)' : 'var(--text2)'};white-space:nowrap;overflow:hidden">${OC[o][1]}</span></button>`;
+    return `<button class="press ${on ? 'picked' : ''}" ${act('resSel', o)} style="height:56px;border-radius:14px;padding:6px 10px;display:flex;flex-direction:column;justify-content:center;text-align:left;background:${on ? 'var(--card3)' : 'var(--card)'}">
+      <span class="shoulders" style="font-size:24px;font-weight:900;line-height:1;color:var(--text)">${code(o)}</span>
+      <span class="courier" style="font-size:10px;font-weight:700;color:var(--text2);white-space:nowrap;overflow:hidden">${OC[o][1]}</span></button>`;
   }).join('')}</div>
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">${stepper('RUNS SCORED', 'runs', 4)}${stepper('EXTRA OUTS', 'extraOuts', 2)}</div>
   <div class="grow"></div>
@@ -3174,7 +3190,15 @@ function undoToast() {
     <div style="flex-grow:1;display:flex;flex-direction:column;min-width:0"><span class="cond" style="font-size:18px;font-weight:800;letter-spacing:.4px">UNDID LAST ${u.what}</span><span class="courier meta" style="color:var(--text2)">${esc(u.detail)}</span></div>
     <button class="press cond" ${act('gRedo')} style="height:34px;padding:0 14px;border-radius:17px;background:#F5F5F7;color:#000;font-size:16px;font-weight:800">REDO</button></div>`;
 }
-Object.assign(SHEETS, { gameMenu: gameMenuSheet, rules: rulesSheet, fixMlb: fixMlbSheet, matchup: matchupSheet, endHalf: endHalfSheet,
+function ngColorSheet() {
+  const i = +S.sheet.arg, n = S.ng, p = n.players[i]; if (!p) return '';
+  return `<h2 class="cond" style="margin:0;font-size:28px;font-weight:800">${esc(p.name.toUpperCase())}’S COLOR</h2>
+  <div style="display:flex;gap:14px;overflow-x:auto;margin:0 -20px;padding:6px 20px 10px;scrollbar-width:none">${PCOLORS.map(([k, c]) => {
+    const who = n.players.find((q, j) => j !== i && q.color === k), mine = p.color === k;
+    return `<button class="press" aria-label="${k}" ${who ? 'disabled' : act('ngSetColor', i + '|' + k)} style="flex-shrink:0;width:48px;height:48px;border-radius:24px;background:${c};display:flex;align-items:center;justify-content:center;${who ? 'opacity:.2;' : ''}${mine ? 'box-shadow:0 0 0 3px var(--sheet),0 0 0 5px ' + c : ''}">${mine ? ICON.check(onColor(c)) : ''}</button>`; }).join('')}</div>
+  <span class="courier meta">Just for this game. Faded colors are taken.</span>`;
+}
+Object.assign(SHEETS, { ngColor: ngColorSheet, gameMenu: gameMenuSheet, rules: rulesSheet, fixMlb: fixMlbSheet, matchup: matchupSheet, endHalf: endHalfSheet,
   endGame: endGameSheet, addPlayer: addPlayerSheet, park: parkSheet, pickTeam: pickTeamSheet });
 
 // The one "game" screen shows whichever step the scorebook is on
@@ -3288,7 +3312,7 @@ Object.assign(ACT, {
     if (S.g && !S.g.s.ended) return toast('You have a live game — resume it, or end it from its game menu');
     const me = { id: S.user.uid, name: S.account.name };
     const favPark = TEAMS[S.account.team] ? S.account.team : null;
-    S.ng = { away: '', home: favPark || '', park: '', players: [me], priority: 0 };
+    S.ng = { away: '', home: favPark || '', park: '', players: [{ ...me, color: 'blue' }], priority: 0 };
     S.ngRoster = null; S.draft = {}; go('newGame');
     try {
       const codes = S.scope === 'mine' ? S.clubs.filter(c => c.status === 'member').map(c => c.code) : [S.scope];
@@ -3298,16 +3322,17 @@ Object.assign(ACT, {
     } catch (e) { S.ngRoster = []; }
     render();
   },
+  ngSetColor: arg => { const [i, k] = arg.split('|'); S.ng.players[+i].color = k; S.sheet = null; buzz(); render(); },
   ngPriority: i => { S.ng.priority = +i; buzz(); render(); },
   ngRemove: i => { S.ng.players.splice(+i, 1); if (S.ng.priority >= S.ng.players.length) S.ng.priority = 0; render(); },
-  ngAdd: pid => { const m = S.ngRoster.find(x => x.pid === pid); S.ng.players.push({ id: m.pid, name: m.name, guest: !!m.guest, score: '' }); S.sheet = null; S.q = ''; buzz(); render(); },
+  ngAdd: pid => { const m = S.ngRoster.find(x => x.pid === pid); S.ng.players.push({ id: m.pid, name: m.name, guest: !!m.guest, score: '', color: freeColor(S.ng.players) }); S.sheet = null; S.q = ''; buzz(); render(); },
   ngNewGuest: async () => {
     const name = S.q.trim(); if (!name) return;
     if (S.ng.players.some(p => p.name.toLowerCase() === name.toLowerCase())) return toast(`${name} is already playing`, true);
     try {
       const club = S.scope === 'mine' ? null : S.scope;
       const pid = await FCab.addGuest(name, club);
-      S.ng.players.push({ id: pid, name, guest: true, score: '' }); (S.ngRoster || []).push({ pid, name, guest: true });
+      S.ng.players.push({ id: pid, name, guest: true, score: '', color: freeColor(S.ng.players) }); (S.ngRoster || []).push({ pid, name, guest: true });
       S.sheet = null; S.q = ''; render();
     } catch (e) { toast(e.message, true); }
   },
@@ -3334,6 +3359,7 @@ Object.assign(ACT, {
     const n = S.ng; S.busy = true; render();
     try {
       const game = await FCab.startGame({ players: n.players.map(p => ({ id: p.id, name: p.name })), priority: n.priority,
+        colors: n.players.map((p, i) => p.color || PCOLORS[i][0]),
         away: n.away, home: n.home, park: n.park || TEAMS[n.home] || '' });
       S.busy = false; openGame(game); S.stack = []; S.screen = 'game'; render(); Awake.on();
     } catch (e) {
