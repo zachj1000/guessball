@@ -51,7 +51,8 @@ html[data-theme="light"] .toast, html[data-theme="light"] .bubble { box-shadow: 
 html[data-theme="light"] body::after { content: ""; position: fixed; top: 0; left: 0; right: 0; height: calc(var(--safe-top) + 8px); z-index: 45; pointer-events: none;
   background: linear-gradient(180deg, rgba(0,0,0,.34), rgba(0,0,0,0)); }
 #app.photo { --card: var(--glass); --inner: rgba(128,128,136,.14); }
-/* No blur on each card: the photo is already softened, and many blurred cards at once can stall an iPhone */
+/* Frosted cards (Appearance → Frosted cards). Only the big cards blur — not every button — to keep iPhones light. */
+#app.photo.frost .screen .card, #app.photo.frost .screen .list { -webkit-backdrop-filter: blur(14px) saturate(140%); backdrop-filter: blur(14px) saturate(140%); }
 #app.photo .screen .card, #app.photo .screen .list { box-shadow: none; }
 /* Light mode on a photo: headings get their own little frosted pill so dark text reads on dark parks */
 html[data-theme="light"] #app.photo .screen .page h2, html[data-theme="light"] #app.photo .screen .page .sechead, html[data-theme="light"] #app.photo .screen .onphoto, html[data-theme="light"] #app.photo .screen .fixedpage h2, html[data-theme="light"] #app.photo .screen .page > div > a {
@@ -92,9 +93,14 @@ a { color: var(--link); text-decoration: none; -webkit-tap-highlight-color: tran
         padding: calc(var(--safe-top) + 14px) 20px calc(var(--safe-bot) + 24px); display: flex; flex-direction: column; gap: 14px; }
 .page > * { flex-shrink: 0; min-width: 0; }
 .page, .fixedpage, .sheet { overflow-x: hidden; }
-.page.tabbed { --bar: max(12px, calc(var(--safe-bot) - 11px)); padding-bottom: calc(var(--bar) + 110px);
-  -webkit-mask-image: linear-gradient(180deg, #000 0, #000 calc(100% - var(--bar) - 94px), transparent calc(100% - var(--bar) - 66px));
-          mask-image: linear-gradient(180deg, #000 0, #000 calc(100% - var(--bar) - 94px), transparent calc(100% - var(--bar) - 66px)); }
+.page.tabbed { --bar: max(12px, calc(var(--safe-bot) - 11px)); padding-bottom: calc(var(--bar) + 110px + var(--dock, 0px));
+  -webkit-mask-image: linear-gradient(180deg, #000 0, #000 calc(100% - var(--bar) - 94px - var(--dock, 0px)), transparent calc(100% - var(--bar) - 66px - var(--dock, 0px)));
+          mask-image: linear-gradient(180deg, #000 0, #000 calc(100% - var(--bar) - 94px - var(--dock, 0px)), transparent calc(100% - var(--bar) - 66px - var(--dock, 0px))); }
+/* Buttons pinned just above the tab bar (Club: FIND A CLUB / CREATE A CLUB), within easy thumb reach */
+.dock { position: absolute; z-index: 11; left: 16px; right: 16px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.dock button { height: 48px; border-radius: 24px; background: var(--nav); -webkit-backdrop-filter: blur(24px) saturate(160%); backdrop-filter: blur(24px) saturate(160%);
+  border: 1px solid rgba(255,255,255,.10); box-shadow: 0 8px 24px rgba(0,0,0,.35); font-size: 17px; font-weight: 800; letter-spacing: .6px; color: var(--text); }
+html[data-theme="light"] .dock button { border-color: rgba(0,0,0,.06); box-shadow: 0 8px 24px rgba(0,0,0,.12); }
 .fixedpage { position: absolute; inset: 0; padding: calc(var(--safe-top) + 14px) 20px calc(var(--safe-bot) + 20px); display: flex; flex-direction: column; gap: 14px; overflow-y: auto; }
 .fixedpage > * { flex-shrink: 0; }
 .grow { flex-grow: 1 !important; flex-shrink: 1 !important; }
@@ -1474,6 +1480,20 @@ const FilingCabinet = (() => {
       return g;
     }
     const liveGame = () => load('gb_live', null);      // resume after closing the app, even offline
+    // New phone, or the app was deleted and re-added: the live game isn't saved on this phone any more,
+    // but Firebase still says you're in it. Find it so it can be resumed; clear the marker if that game is gone.
+    async function findLiveGame() {
+      need();
+      const l = await get('live/' + uid);
+      if (!l || !l.gameId) return null;
+      const g = await get('games/' + l.gameId);
+      if (!g || g.ended) { if (l.host === uid) await queue({ ['live/' + uid]: null }); return null; }
+      if (g.host !== uid) return null;                  // someone else is running it on their phone
+      const [ready] = await prepare([g]);
+      ready.events = ready.events || [];
+      save('gb_live', ready);
+      return ready;
+    }
     function addEvent(g, ev) {
       g.events.push(ev); save('gb_live', g);
       return queue({ ['games/' + g.id + '/events/' + (g.events.length - 1)]: ev, ['games/' + g.id + '/updatedAt']: now() });
@@ -1590,7 +1610,7 @@ const FilingCabinet = (() => {
       myAccount, saveProfile, unlinkAccount, profiles,
       createClub, findClubs, myClubs, clubInfo, roster, joinClub, requests, answerRequest, leaveClub, setCaptain, removeMember, updateClub,
       addGuest, renameGuest, claimGuest, answerClaim, myAliases, accounts, offerGuest, myOffers, dismissOffer, myClaims,
-      startGame, liveGame, addEvent, undo, takeOver, updateGameInfo, endGame, addHandGame, editHandGame, deleteGame,
+      startGame, liveGame, findLiveGame, addEvent, undo, takeOver, updateGameInfo, endGame, addHandGame, editHandGame, deleteGame,
       loadGames, historyOf, exportAll, isAdmin };
   }
 
@@ -1618,7 +1638,7 @@ const FilingCabinet = (() => {
 //  that returns HTML. Buttons carry data-act="…" and the matching
 //  function in ACT runs when tapped, then the screen redraws.
 // ════════════════════════════════════════════════════════════════
-const VERSION = '2.0 · test build 6.1';
+const VERSION = '2.0 · test build 6.2';
 const RULES_JSON = {
   "rules": {
     "v2": {
@@ -2272,7 +2292,7 @@ async function loadClubs() {
   if (S.online) for (const c of S.clubs) if (c.captain) { try { const r = await withTimeout(FCab.requests(c.code), 5000); c.requests = r.joins.length + r.claims.length; } catch (e) { /* ignore */ } }
   const saved = Store.getItem('gb_scope_' + S.user.uid);
   const ok = k => k === 'mine' || S.clubs.some(c => c.code === k && c.status === 'member');
-  S.scope = ok(saved) ? saved : ((S.clubs.find(c => c.status === 'member') || {}).code || 'mine');
+  S.scope = ok(saved) ? saved : 'mine';            // first sign-in on a phone: All my games; after that, whatever you last picked
 }
 async function loadHome() {
   const key = 'gb_home_' + S.user.uid + '_' + S.scope;
@@ -2303,6 +2323,12 @@ function resetUserState() {
     claimOffers: null, claimWaiting: null, claimStats: null, accounts: null, guestOpen: null, found: [], adminGames: null,
     statSeason: null, h2hA: null, h2hB: null, setup: null });
 }
+async function recoverLiveGame() {
+  try { const g = await withTimeout(FCab.findLiveGame(), 10000);
+    if (g && !S.g) { await FCab.takeOver(g); openGame(g); render(); toast('Found your live game — tap RESUME to jump back in'); return true; } }
+  catch (e) { /* offline: try again next time */ }
+  return false;
+}
 async function afterSignIn(user) {
   if (S.user && S.user.uid !== user.uid) resetUserState();
   Store.put('gb_last_user', { uid: user.uid, email: user.email, displayName: user.displayName });
@@ -2326,6 +2352,7 @@ async function afterSignIn(user) {
   if (S.screen !== 'home') { S.stack = []; S.screen = 'home'; render(); }
   await loadClubs();
   if (!S.g) { const lg = FCab.liveGame(); if (lg && !lg.ended && lg.host === user.uid) openGame(lg); }
+  if (!S.g) recoverLiveGame();          // app re-added or a new phone: Firebase may still have your live game
   else if (!S.g.history) loadGameHistory();
   render();
   loadHome();
@@ -3238,7 +3265,11 @@ Object.assign(ACT, {
       const game = await FCab.startGame({ players: n.players.map(p => ({ id: p.id, name: p.name })), priority: n.priority,
         away: n.away, home: n.home, park: n.park || TEAMS[n.home] || '' });
       S.busy = false; openGame(game); S.stack = []; S.screen = 'game'; render(); Awake.on();
-    } catch (e) { S.busy = false; render(); toast(e.message, true); }
+    } catch (e) {
+      S.busy = false; render();
+      if (e.code === 'IN_LIVE_GAME' && !S.g && await recoverLiveGame()) return;   // it was your own game: bring it back
+      toast(e.message, true);
+    }
   },
   resume: () => { if (!S.g) return; S.sheet = null; S.stack = []; S.screen = 'game'; render(); Awake.on(); },
   finalShare: () => { const f = S.final; if (f) shareGame(f.game, f.sum, f.awards || []); },
@@ -4076,6 +4107,10 @@ Object.assign(ACT, {
 const clubOf = code => S.clubs.find(c => c.code === code) || null;
 const initialDot = (name, color = 'var(--card3)', dashed = false) => `<span style="width:32px;height:32px;border-radius:16px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;${dashed ? 'border:1.5px dashed var(--text4)' : 'background:' + color}">${esc((name || '?')[0].toUpperCase())}</span>`;
 const baseUrl = () => location.origin + location.pathname.replace(/index\.html$/, '');
+// FIND A CLUB / CREATE A CLUB pinned above the tab bar (and above the LIVE bar during a game)
+const clubDock = () => { const live = typeof liveBar === 'function' && liveBar() ? 56 : 0;
+  return `<div class="dock" style="bottom:calc(max(12px, calc(var(--safe-bot) - 11px)) + ${72 + live}px)"><button class="press cond" ${act('go', 'findClub')}>FIND A CLUB</button><button class="press cond" ${act('go', 'createClub')}>CREATE A CLUB</button></div>`; };
+const dockPad = () => (typeof liveBar === 'function' && liveBar() ? 118 : 62) + 'px';
 const plural = (n, w) => `${n} ${w}${n === 1 ? '' : 's'}`;
 
 async function loadClub(force) {
@@ -4151,23 +4186,22 @@ SCREENS.club = () => {
       ${info('guestWhy', '<span class="courier meta">What’s a guest?</span>', 'Someone who plays on another person’s phone without an account. Tap a guest to send them a claim link — when they sign up, their games move to their account.', '')}` : ''}
       <button class="press cond mid-btn" style="margin-top:10px;color:var(--orange);font-size:18px" ${act('openSheet', 'leave')}>LEAVE CLUB</button>`;
   }
-  return `<div class="page tabbed">
-  <div style="display:flex;align-items:center;justify-content:space-between"><h1 class="cond" style="margin:0;font-size:34px;font-weight:800;letter-spacing:.4px">CLUB</h1><a class="cond" style="font-size:17px;font-weight:800;letter-spacing:.6px" ${act('go', 'findClub')}>FIND A CLUB</a></div>
+  return `<div class="page tabbed" style="--dock:${dockPad()}">
+  <h1 class="cond" style="margin:0;font-size:34px;font-weight:800;letter-spacing:.4px">CLUB</h1>
   ${card}${body}
-</div>${tabbar('club')}${liveBar()}`;
+</div>${clubDock()}${tabbar('club')}${liveBar()}`;
 };
 // "All my games" is selected: pick one of your clubs
 function clubPicker() {
   const mine = S.clubs.filter(c => c.status === 'member'), pending = S.clubs.filter(c => c.status === 'pending');
-  return `<div class="page tabbed">
+  return `<div class="page tabbed" style="--dock:${dockPad()}">
   <h1 class="cond" style="margin:0;font-size:34px;font-weight:800;letter-spacing:.4px">CLUB</h1>
   <span style="font-size:15px;line-height:1.45;color:var(--text2)">You’re looking at All my games. ${mine.length ? 'Pick a club to see its roster.' : 'You’re not in a club yet.'}</span>
   ${mine.length || pending.length ? `<div class="list">${mine.map(c => `<button class="row press" ${act('clubOpen', c.code)} style="min-height:58px">
     <div style="flex-grow:1;min-width:0;display:flex;flex-direction:column;gap:2px"><span style="font-size:17px;font-weight:700">${esc(c.name)}</span><span class="courier meta">${c.public ? 'Public' : 'Private'}${c.captain ? ' · you’re a captain' : ''}</span></div>
     ${c.requests ? `<span class="cond" style="min-width:22px;height:22px;border-radius:11px;background:var(--goldfill);color:#1A1406;font-size:14px;font-weight:800;display:flex;align-items:center;justify-content:center;padding:0 6px">${c.requests}</span>` : ''}${ICON.chev}</button>`).join('')}
     ${pending.map(c => `<div class="row" style="min-height:58px;opacity:.6"><div style="flex-grow:1;display:flex;flex-direction:column;gap:2px"><span style="font-size:17px;font-weight:700">${esc(c.name)}</span><span class="courier meta">Request sent · waiting for a captain</span></div><span class="cond tag">PENDING</span></div>`).join('')}</div>` : ''}
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><button class="press cond small-btn" style="height:46px;border-radius:23px;font-size:17px" ${act('go', 'findClub')}>FIND A CLUB</button><button class="press cond small-btn" style="height:46px;border-radius:23px;font-size:17px" ${act('go', 'createClub')}>CREATE A CLUB</button></div>
-</div>${tabbar('club')}${liveBar()}`;
+</div>${clubDock()}${tabbar('club')}${liveBar()}`;
 }
 
 // ── Roster member sheet ──
@@ -4446,7 +4480,7 @@ const TEAM_STYLE = {
   'Texas Rangers': ['TEX', '#003278'], 'Toronto Blue Jays': ['TOR', '#134A8E'], 'Washington Nationals': ['WSH', '#AB0003'],
 };
 const ACCENTS = { blue: '#2F6FE4', green: '#1F9D55', red: '#D9412F', purple: '#7B4FE0', orange: '#E67A1F', teal: '#14919B' };
-const AP_DEFAULT = { theme: 'dark', accent: 'blue', bg: 'off', park: null, picks: {}, gamePark: true };
+const AP_DEFAULT = { theme: 'dark', accent: 'blue', bg: 'off', park: null, picks: {}, gamePark: true, frost: true };
 const ap = () => { S.settings.ap = { ...AP_DEFAULT, ...(S.settings.ap || {}) }; return S.settings.ap; };
 const saveAp = () => Store.put('gb_settings', S.settings);
 const favTeam = () => (S.account && S.account.team) || null;
@@ -4530,6 +4564,7 @@ function applyBackground() {
     bg.classList.toggle('on', !!src);
   }
   $app().classList.toggle('photo', !!src);
+  $app().classList.toggle('frost', !!src && ap().frost);
 }
 function appearanceSummary() {
   const a = ap();
@@ -4568,7 +4603,8 @@ SCREENS.appearance = () => {
   <span class="cond label">BACKGROUND</span>
   ${seg('bg', [['off', 'OFF'], ['stadium', 'STADIUM'], ['mine', 'MY PHOTO']])}
   ${parkRow}${mineRow}
-  ${a.bg !== 'off' ? `<div class="list"><div class="row" style="min-height:56px"><div style="flex-grow:1;padding:6px 0">${info('apGame', '<span style="font-size:16px;font-weight:500;color:var(--text)">In games, show the park you’re at</span>', a.bg === 'mine' ? 'On: games show that ballpark’s photo. Off: your photo stays up during games too.' : 'Games show that ballpark’s own photo (at Dodger Stadium: Sunset from the top), whatever you picked here. Parks without photos use your pick above.', '')}</div>${toggle(a.gamePark, 'apToggleGame')}</div></div>` : ''}
+  ${a.bg !== 'off' ? `<div class="list"><div class="row" style="min-height:56px"><div style="flex-grow:1;padding:6px 0">${info('apGame', '<span style="font-size:16px;font-weight:500;color:var(--text)">In games, show the park you’re at</span>', a.bg === 'mine' ? 'On: games show that ballpark’s photo. Off: your photo stays up during games too.' : 'Games show that ballpark’s own photo (at Dodger Stadium: Sunset from the top), whatever you picked here. Parks without photos use your pick above.', '')}</div>${toggle(a.gamePark, 'apToggleGame')}</div>
+    <div class="row" style="min-height:56px"><div style="flex-grow:1;padding:6px 0">${info('apFrost', '<span style="font-size:16px;font-weight:500;color:var(--text)">Frosted cards</span>', 'Blurs the photo behind each card. If the app ever feels sticky, turn this off.', '')}</div>${toggle(a.frost, 'apToggleFrost')}</div></div>` : ''}
 </div>`;
 };
 function parksSheet() {
@@ -4604,6 +4640,7 @@ Object.assign(ACT, {
   apSet: arg => { const [k, v] = arg.split('|'); ap()[k] = v; saveAp(); applyTheme(); buzz(); render(); },
   apPick: arg => { const [team, id] = arg.split('|'); const a = ap(); a.picks = { ...a.picks, [team]: id }; a.park = team; saveAp(); buzz(); render(); },
   apPark: team => { ap().park = team; saveAp(); S.sheet = null; buzz(); render(); },
+  apToggleFrost: () => { ap().frost = !ap().frost; saveAp(); buzz(); render(); },
   apToggleGame: () => { ap().gamePark = !ap().gamePark; saveAp(); buzz(); render(); },
   apClearPhoto: () => { try { localStorage.removeItem('gb_myphoto'); } catch (e) { /* ok */ } render(); toast('Removed — using your stadium pick instead'); },
 });
