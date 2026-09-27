@@ -54,7 +54,7 @@ html[data-theme="light"] body::after { content: ""; position: fixed; top: 0; lef
   background: linear-gradient(180deg, rgba(0,0,0,.34), rgba(0,0,0,0)); }
 #app.photo { --card: var(--glass); --inner: rgba(128,128,136,.14); }
 /* Frosted cards (Appearance → Frosted cards). Only the big cards blur — not every button — to keep iPhones light. */
-#app.photo.frost .screen .card, #app.photo.frost .screen .list { -webkit-backdrop-filter: blur(14px) saturate(140%); backdrop-filter: blur(14px) saturate(140%); }
+#app.photo.frost:not(.intro) .screen .card, #app.photo.frost:not(.intro) .screen .list { -webkit-backdrop-filter: blur(14px) saturate(140%); backdrop-filter: blur(14px) saturate(140%); }
 #app.photo .screen .card, #app.photo .screen .list { box-shadow: none; }
 /* Light mode on a photo: headings get their own little frosted pill so dark text reads on dark parks */
 html[data-theme="light"] #app.photo .screen .page h2, html[data-theme="light"] #app.photo .screen .page .sechead, html[data-theme="light"] #app.photo .screen .onphoto, html[data-theme="light"] #app.photo .screen .fixedpage h2, html[data-theme="light"] #app.photo .screen .page > div > a {
@@ -77,14 +77,17 @@ a { color: var(--link); text-decoration: none; -webkit-tap-highlight-color: tran
 .num { font-variant-numeric: tabular-nums; }
 @keyframes pulse { 0%,100% { opacity: 1 } 50% { opacity: .3 } }
 .live { animation: pulse 1.6s ease-in-out infinite; }
-@keyframes rise { from { transform: translateY(14px); opacity: 0 } to { transform: none; opacity: 1 } }
+@keyframes rise { from { transform: translate3d(0,14px,0); opacity: 0 } to { transform: translate3d(0,0,0); opacity: 1 } }
 .rise { animation: rise .6s cubic-bezier(.2,.8,.2,1) both } .rise2 { animation: rise .6s cubic-bezier(.2,.8,.2,1) .15s both }
-@keyframes up { from { transform: translateY(40px); opacity: 0 } to { transform: none; opacity: 1 } }
+@keyframes up { from { transform: translate3d(0,40px,0); opacity: 0 } to { transform: translate3d(0,0,0); opacity: 1 } }
 .up { animation: up .3s cubic-bezier(.2,.8,.2,1) both; }
 @keyframes fade { from { opacity: 0; transform: translateY(-6px) } to { opacity: 1; transform: none } }
 .fade { animation: fade .22s ease-out both; }
 @keyframes slide { from { opacity: 0; transform: translateX(18px) } to { opacity: 1; transform: none } }
 .slide { animation: slide .3s cubic-bezier(.2,.8,.2,1) both; }
+/* Loading line: the three dots light up one after another */
+@keyframes dot { 0%, 80%, 100% { opacity: .15 } 40% { opacity: 1 } }
+.dots i { font-style: normal; animation: dot 1.2s ease-in-out infinite; } .dots i:nth-child(2) { animation-delay: .2s } .dots i:nth-child(3) { animation-delay: .4s }
 @keyframes spin { to { transform: rotate(360deg) } }
 .spin { animation: spin 1s linear infinite; transform-origin: center; }
 
@@ -1651,7 +1654,7 @@ const FilingCabinet = (() => {
 //  that returns HTML. Buttons carry data-act="…" and the matching
 //  function in ACT runs when tapped, then the screen redraws.
 // ════════════════════════════════════════════════════════════════
-const VERSION = '2.0 · test build 6.4';
+const VERSION = '2.0 · test build 6.5';
 const RULES_JSON = {
   "rules": {
     "v2": {
@@ -1867,7 +1870,7 @@ const SCREENS = {};
 
 SCREENS.loading = () => `<div class="fixedpage" style="align-items:center;justify-content:center;gap:26px">
   <div data-brand style="display:flex;flex-direction:column;align-items:center"><span class="script" style="font-size:64px;line-height:1.05;color:var(--cream)">Guess Ball</span>${ICON.swoosh(300)}</div>
-  <span class="courier fade splash-line" style="font-size:15px;font-weight:700;color:var(--text2)">${esc(S.loadingLine)}</span></div>`;
+  <span class="courier fade splash-line" style="font-size:15px;font-weight:700;color:var(--text2)">${esc(S.loadingLine.replace(/\.+$/, ''))}<span class="dots"><i>.</i><i>.</i><i>.</i></span></span></div>`;
 
 SCREENS.signin = () => `<div class="fixedpage" style="align-items:center;padding-left:24px;padding-right:24px">
   <div class="grow"></div>
@@ -2185,8 +2188,8 @@ const SHEETS = { switcher: switcherSheet, request: requestSheet, nickname: nickn
 
 // ════════════ Drawing ════════════
 const $app = () => document.getElementById('app');
-// The loading line always gets its moment (2.5s from opening), even when the app is ready sooner
-const SPLASH_UNTIL = Date.now() + 2500;
+// The loading line always gets its moment (3s from opening), even when the app is ready sooner
+const SPLASH_UNTIL = Date.now() + 3000;
 // The app is drawn in three layers — screen, sheet, toast — and a layer is only rebuilt when its
 // content actually changed. Opening or closing a sheet no longer rebuilds the page underneath,
 // so its scroll position and iPhone's scrolling stay intact.
@@ -2202,9 +2205,14 @@ function render() {
   const [scr, shl, tl] = layers(el);
   render.last = render.last || {};
   if (Date.now() < SPLASH_UNTIL) {
-    if (el.dataset.screen !== 'loading') { el.dataset.screen = 'loading'; scr.innerHTML = SCREENS.loading(); render.last.screen = null; }
+    if (el.dataset.screen !== 'loading') {
+      el.dataset.screen = 'loading'; scr.innerHTML = SCREENS.loading(); render.last.screen = null;
+      setTimeout(() => { const l = scr.querySelector('.splash-line'); if (l) { l.style.transition = 'opacity .25s'; l.style.opacity = '0'; } }, Math.max(0, SPLASH_UNTIL - Date.now() - 280));
+    }
     clearTimeout(render.t); render.t = setTimeout(render, SPLASH_UNTIL - Date.now() + 10); return;
   }
+  // While the opening animation plays, hold other redraws (e.g. games finishing loading) so nothing swaps mid-glide
+  if (Date.now() < (render.introUntil || 0)) { clearTimeout(render.ti); render.ti = setTimeout(render, render.introUntil - Date.now() + 10); return; }
   const L = render.last;
   const focusEl = document.activeElement, focus = focusEl && focusEl.dataset && focusEl.dataset.model;
   const caret = focus ? focusEl.selectionStart : null;
@@ -2264,6 +2272,9 @@ function patchScreen(scr, html) {
 function introAnimation(scr, clone, from) {
   const page = scr.querySelector('.page, .fixedpage'), target = scr.querySelector('[data-brand]');
   const calm = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  render.introUntil = Date.now() + 1300;
+  const app = $app(); app.classList.add('intro');                 // frosted blur waits until everything has landed (smoother)
+  setTimeout(() => app.classList.remove('intro'), 1300);
   const bg = document.getElementById('bg');
   if (bg) { bg.style.transition = 'none'; bg.style.opacity = '0'; requestAnimationFrame(() => { bg.style.transition = 'opacity .7s ease'; bg.style.opacity = '1'; }); }
   if (page) {
@@ -2281,10 +2292,11 @@ function introAnimation(scr, clone, from) {
   document.body.appendChild(clone);
   target.style.opacity = '0';
   requestAnimationFrame(() => requestAnimationFrame(() => {
-    clone.style.transition = 'transform .6s cubic-bezier(.3,.9,.3,1)';
+    clone.style.transition = 'transform .62s cubic-bezier(.33,1,.68,1)';
     clone.style.transform = `translate(${to.left - from.left}px, ${to.top - from.top}px) scale(${k})`;
   }));
-  setTimeout(() => { target.style.transition = 'opacity .12s'; target.style.opacity = ''; clone.remove(); }, 640);
+  setTimeout(() => { target.style.transition = 'opacity .18s'; target.style.opacity = '1'; clone.style.transition = 'opacity .18s'; clone.style.opacity = '0'; }, 600);
+  setTimeout(() => { clone.remove(); target.style.transition = ''; target.style.opacity = ''; }, 820);
 }
 // Slide the open sheet down and away (used by swipe-down, tapping outside, and Done/Keep buttons)
 function dismissSheet() {
