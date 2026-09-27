@@ -1657,7 +1657,7 @@ const FilingCabinet = (() => {
 //  that returns HTML. Buttons carry data-act="…" and the matching
 //  function in ACT runs when tapped, then the screen redraws.
 // ════════════════════════════════════════════════════════════════
-const VERSION = '2.0 · test build 6.7';
+const VERSION = '2.0 · test build 6.8';
 const RULES_JSON = {
   "rules": {
     "v2": {
@@ -2842,7 +2842,7 @@ SCREENS.pick3 = () => {
   <div class="grow"></div>
   <div style="display:grid;grid-template-columns:120px 1fr;gap:10px">
     <button class="press cond mid-btn" style="height:56px;border-radius:28px" ${act('p3Skip')}>SKIP</button>
-    <button class="big-btn cond press" style="height:56px" ${act('p3Lock')} ${mine.length === 3 ? '' : 'disabled'}>${mine.length === 3 ? 'LOCK IT IN' : 'CHOOSE AT-BAT ' + (slot + 1)}</button></div>
+    <button class="big-btn cond press" style="height:56px;background:${pcol(i)};color:${onColor(pcol(i))}" ${act('p3Lock')} ${mine.length === 3 ? '' : 'disabled'}>${mine.length === 3 ? 'LOCK IT IN' : 'CHOOSE AT-BAT ' + (slot + 1)}</button></div>
 </div>`;
 };
 
@@ -2872,7 +2872,7 @@ SCREENS.pick = () => {
   <div class="card" style="border-radius:16px;padding:10px 14px;display:flex;align-items:center;gap:12px">
     <div style="flex-grow:1;display:flex;flex-direction:column"><span style="font-size:16px;font-weight:600">Confidence</span><span class="courier meta">+5 if right · −2 if wrong</span></div>${toggle(!!sel.conf, 'pickConf')}</div>
   <div class="grow"></div>
-  <button class="big-btn cond press" ${act('pickLock')} ${sel.pick ? '' : 'disabled'}>${sel.pick ? 'LOCK IN ' + code(sel.pick) + (sel.conf ? ' · CONFIDENT' : '') : 'CHOOSE AN OUTCOME'}</button>
+  <button class="big-btn cond press" style="background:${mine};color:${mineText}" ${act('pickLock')} ${sel.pick ? '' : 'disabled'}>${sel.pick ? 'LOCK IN ' + code(sel.pick) + (sel.conf ? ' · CONFIDENT' : '') : 'CHOOSE AN OUTCOME'}</button>
 </div>`;
 };
 
@@ -3114,8 +3114,7 @@ SCREENS.final = () => {
 // ════════════ Game sheets ════════════
 function gameMenuSheet() {
   const s = S.g.s, g = S.g.game;
-  const dot = S.pending ? `<span style="width:8px;height:8px;border-radius:4px;background:var(--gold)"></span><span class="courier meta">Offline · ${S.pending} play${S.pending > 1 ? 's' : ''} will sync</span>`
-    : `<span style="width:8px;height:8px;border-radius:4px;background:var(--green)"></span><span class="courier meta">All saved</span>`;
+  const dot = `<span role="img" aria-label="${S.pending ? 'Offline, will sync' : 'All saved'}" style="width:10px;height:10px;border-radius:5px;background:${S.pending ? 'var(--gold)' : 'var(--green)'}"></span>`;   // green = saved, gold = waiting to sync
   const row = (a, arg, label, right = '', color = 'var(--text)') => `<button class="row press" ${act(a, arg)} style="min-height:52px"><span style="flex-grow:1;font-size:17px;font-weight:600;color:${color}">${label}</span>${right ? `<span class="courier meta">${right}</span>` : ICON.chev}</button>`;
   return `<div style="display:flex;align-items:center;justify-content:space-between"><h2 class="cond" style="margin:0;font-size:28px;font-weight:800">GAME MENU</h2><div style="display:flex;align-items:center;gap:6px">${dot}</div></div>
   <div class="list">${row('gLeave', 'home', 'Home')}${row('gLeave', 'stats', 'Stats')}${row('gLeave', 'awards', 'Awards')}${row('gLeave', 'settings', 'Settings')}${row('openSheet', 'rules', 'Rules')}</div>
