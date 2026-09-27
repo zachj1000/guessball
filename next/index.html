@@ -1666,7 +1666,7 @@ const FilingCabinet = (() => {
 //  that returns HTML. Buttons carry data-act="…" and the matching
 //  function in ACT runs when tapped, then the screen redraws.
 // ════════════════════════════════════════════════════════════════
-const VERSION = '2.0 · test build 6.9';
+const VERSION = '2.0 · test build 6.9.1';
 const RULES_JSON = {
   "rules": {
     "v2": {
@@ -3090,7 +3090,7 @@ SCREENS.final = () => {
     const top = Math.max(...t.values.map(score));
     return `<div class="card" style="border-radius:16px;padding:12px 14px;display:flex;flex-direction:column;gap:2px">
       <span class="cond" style="font-size:13px;font-weight:800;letter-spacing:.8px;color:var(--text3)">${t.label}</span>
-      <div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap">${order.map(i => `<span class="shoulders" style="font-size:${n === 3 ? 22 : 28}px;font-weight:900;color:${score(t.values[i]) === top ? 'var(--text)' : 'var(--dim)'}">${fmt(t.values[i])}</span>`).join('')}</div>
+      <div style="display:flex;align-items:baseline;gap:${n === 3 ? 7 : 10}px;white-space:nowrap">${order.map(i => `<span class="shoulders" style="font-size:${n === 3 ? 20 : 28}px;font-weight:900;color:${score(t.values[i]) === top ? 'var(--text)' : 'var(--dim)'}">${fmt(t.values[i])}</span>`).join('')}</div>
       <span class="courier meta" style="color:var(--text2)">${order.map(i => esc(g.players[i].name)).join(n === 3 ? ' · ' : ' vs ')}</span></div>`;
   }).join('');
   const plays = sum.plays || [], top = plays[0];
@@ -3114,7 +3114,7 @@ SCREENS.final = () => {
         <span class="shoulders" style="font-size:20px;font-weight:900;color:var(--green)">+${m.pts}</span></div>`).join('')}</div>` : ''}</div>` : ''}
   ${awards.length ? `<h2 class="cond" style="margin:6px 0 0;font-size:22px;font-weight:800;letter-spacing:.6px">EARNED TODAY</h2>
   <div style="display:flex;flex-direction:column;gap:8px">${awards.map(a => `<div class="card" style="border-radius:16px;padding:10px 14px;display:flex;align-items:center;gap:12px">
-    <div style="width:40px;height:40px;border-radius:12px;background:var(--goldtint);display:flex;align-items:center;justify-content:center;>${awardIcon(a.award, 28)}</div>
+    <div style="width:40px;height:40px;border-radius:12px;background:var(--goldtint);display:flex;align-items:center;justify-content:center">${awardIcon(a.award, 28)}</div>
     <div style="flex-grow:1;display:flex;flex-direction:column;min-width:0"><span style="font-size:16px;font-weight:700">${esc(a.award.name)}${a.award.tiers && a.award.tiers.length > 1 ? ' · ' + ['', 'Bronze', 'Silver', 'Gold', 'Gold'][a.tier] : ''}</span><span class="courier meta" style="font-size:12px;color:var(--text2)">${esc(a.award.desc)}</span></div>
     <span style="font-size:14px;font-weight:600;color:var(--text2)">${esc(a.names.join(', '))}</span></div>`).join('')}</div>` : ''}
   ${g.note ? `<div class="card" style="padding:12px 16px"><span class="cond label" style="padding:0">GAME NOTE</span><div style="font-size:15px;line-height:1.45;margin-top:4px">${esc(g.note)}</div></div>` : ''}
@@ -3725,7 +3725,7 @@ SCREENS.pastGame = () => {
     const fmt = v => (t.label === 'ACCURACY' ? pctText(v) : t.label === 'CONFIDENCE' ? v.join('–') : v);
     const sc = v => (t.label === 'CONFIDENCE' ? v[0] - v[1] : v == null ? -1 : v); const top = Math.max(...t.values.map(sc));
     return `<div class="card" style="border-radius:16px;padding:10px 14px"><span class="cond" style="font-size:13px;font-weight:800;letter-spacing:.8px;color:var(--text3)">${t.label}</span>
-      <div style="display:flex;gap:10px;flex-wrap:wrap">${order.map(i => `<span class="shoulders" style="font-size:${n === 3 ? 22 : 26}px;font-weight:900;color:${sc(t.values[i]) === top ? 'var(--text)' : 'var(--dim)'}">${fmt(t.values[i])}</span>`).join('')}</div></div>`; }).join('')}</div>` : ''}
+      <div style="display:flex;gap:${n === 3 ? 7 : 10}px;white-space:nowrap">${order.map(i => `<span class="shoulders" style="font-size:${n === 3 ? 20 : 26}px;font-weight:900;color:${sc(t.values[i]) === top ? 'var(--text)' : 'var(--dim)'}">${fmt(t.values[i])}</span>`).join('')}</div></div>`; }).join('')}</div>` : ''}
   ${sum.plays.length ? `<h2 class="cond" style="margin:6px 0 0;font-size:22px;font-weight:800">PLAYS OF THE GAME</h2>
   <div class="card" style="padding:0 16px">${sum.plays.map((m, k) => `<div style="display:flex;align-items:center;gap:12px;padding:10px 0;${k ? 'border-top:1px solid var(--line)' : ''}"><span class="shoulders" style="width:40px;font-size:22px;font-weight:900">${m.code}</span>
     <div style="flex-grow:1;display:flex;flex-direction:column;gap:1px"><span style="font-size:15px;font-weight:600">${esc(m.text)}</span><span class="courier meta" style="color:var(--text2)">${m.when}${m.context ? ' · ' + m.context : ''}</span></div>
