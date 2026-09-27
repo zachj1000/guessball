@@ -25,6 +25,7 @@
   --cream: #F4F1E8; --swoosh: #D63A2F; --toggle: #34C759;
   --nav: rgba(30,30,34,0.86); --navpill: rgba(255,255,255,0.11); --scrim: rgba(0,0,0,0.6);
   --safe-top: env(safe-area-inset-top, 0px); --safe-bot: env(safe-area-inset-bottom, 0px);
+  --silver: #C9CCD3; --bronze: #D08A4A;
   --popbg: #1F1C14; --goldtint: rgba(242,193,78,.12); --toastbg: #2C2C31; --livebar: #26262A; --tagline: #4A4A52; --dim: #5E5E66;
   --glass: rgba(22,22,26,0.7); --wash: linear-gradient(180deg, rgba(0,0,0,.55) 0%, rgba(0,0,0,.4) 40%, rgba(0,0,0,.72) 100%);
 }
@@ -37,6 +38,7 @@ html[data-theme="light"] {
   --link: #1F5FD0;
   --gold: #A66F00; --goldfill: #EDB63D; --green: #17893D; --orange: #C8431A; --live: #C8331F; --livetext: #C8331F;
   --cream: #0E1F3D; --nav: rgba(255,255,255,0.86); --navpill: rgba(0,0,0,0.06); --scrim: rgba(0,0,0,0.3);
+  --silver: #7E828C; --bronze: #A8642C;
   --popbg: #FFF7E2; --goldtint: #FFF3D6; --toastbg: #FFFFFF; --livebar: #FFFFFF; --tagline: #C7C7CC; --dim: #A1A1A8;
   --glass: rgba(255,255,255,0.8); --wash: linear-gradient(180deg, rgba(242,242,247,.24) 0%, rgba(242,242,247,.06) 45%, rgba(242,242,247,.3) 100%);
 }
@@ -1649,7 +1651,7 @@ const FilingCabinet = (() => {
 //  that returns HTML. Buttons carry data-act="…" and the matching
 //  function in ACT runs when tapped, then the screen redraws.
 // ════════════════════════════════════════════════════════════════
-const VERSION = '2.0 · test build 6.3';
+const VERSION = '2.0 · test build 6.4';
 const RULES_JSON = {
   "rules": {
     "v2": {
@@ -1842,7 +1844,7 @@ const ICON = {
     <rect x="32" y="94" width="16" height="16" transform="rotate(45 40 102)" fill="#FFFFFF" stroke="#0E1F3D" stroke-width="2.7"/>
     <path d="M88.8 155.3H111.2V163.3L100 174L88.8 163.3Z" fill="#FFFFFF" stroke="#0E1F3D" stroke-width="2.7" stroke-linejoin="round"/>
     <text x="99" y="123" text-anchor="middle" font-family="Norican, cursive" font-size="76" fill="#0E1F3D">G</text></svg>`,
-  swoosh: w => `<svg width="${w}" height="${w * 0.09}" viewBox="0 0 200 18" fill="none"><path d="M14 12C70 4 140 3 188 8" stroke="var(--swoosh)" stroke-width="1.8" stroke-linecap="round"/><path d="M14 12C70 4 140 3 188 8" stroke="var(--swoosh)" stroke-width="7" stroke-dasharray="1.4 5.5"/></svg>`,
+  swoosh: w => `<svg width="${w}" height="${Math.round(w * 40 / 440)}" viewBox="0 0 440 40" fill="none"><path d="M40 26C150 12 290 9 382 18" stroke="var(--swoosh)" stroke-width="6" stroke-linecap="round"/><path d="M406 36L422 20 406 4 390 20z" stroke="var(--swoosh)" stroke-width="3" stroke-linejoin="round"/><path d="M406 36L422 20 406 4" stroke="var(--swoosh)" stroke-width="7" stroke-linejoin="round" stroke-linecap="round"/></svg>`,
   tabs: {
     games: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M12 3l9 9-9 9-9-9z"/></svg>',
     stats: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M5 20V11M12 20V4M19 20v-6"/></svg>',
@@ -1863,14 +1865,15 @@ const progress = (n, of) => `<div style="display:flex;gap:6px">${Array.from({ le
 // ════════════ Screens ════════════
 const SCREENS = {};
 
-SCREENS.loading = () => `<div class="fixedpage" style="align-items:center;justify-content:center">
-  <span class="courier fade" style="font-size:15px;font-weight:700;color:var(--text2)">${esc(S.loadingLine)}</span></div>`;
+SCREENS.loading = () => `<div class="fixedpage" style="align-items:center;justify-content:center;gap:26px">
+  <div data-brand style="display:flex;flex-direction:column;align-items:center"><span class="script" style="font-size:64px;line-height:1.05;color:var(--cream)">Guess Ball</span>${ICON.swoosh(300)}</div>
+  <span class="courier fade splash-line" style="font-size:15px;font-weight:700;color:var(--text2)">${esc(S.loadingLine)}</span></div>`;
 
 SCREENS.signin = () => `<div class="fixedpage" style="align-items:center;padding-left:24px;padding-right:24px">
   <div class="grow"></div>
   <div class="rise" style="width:128px;height:128px;border-radius:29px;overflow:hidden;box-shadow:0 20px 50px rgba(47,111,228,0.25)">${ICON.appIcon(128)}</div>
   <div class="rise2" style="display:flex;flex-direction:column;align-items:center;margin-top:12px">
-    <span class="script" style="font-size:56px;line-height:1.05;color:var(--cream)">Guess Ball</span>${ICON.swoosh(260)}
+    <div data-brand style="display:flex;flex-direction:column;align-items:center"><span class="script" style="font-size:56px;line-height:1.05;color:var(--cream)">Guess Ball</span>${ICON.swoosh(260)}</div>
     <span class="courier" style="margin-top:14px;font-size:14px;font-weight:700;color:var(--text2)">Built for the bleachers.</span>
   </div>
   <div class="grow" style="flex-grow:1.4 !important"></div>
@@ -2018,7 +2021,7 @@ SCREENS.home = () => {
     ${h.recent.length ? `<button class="press cond mid-btn" ${act('homeShare', h.recent[0].id)}><svg width="17" height="17" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 10V2M5 4.5L8 1.5l3 3M3 8v5.5h10V8"/></svg> SHARE LAST GAME</button>` : ''}`;
   return `<div class="page tabbed">
     <div style="display:flex;align-items:center;justify-content:space-between">
-      <div style="display:flex;flex-direction:column;align-items:center"><span class="script" style="font-size:40px;line-height:1.05;color:var(--cream)">Guess Ball</span>${ICON.swoosh(200)}</div>
+      <div data-brand style="display:flex;flex-direction:column;align-items:center"><span class="script" style="font-size:40px;line-height:1.05;color:var(--cream)">Guess Ball</span>${ICON.swoosh(200)}</div>
       <button class="press" aria-label="Settings" ${act('go', 'settings')} style="width:38px;height:38px;border-radius:19px;background:var(--card2);display:flex;align-items:center;justify-content:center">${ICON.gear}</button>
     </div>
     ${scopeChip()}
@@ -2208,6 +2211,9 @@ function render() {
   document.body.classList.toggle('bigtext', !!S.settings.big);
   // Screen
   const screenHtml = (SCREENS[S.screen] || SCREENS.home)();
+  const fromSplash = el.dataset.screen === 'loading' && S.screen !== 'loading';
+  const splashLogo = fromSplash && scr.querySelector('[data-brand]');
+  const splashRect = splashLogo && splashLogo.getBoundingClientRect(), splashClone = splashLogo && splashLogo.cloneNode(true);
   if (screenHtml !== L.screen || el.dataset.screen !== S.screen) {
     const sideways = {}; scr.querySelectorAll('[data-keep]').forEach(k => { sideways[k.dataset.keep] = k.scrollLeft; });   // rows you scroll sideways
     if (el.dataset.screen === S.screen && L.screen != null) patchScreen(scr, screenHtml);   // same screen: only swap the parts that changed
@@ -2228,6 +2234,7 @@ function render() {
   const toastHtml = S.toast ? `<div class="toast fade ${S.toast.bad ? 'bad' : ''}">${esc(S.toast.text)}</div>` : '';
   if (toastHtml !== L.toast) { tl.innerHTML = toastHtml; L.toast = toastHtml; }
   if (typeof applyBackground === 'function') applyBackground();
+  if (fromSplash) introAnimation(scr, splashClone, splashRect);
   if (focus && !el.contains(focusEl)) { const i = el.querySelector(`[data-model="${focus}"]`); if (i) { i.focus(); try { i.setSelectionRange(caret, caret); } catch (e) { /* ok */ } } }
   syncEnables();
 }
@@ -2251,6 +2258,33 @@ function patchScreen(scr, html) {
     kids.slice(0, at).forEach(c => scr.insertBefore(c, o));
     kids.slice(at + 1).forEach(c => scr.appendChild(c));
   }
+}
+// Opening the app: the loading-screen logo shrinks and glides into its place on Home (or Sign in),
+// then the rest of the screen rises in, one piece after another. A simple fade if Reduce Motion is on.
+function introAnimation(scr, clone, from) {
+  const page = scr.querySelector('.page, .fixedpage'), target = scr.querySelector('[data-brand]');
+  const calm = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const bg = document.getElementById('bg');
+  if (bg) { bg.style.transition = 'none'; bg.style.opacity = '0'; requestAnimationFrame(() => { bg.style.transition = 'opacity .7s ease'; bg.style.opacity = '1'; }); }
+  if (page) {
+    [...page.children].forEach((c, i) => { if (c.hasAttribute('data-brand') || c.querySelector('[data-brand]')) return;
+      c.style.animation = `${calm ? 'fade' : 'rise'} .5s cubic-bezier(.2,.8,.2,1) ${calm ? 0 : 0.28 + i * 0.06}s both`; });
+    setTimeout(() => [...page.children].forEach(c => { c.style.animation = ''; }), 1600);
+  }
+  const bars = scr.querySelectorAll('.tabbar, .livebar, .dock');
+  bars.forEach(b => { b.style.animation = `${calm ? 'fade' : 'up'} .45s cubic-bezier(.2,.8,.2,1) .35s both`; setTimeout(() => { b.style.animation = ''; }, 1400); });
+  if (!clone || !from || !target || calm) return;
+  const to = target.getBoundingClientRect();
+  if (!to.width || !from.width) return;
+  const k = to.width / from.width;
+  clone.style.cssText += `;position:fixed;left:${from.left}px;top:${from.top}px;width:${from.width}px;margin:0;z-index:60;transform-origin:0 0;pointer-events:none;will-change:transform`;
+  document.body.appendChild(clone);
+  target.style.opacity = '0';
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    clone.style.transition = 'transform .6s cubic-bezier(.3,.9,.3,1)';
+    clone.style.transform = `translate(${to.left - from.left}px, ${to.top - from.top}px) scale(${k})`;
+  }));
+  setTimeout(() => { target.style.transition = 'opacity .12s'; target.style.opacity = ''; clone.remove(); }, 640);
 }
 // Slide the open sheet down and away (used by swipe-down, tapping outside, and Done/Keep buttons)
 function dismissSheet() {
@@ -2380,7 +2414,13 @@ async function afterSignIn(user) {
 
 // ════════════ Taps ════════════
 const ACT = {
-  info: id => { S.info = S.info === id ? null : id; render(); },
+  info: id => { S.info = S.info === id ? null : id; render();
+    if (S.info) requestAnimationFrame(() => {                       // make sure the whole bubble is on screen (not under the bars)
+      const b = $app().querySelector('.bubble'), sc = b && b.closest('.page, .fixedpage, .sheet'); if (!sc) return;
+      const cut = sc.getBoundingClientRect().bottom - parseFloat(getComputedStyle(sc).paddingBottom) + 24;
+      const over = b.getBoundingClientRect().bottom - cut;
+      if (over > 0) sc.scrollBy({ top: over + 12, behavior: 'smooth' });
+    }); },
   back, go: s => { S.draft = {}; go(s); },
   toast: t => toast(t),
   closeSheet: () => dismissSheet(),
@@ -3549,7 +3589,7 @@ function recordSheet() {
   return `<h2 class="cond" style="margin:0;font-size:28px;font-weight:800">${esc(r.label)}</h2>
   <span class="courier meta">Top ${r.top.length} · ${esc(scopeName())}</span>
   <div class="list">${r.top.map((t, i) => `<${t.gameId ? 'button' : 'div'} class="row${t.gameId ? ' press' : ''}" ${t.gameId ? act('recordGame', t.gameId) : ''} style="min-height:56px;gap:12px">
-    <span class="shoulders" style="width:18px;font-size:20px;font-weight:800;color:${i ? 'var(--text3)' : 'var(--gold)'}">${i + 1}</span>
+    <span class="shoulders" style="width:18px;font-size:22px;font-weight:900;color:${['var(--gold)', 'var(--silver)', 'var(--bronze)'][i] || 'var(--text3)'}">${i + 1}</span>
     <div style="flex-grow:1;min-width:0;display:flex;flex-direction:column;gap:2px"><span style="font-size:16px;font-weight:700">${esc(t.who)}</span><span class="courier meta" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(sub(t))}</span></div>
     <span class="shoulders num" style="font-size:26px;font-weight:900">${val(t)}</span>${t.gameId ? ICON.chev : ''}</${t.gameId ? 'button' : 'div'}>`).join('')}</div>`;
 }
@@ -3711,7 +3751,9 @@ async function drawShareCard(g, sum, awards) {
   const fit = (t, max, font) => { x.font = font; let s = t; while (x.measureText(s).width > max && s.length > 2) s = s.slice(0, -2) + '…'; return s; };
   // wordmark
   text('Guess Ball', 36, 70, '36px Norican, cursive', '#F4F1E8');
-  x.strokeStyle = '#D63A2F'; x.lineWidth = 1.5; x.save(); x.translate(36, 76); x.scale(.85, .85); x.stroke(new Path2D('M14 12C70 4 140 3 188 8')); x.setLineDash([1.4, 5.5]); x.lineWidth = 7; x.stroke(new Path2D('M14 12C70 4 140 3 188 8')); x.restore();
+  x.save(); x.translate(36, 78); x.scale(160 / 440, 160 / 440); x.strokeStyle = '#D63A2F'; x.lineCap = 'round'; x.lineJoin = 'round';   // swoosh ending in a diamond
+  x.lineWidth = 6; x.stroke(new Path2D('M40 26C150 12 290 9 382 18')); x.lineWidth = 3; x.stroke(new Path2D('M406 36L422 20 406 4 390 20z'));
+  x.lineWidth = 7; x.stroke(new Path2D('M406 36L422 20 406 4')); x.restore();
   const r = sum.result, n = g.players.length, order = g.players.map((_, i) => i).sort((a, b) => r.scores[b] - r.scores[a]);
   text('FINAL', W - 36, 52, F(800, 16, COND), '#A1A1AA', 'right');
   text([niceDate(g.date), g.park].filter(Boolean).join(' · '), W - 36, 72, F(700, 13, CO), '#A1A1AA', 'right');
@@ -4527,7 +4569,9 @@ const TEAM_STYLE = {
 const ACCENTS = { blue: '#2F6FE4', green: '#1F9D55', red: '#D9412F', purple: '#7B4FE0', orange: '#E67A1F', teal: '#14919B' };
 const AP_DEFAULT = { theme: 'dark', accent: 'blue', bg: 'off', park: null, picks: {}, gamePark: true, frost: true };
 // Always the same object (fills in any missing settings once), so "ap().x = !ap().x" works
-const ap = () => { const a = S.settings.ap || (S.settings.ap = {}); for (const k in AP_DEFAULT) if (!(k in a)) a[k] = AP_DEFAULT[k]; return a; };
+const ap = () => { const a = S.settings.ap || (S.settings.ap = {}); for (const k in AP_DEFAULT) if (!(k in a)) a[k] = AP_DEFAULT[k];
+  if (!a.frostOn) { a.frost = true; a.frostOn = 1; }          // build 6.4: frosted cards switched on for everyone once
+  return a; };
 const saveAp = () => Store.put('gb_settings', S.settings);
 const favTeam = () => (S.account && S.account.team) || null;
 const myPhoto = () => { try { return localStorage.getItem('gb_myphoto'); } catch (e) { return null; } };
@@ -4644,14 +4688,14 @@ SCREENS.appearance = () => {
     <span class="courier meta">${esc(caption)}</span></div>
   <span class="cond label">THEME</span>
   ${seg('theme', [['dark', 'DARK'], ['light', 'LIGHT'], ['auto', 'AUTO']])}
+  <div class="list"><div class="row" style="min-height:52px"><div style="flex-grow:1;padding:6px 0">${info('apFrost', '<span style="font-size:16px;font-weight:500;color:var(--text)">Frosted cards</span>', 'Blurs the stadium photo behind each card (you can see it in the preview above). Only shows when a background photo is on. If the app ever feels sticky, turn this off.', '')}</div>${toggle(a.frost, 'apToggleFrost')}</div></div>
   <span class="cond label">ACCENT COLOR</span>
   <div class="card" style="padding:12px;display:flex;gap:10px;flex-wrap:wrap">${Object.entries(ACCENTS).map(([k, c]) => dot(k, c)).join('')}${teamSwatch}</div>
   ${teamSwatch ? `<span class="courier meta" style="margin-top:-6px">${TEAM_STYLE[fav][0]} = your favorite team’s color.</span>` : ''}
   <span class="cond label">BACKGROUND</span>
   ${seg('bg', [['off', 'OFF'], ['stadium', 'STADIUM'], ['mine', 'MY PHOTO']])}
   ${parkRow}${mineRow}
-  ${a.bg !== 'off' ? `<div class="list"><div class="row" style="min-height:56px"><div style="flex-grow:1;padding:6px 0">${info('apGame', '<span style="font-size:16px;font-weight:500;color:var(--text)">In games, show the park you’re at</span>', a.bg === 'mine' ? 'On: games show that ballpark’s photo. Off: your photo stays up during games too.' : 'Games show that ballpark’s own photo (at Dodger Stadium: Sunset from the top), whatever you picked here. Parks without photos use your pick above.', '')}</div>${toggle(a.gamePark, 'apToggleGame')}</div>
-    <div class="row" style="min-height:56px"><div style="flex-grow:1;padding:6px 0">${info('apFrost', '<span style="font-size:16px;font-weight:500;color:var(--text)">Frosted cards</span>', 'Blurs the photo behind each card. If the app ever feels sticky, turn this off.', '')}</div>${toggle(a.frost, 'apToggleFrost')}</div></div>` : ''}
+  ${a.bg !== 'off' ? `<div class="list"><div class="row" style="min-height:56px"><div style="flex-grow:1;padding:6px 0">${info('apGame', '<span style="font-size:16px;font-weight:500;color:var(--text)">In games, show the park you’re at</span>', a.bg === 'mine' ? 'On: games show that ballpark’s photo. Off: your photo stays up during games too.' : 'Games show that ballpark’s own photo (at Dodger Stadium: Sunset from the top), whatever you picked here. Parks without photos use your pick above.', '')}</div>${toggle(a.gamePark, 'apToggleGame')}</div></div>` : ''}
 </div>`;
 };
 // Two sample cards inside the preview phone, so frosted vs plain is easy to see
