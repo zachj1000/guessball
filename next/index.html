@@ -59,7 +59,7 @@ html[data-theme="light"] #app.photo .screen .page h2, html[data-theme="light"] #
   align-self: flex-start; width: fit-content; padding: 2px 12px; border-radius: 14px; background: var(--glass);
   -webkit-backdrop-filter: blur(18px); backdrop-filter: blur(18px); }
 * { box-sizing: border-box; }
-html, body { margin: 0; min-height: 100%; height: var(--apph, 100%); background: var(--bg); color: var(--text); color-scheme: dark; }
+html, body { margin: 0; min-height: 100%; height: var(--apph, 100%); overflow: hidden; background: var(--bg); color: var(--text); color-scheme: dark; }
 html[data-theme="light"], html[data-theme="light"] body { color-scheme: light; }
 body { font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif; -webkit-font-smoothing: antialiased;
        -webkit-text-size-adjust: 100%; overscroll-behavior: none; -webkit-user-select: none; user-select: none; }
@@ -89,19 +89,21 @@ a { color: var(--link); text-decoration: none; -webkit-tap-highlight-color: tran
 /* ── Layout ── */
 #app { position: fixed; top: 0; left: 0; right: 0; height: var(--apph, 100%); max-width: 520px; margin: 0 auto; overflow: hidden; }
 .screen { position: absolute; inset: 0; display: flex; flex-direction: column; }
-.page { position: absolute; inset: 0; overflow-y: auto; -webkit-overflow-scrolling: touch;
+.page { position: absolute; inset: 0; overflow-y: auto; overscroll-behavior: contain;
         padding: calc(var(--safe-top) + 14px) 20px calc(var(--safe-bot) + 24px); display: flex; flex-direction: column; gap: 14px; }
 .page > * { flex-shrink: 0; min-width: 0; }
 .page, .fixedpage, .sheet { overflow-x: hidden; }
 .page.tabbed { --bar: max(12px, calc(var(--safe-bot) - 11px)); padding-bottom: calc(var(--bar) + 110px + var(--dock, 0px));
   -webkit-mask-image: linear-gradient(180deg, #000 0, #000 calc(100% - var(--bar) - 94px - var(--dock, 0px)), transparent calc(100% - var(--bar) - 66px - var(--dock, 0px)));
           mask-image: linear-gradient(180deg, #000 0, #000 calc(100% - var(--bar) - 94px - var(--dock, 0px)), transparent calc(100% - var(--bar) - 66px - var(--dock, 0px))); }
+/* Leave room for the LIVE bar so it never covers the bottom of a page */
+.screen:has(.livebar) .page.tabbed { --dock: 56px; }
 /* Buttons pinned just above the tab bar (Club: FIND A CLUB / CREATE A CLUB), within easy thumb reach */
 .dock { position: absolute; z-index: 11; left: 16px; right: 16px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .dock button { height: 48px; border-radius: 24px; background: var(--nav); -webkit-backdrop-filter: blur(24px) saturate(160%); backdrop-filter: blur(24px) saturate(160%);
   border: 1px solid rgba(255,255,255,.10); box-shadow: 0 8px 24px rgba(0,0,0,.35); font-size: 17px; font-weight: 800; letter-spacing: .6px; color: var(--text); }
 html[data-theme="light"] .dock button { border-color: rgba(0,0,0,.06); box-shadow: 0 8px 24px rgba(0,0,0,.12); }
-.fixedpage { position: absolute; inset: 0; padding: calc(var(--safe-top) + 14px) 20px calc(var(--safe-bot) + 20px); display: flex; flex-direction: column; gap: 14px; overflow-y: auto; }
+.fixedpage { overscroll-behavior: contain; position: absolute; inset: 0; padding: calc(var(--safe-top) + 14px) 20px calc(var(--safe-bot) + 20px); display: flex; flex-direction: column; gap: 14px; overflow-y: auto; }
 .fixedpage > * { flex-shrink: 0; }
 .grow { flex-grow: 1 !important; flex-shrink: 1 !important; }
 
@@ -154,7 +156,7 @@ html[data-theme="light"] .dock button { border-color: rgba(0,0,0,.06); box-shado
 .scrim { position: absolute; inset: 0; background: var(--scrim); z-index: 20; }
 @keyframes scrimin { from { opacity: 0 } to { opacity: 1 } }
 .scrim.fadein { animation: scrimin .25s ease-out both; }
-.sheet { position: absolute; left: 0; right: 0; bottom: var(--kb, 0px); max-height: min(88%, calc(var(--vh, 100vh) - 30px)); transition: bottom .2s; overflow-y: auto; z-index: 21; background: var(--sheet); border-radius: 28px 28px 0 0;
+.sheet { overscroll-behavior: contain; position: absolute; left: 0; right: 0; bottom: var(--kb, 0px); max-height: min(88%, calc(var(--vh, 100vh) - 30px)); transition: bottom .2s; overflow-y: auto; z-index: 21; background: var(--sheet); border-radius: 28px 28px 0 0;
          padding: 10px 20px calc(var(--safe-bot) + 24px); display: flex; flex-direction: column; gap: 12px; }
 .sheet > * { flex-shrink: 0; min-width: 0; max-width: 100%; }
 .sheet [style*="grid"] > * { min-width: 0; overflow: hidden; }
@@ -613,23 +615,31 @@ const Statistician = (() => {
   function records(games) {
     const list = chrono(games.filter(g => g.ended !== false));
     if (!list.length) return [];
+    // Each record keeps every offer so it can show a top 5; `key` merges offers that are the same feat
+    // (a win streak grows game by game — it's one entry, at its longest).
     const best = (label, better) => {
-      let top = null;
-      return { offer(value, who, g, extra) { if (top === null || better(value, top.value)) top = { label, value, who, date: g && g.date, gameId: g && g.id, extra }; },
-               get: () => top };
+      const all = [], byKey = {};
+      return { offer(value, who, g, extra, key) {
+                 const e = { label, value, who, date: g && g.date, gameId: g && g.id, extra };
+                 if (key) { const k = byKey[key]; if (k) { if (better(value, k.value)) Object.assign(k, e); return; } byKey[key] = e; }
+                 all.push(e); },
+               get: () => { if (!all.length) return null;
+                 const sorted = all.map((e, i) => [e, i]).sort((x, y) => (better(x[0].value, y[0].value) ? -1 : better(y[0].value, x[0].value) ? 1 : x[1] - y[1])).map(x => x[0]);
+                 return { ...sorted[0], top: sorted.slice(0, 5).map(({ value, who, date, gameId, extra }) => ({ value, who, date, gameId, extra })) }; } };
     };
     const hi = best('HIGHEST SCORE', (a, b) => a > b), lo = best('LOWEST SCORE', (a, b) => a < b);
     const win = best('BIGGEST WIN', (a, b) => a > b), acc = best('BEST ACCURACY', (a, b) => a > b);
     const halfRec = best('BEST HALF-INNING', (a, b) => a > b), comeback = best('BIGGEST COMEBACK', (a, b) => a > b);
     const pickStreak = best('LONGEST PICK STREAK', (a, b) => a > b);
-    const run = {}, streak = best('WIN STREAK', (a, b) => a > b);
+    const run = {}, runStart = {}, streak = best('WIN STREAK', (a, b) => a > b);
     list.forEach(g => {
       const r = result(g), nums = gameNumbers(g);
       g.players.forEach((p, i) => {
         hi.offer(r.scores[i], p.name, g); lo.offer(r.scores[i], p.name, g);
         const o = outcomeFor(g, i);
         run[p.id] = o === 'W' ? (run[p.id] || 0) + 1 : 0;
-        streak.offer(run[p.id], p.name, g);
+        if (run[p.id] === 1) runStart[p.id] = g.id;
+        if (run[p.id]) streak.offer(run[p.id], p.name, g, undefined, p.id + ':' + runStart[p.id]);
         if (nums && nums[i].picks >= 10) acc.offer(nums[i].right / nums[i].picks, p.name, g, { picks: nums[i].picks });
         if (nums && nums[i].bestStreak) pickStreak.offer(nums[i].bestStreak, p.name, g);
       });
@@ -647,10 +657,11 @@ const Statistician = (() => {
     const mostWins = st.slice().sort((a, b) => b.w - a.w)[0];
     const mostGames = st.slice().sort((a, b) => b.games - a.games)[0];
     const ys = seasons(list);
-    const out = [hi.get(), win.get(), streak.get(),
-      { label: 'MOST WINS', value: mostWins.w, who: mostWins.name },
+    const topOf = (rows, f) => rows.slice().sort((a, b) => f(b) - f(a)).slice(0, 5).map(r => ({ value: f(r), who: r.name }));
+    const out = [hi.get(), win.get(), streak.get() || { label: 'WIN STREAK', value: 0, who: '—', top: [] },
+      { label: 'MOST WINS', value: mostWins.w, who: mostWins.name, top: topOf(st, r => r.w) },
       acc.get(), lo.get(),
-      { label: 'MOST GAMES', value: mostGames.games, who: mostGames.name, since: season({ date: mostGames.first }) },
+      { label: 'MOST GAMES', value: mostGames.games, who: mostGames.name, since: season({ date: mostGames.first }), top: topOf(st, r => r.games) },
       { label: 'SEASONS', value: ys.length, from: ys[ys.length - 1], to: ys[0] }];
     // In-game records appear once there is at least one new-app game
     [halfRec.get(), comeback.get(), pickStreak.get()].forEach(x => { if (x) out.push(x); });
@@ -1638,7 +1649,7 @@ const FilingCabinet = (() => {
 //  that returns HTML. Buttons carry data-act="…" and the matching
 //  function in ACT runs when tapped, then the screen redraws.
 // ════════════════════════════════════════════════════════════════
-const VERSION = '2.0 · test build 6.2';
+const VERSION = '2.0 · test build 6.3';
 const RULES_JSON = {
   "rules": {
     "v2": {
@@ -2513,36 +2524,44 @@ function wire() {
     else if (i.dataset.rerender) render();
     else syncEnables();
   });
-  // Swipe a sheet down: it follows the thumb. While dragging, iPhone's own scrolling is held off
-  // (otherwise the sheet's bounce fights the drag and can leave scrolling stuck afterwards).
-  let drag = null;
+  // iPhone scroll lock guard: a scrolling page sitting exactly at its top or bottom can hand the swipe to the
+  // (unscrollable) page behind it and then stay stuck. Keep every long page 1px away from its ends when a touch starts.
   el.addEventListener('touchstart', e => {
-    const sh = e.target.closest('.sheet'); if (!sh || e.target.closest('input,textarea')) return;
-    const y = e.touches[0].clientY;
-    drag = { sh, y, last: y, t: Date.now(), v: 0, dy: 0, top: sh.scrollTop <= 0, on: false };
+    const sc = e.target.closest('.page, .fixedpage, .sheet'); if (!sc || e.target.closest('input,textarea')) return;
+    const max = sc.scrollHeight - sc.clientHeight;
+    if (max > 2) { if (sc.scrollTop <= 0) sc.scrollTop = 1; else if (sc.scrollTop >= max) sc.scrollTop = max - 1; }
   }, { passive: true });
-  el.addEventListener('touchmove', e => {
+  // Swipe a sheet down: it follows the thumb. While dragging, iPhone's own scrolling is held off
+  // (otherwise the sheet's bounce fights the drag). The "hold off" listener sits on the sheet only, never the whole app.
+  let drag = null;
+  const onMove = e => {
     if (!drag) return;
     const y = e.touches[0].clientY, now = Date.now();
     drag.v = (y - drag.last) / Math.max(1, now - drag.t); drag.last = y; drag.t = now;
     drag.dy = y - drag.y;
-    if (!drag.on && drag.top && drag.dy > 4 && drag.sh.scrollTop <= 0) {
+    if (!drag.on && drag.top && drag.dy > 4 && drag.sh.scrollTop <= 1) {
       drag.on = true; drag.y = y - 1; drag.dy = 1;
       drag.sh.style.animation = 'none'; drag.sh.style.transition = 'none';
     }
     if (drag.on) {
       if (e.cancelable) e.preventDefault();
       drag.sh.style.transform = `translateY(${Math.max(0, drag.dy)}px)`;
-      const sc = drag.sh.parentNode.querySelector('.scrim'); if (sc) { sc.style.transition = 'none'; sc.style.opacity = String(Math.max(0.2, 1 - drag.dy / 500)); }
+      const sc = drag.sh.parentNode && drag.sh.parentNode.querySelector('.scrim'); if (sc) { sc.style.transition = 'none'; sc.style.opacity = String(Math.max(0.2, 1 - drag.dy / 500)); }
     }
-  }, { passive: false });
+  };
+  el.addEventListener('touchstart', e => {
+    const sh = e.target.closest('.sheet'); if (!sh || e.target.closest('input,textarea')) { drag = null; return; }
+    const y = e.touches[0].clientY;
+    drag = { sh, y, last: y, t: Date.now(), v: 0, dy: 0, top: sh.scrollTop <= 1, on: false };
+    if (!sh.dataset.drag) { sh.dataset.drag = '1'; sh.addEventListener('touchmove', onMove, { passive: false }); }
+  }, { passive: true });
   const endDrag = () => {
     if (!drag) return;
     const d = drag; drag = null;
     if (!d.on) return;
     if (d.dy > 110 || (d.dy > 30 && d.v > 0.5)) return dismissSheet();
     d.sh.style.transition = 'transform .28s cubic-bezier(.2,1,.3,1)'; d.sh.style.transform = '';
-    const sc = d.sh.parentNode.querySelector('.scrim'); if (sc) { sc.style.transition = 'opacity .28s'; sc.style.opacity = ''; }
+    const sc = d.sh.parentNode && d.sh.parentNode.querySelector('.scrim'); if (sc) { sc.style.transition = 'opacity .28s'; sc.style.opacity = ''; }
   };
   el.addEventListener('touchend', endDrag); el.addEventListener('touchcancel', endDrag);
   window.addEventListener('online', () => { S.offlineFirst = false; if (S.screen === 'signin') render(); });
@@ -3117,7 +3136,7 @@ SCREENS.game = () => {
 function liveBar() {
   if (!S.g || S.g.s.ended) return '';
   const s = S.g.s, g = S.g.game;
-  return `<button class="press" ${act('resume')} style="position:absolute;z-index:11;left:16px;right:16px;bottom:calc(max(12px, calc(var(--safe-bot) - 11px)) + 72px);height:48px;border-radius:24px;background:var(--livebar);border:1px solid rgba(255,255,255,.08);display:flex;align-items:center;gap:10px;padding:0 16px;box-shadow:0 8px 24px rgba(0,0,0,.5)">
+  return `<button class="press livebar" ${act('resume')} style="position:absolute;z-index:11;left:16px;right:16px;bottom:calc(max(12px, calc(var(--safe-bot) - 11px)) + 72px);height:48px;border-radius:24px;background:var(--livebar);border:1px solid rgba(255,255,255,.08);display:flex;align-items:center;gap:10px;padding:0 16px;box-shadow:0 8px 24px rgba(0,0,0,.5)">
     <span class="live" style="width:8px;height:8px;border-radius:4px;background:var(--live)"></span><span class="cond" style="font-size:15px;font-weight:800;letter-spacing:.8px;color:var(--livetext)">LIVE</span>
     <span class="cond" style="font-size:15px;font-weight:700;color:var(--text2)">${halfName(s)}</span>
     <span style="flex-grow:1;text-align:left;font-size:14px;font-weight:600;overflow:hidden;white-space:nowrap;text-overflow:ellipsis">${g.players.map((p, i) => esc(p.name) + ' ' + s.scores[i]).join(' · ')}</span>
@@ -3478,10 +3497,10 @@ function statsHistory(games) {
         ${tag || meta ? `<div style="display:flex;align-items:center;gap:6px;margin-top:3px;min-width:0">${tag}<span class="courier meta" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(meta)}</span></div>` : ''}
       </div></button>`;
   };
-  return `<button class="press cond mid-btn" style="height:44px;font-size:17px" ${act('addGame')}>${ICON.plus} ADD A PAST GAME</button>
-  ${hist.map((s, k) => `<div style="display:flex;align-items:baseline;justify-content:space-between;margin-top:${k ? 8 : 0}px"><h2 class="cond" style="margin:0;font-size:30px;font-weight:800">${s.season}</h2>
+  return `${hist.map((s, k) => `<div style="display:flex;align-items:baseline;justify-content:space-between;margin-top:${k ? 8 : 0}px"><h2 class="cond" style="margin:0;font-size:30px;font-weight:800">${s.season}</h2>
     <span class="courier meta">${s.games.length} game${s.games.length > 1 ? 's' : ''}${k === 0 ? ' · ' + total + ' all time' : ''}</span></div>
-    <div style="display:flex;flex-direction:column;gap:10px">${s.games.map(card).join('')}</div>`).join('')}`;
+    <div style="display:flex;flex-direction:column;gap:10px">${s.games.map(card).join('')}</div>`).join('')}
+  <button class="press cond small-btn" style="align-self:center;height:40px;border-radius:20px;margin-top:10px;color:var(--text2)" ${act('addGame')}>${ICON.plus} ADD A PAST GAME</button>`;
 }
 
 function statsRecords(games) {
@@ -3502,12 +3521,37 @@ function statsRecords(games) {
   };
   const hasInGame = recs.some(r => r.label === 'BEST HALF-INNING');
   return `<div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px">${recs.map(r => { const [v, who, when] = fmt(r);
-    return `<div class="card" style="border-radius:16px;padding:10px 14px;display:flex;flex-direction:column;min-width:0">
-      <span class="cond" style="font-size:13px;font-weight:800;letter-spacing:.8px;color:var(--text3)">${r.label}</span>
+    const tap = r.top && r.top.length > 1;
+    return `<${tap ? 'button' : 'div'} class="card${tap ? ' press' : ''}" ${tap ? act('openSheet', 'record:' + r.label) : ''} style="border-radius:16px;padding:10px 14px;display:flex;flex-direction:column;min-width:0;text-align:left;width:100%">
+      <span class="cond" style="font-size:13px;font-weight:800;letter-spacing:.8px;color:var(--text3);display:flex;justify-content:space-between">${r.label}${tap ? '<span style="color:var(--text4)">›</span>' : ''}</span>
       <span class="shoulders" style="font-size:38px;font-weight:900;line-height:1.05">${v}</span>
       <span style="font-size:14px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(who)}</span>
-      <span class="courier" style="font-size:10px;font-weight:700;color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(when)}</span></div>`; }).join('')}</div>
+      <span class="courier" style="font-size:10px;font-weight:700;color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(when)}</span></${tap ? 'button' : 'div'}>`; }).join('')}</div>
   ${hasInGame ? '' : `<span class="courier meta" style="line-height:1.5;padding:0 2px">In-game records (best half-inning, biggest comeback, longest pick streak) start with the first new-app game.</span>`}`;
+}
+
+// Top 5 for one record (tap a record card)
+function recordSheet() {
+  const games = scopeGames() || [], r = Statistician.records(games).find(x => x.label === S.sheet.arg);
+  if (!r || !r.top) return '<span>Nothing to show yet.</span>';
+  const val = t => { switch (r.label) {
+    case 'BIGGEST WIN': case 'BEST HALF-INNING': return '+' + t.value;
+    case 'BEST ACCURACY': return pctText(t.value);
+    default: return String(t.value).replace('-', '−'); } };
+  const sub = t => { switch (r.label) {
+    case 'BIGGEST WIN': return `${niceDate(t.date)} · ${t.extra.score} to ${t.extra.loserScore} vs ${t.extra.loser}`;
+    case 'BEST ACCURACY': return `${niceDate(t.date)} · ${t.extra.picks} picks`;
+    case 'WIN STREAK': return 'Ended ' + niceDate(t.date);
+    case 'MOST WINS': return 'Wins, all time';
+    case 'MOST GAMES': return 'Games, all time';
+    case 'LONGEST PICK STREAK': return 'Right in a row · ' + niceDate(t.date);
+    default: return t.date ? niceDate(t.date) : ''; } };
+  return `<h2 class="cond" style="margin:0;font-size:28px;font-weight:800">${esc(r.label)}</h2>
+  <span class="courier meta">Top ${r.top.length} · ${esc(scopeName())}</span>
+  <div class="list">${r.top.map((t, i) => `<${t.gameId ? 'button' : 'div'} class="row${t.gameId ? ' press' : ''}" ${t.gameId ? act('recordGame', t.gameId) : ''} style="min-height:56px;gap:12px">
+    <span class="shoulders" style="width:18px;font-size:20px;font-weight:800;color:${i ? 'var(--text3)' : 'var(--gold)'}">${i + 1}</span>
+    <div style="flex-grow:1;min-width:0;display:flex;flex-direction:column;gap:2px"><span style="font-size:16px;font-weight:700">${esc(t.who)}</span><span class="courier meta" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(sub(t))}</span></div>
+    <span class="shoulders num" style="font-size:26px;font-weight:900">${val(t)}</span>${t.gameId ? ICON.chev : ''}</${t.gameId ? 'button' : 'div'}>`).join('')}</div>`;
 }
 
 function statsH2H(games) {
@@ -3745,7 +3789,7 @@ SCREENS.adminGames = () => {
       <div style="display:flex;flex-direction:column"><span style="font-size:15px;font-weight:700">${esc(g.players.map((p, i) => p.name + ' ' + r.scores[i]).join(' · '))}</span><span class="courier meta">${esc(niceDate(g.date))} · ${g.era}</span></div>${ICON.chev}</button>`; }).join('')}</div></div>`;
 };
 
-Object.assign(SHEETS, { season: seasonSheet, h2hPick: h2hPickSheet, deleteGame: deleteGameSheet });
+Object.assign(SHEETS, { season: seasonSheet, h2hPick: h2hPickSheet, deleteGame: deleteGameSheet, record: recordSheet });
 
 // ════════════ Actions ════════════
 Object.assign(ACT, {
@@ -3776,6 +3820,7 @@ Object.assign(ACT, {
       back(); toast('Game deleted — stats recalculated'); loadScopeGames(true); loadHome();
     } catch (e) { fail(e); }
   },
+  recordGame: id => { S.sheet = null; ACT.openGame(id); },
   homeShare: async id => {       // Home: share card for the most recent game
     const games = scopeGames() || await loadScopeGames();
     const g = (games || []).find(x => x.id === id);
@@ -4481,7 +4526,8 @@ const TEAM_STYLE = {
 };
 const ACCENTS = { blue: '#2F6FE4', green: '#1F9D55', red: '#D9412F', purple: '#7B4FE0', orange: '#E67A1F', teal: '#14919B' };
 const AP_DEFAULT = { theme: 'dark', accent: 'blue', bg: 'off', park: null, picks: {}, gamePark: true, frost: true };
-const ap = () => { S.settings.ap = { ...AP_DEFAULT, ...(S.settings.ap || {}) }; return S.settings.ap; };
+// Always the same object (fills in any missing settings once), so "ap().x = !ap().x" works
+const ap = () => { const a = S.settings.ap || (S.settings.ap = {}); for (const k in AP_DEFAULT) if (!(k in a)) a[k] = AP_DEFAULT[k]; return a; };
 const saveAp = () => Store.put('gb_settings', S.settings);
 const favTeam = () => (S.account && S.account.team) || null;
 const myPhoto = () => { try { return localStorage.getItem('gb_myphoto'); } catch (e) { return null; } };
@@ -4593,7 +4639,8 @@ SCREENS.appearance = () => {
   return `<div class="page">
   <div class="topbar">${backBtn()}<h1 class="cond h1">APPEARANCE</h1></div>
   <div style="display:flex;flex-direction:column;align-items:center;gap:8px">
-    <div style="position:relative;width:150px;height:318px;border-radius:30px;border:3px solid var(--line2);overflow:hidden;background:${src ? `#000 url('${src}') center/cover` : 'var(--bg)'}">${src ? `<div style="position:absolute;inset:0;background:var(--wash)"></div>` : ''}</div>
+    <div style="position:relative;width:150px;height:318px;border-radius:30px;border:3px solid var(--line2);overflow:hidden;background:${src ? `#000 url('${src}') center/cover` : 'var(--bg)'}">${src ? `<div style="position:absolute;inset:0;background:var(--wash)"></div>` : ''}
+      ${previewCards(!!src && a.frost)}</div>
     <span class="courier meta">${esc(caption)}</span></div>
   <span class="cond label">THEME</span>
   ${seg('theme', [['dark', 'DARK'], ['light', 'LIGHT'], ['auto', 'AUTO']])}
@@ -4607,6 +4654,16 @@ SCREENS.appearance = () => {
     <div class="row" style="min-height:56px"><div style="flex-grow:1;padding:6px 0">${info('apFrost', '<span style="font-size:16px;font-weight:500;color:var(--text)">Frosted cards</span>', 'Blurs the photo behind each card. If the app ever feels sticky, turn this off.', '')}</div>${toggle(a.frost, 'apToggleFrost')}</div></div>` : ''}
 </div>`;
 };
+// Two sample cards inside the preview phone, so frosted vs plain is easy to see
+function previewCards(frost) {
+  const blur = frost ? '-webkit-backdrop-filter:blur(8px) saturate(140%);backdrop-filter:blur(8px) saturate(140%);' : '';
+  const line = (w, c = 'var(--text)', h = 5) => `<span style="display:block;width:${w}%;height:${h}px;border-radius:3px;background:${c};opacity:.85"></span>`;
+  const card = (top, h, body) => `<div style="position:absolute;left:10px;right:10px;top:${top}px;height:${h}px;border-radius:12px;background:var(--glass);${blur}padding:9px 10px;display:flex;flex-direction:column;gap:6px">${body}</div>`;
+  return `<div style="position:absolute;left:12px;top:22px;font:800 14px 'Barlow Condensed',sans-serif;color:var(--text)">STATS</div>`
+    + card(48, 92, line(40, 'var(--text3)', 4) + [70, 55, 62].map(w => `<div style="display:flex;justify-content:space-between;align-items:center">${line(w)}${line(14)}</div>`).join(''))
+    + card(150, 70, line(35, 'var(--text3)', 4) + line(80) + line(60))
+    + `<div style="position:absolute;left:10px;right:10px;bottom:10px;height:26px;border-radius:13px;background:var(--nav)"></div>`;
+}
 function parksSheet() {
   const a = ap(), cur = a.park || favTeam();
   return `<h2 class="cond" style="margin:0;font-size:28px;font-weight:800">BALLPARK</h2>
