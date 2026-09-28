@@ -869,6 +869,11 @@ const Statistician = (() => {
     A('dead_even', 'Dead Even', 'GAME MOMENTS', 'Finish a game tied', { scope: 'all' }),
     A('below_zero', 'Below Zero', 'GAME MOMENTS', 'Finish with a negative score', { scope: 'all' }),
     A('last_one_standing', 'Last One Standing', 'GAME MOMENTS', 'Win a 3-player game', { scope: 'all' }),
+    A('wire_to_wire', 'Wire to Wire', 'GAME MOMENTS', 'Lead after every inning and win'),
+    A('seesaw', 'Seesaw', 'GAME MOMENTS', '5+ lead changes in one game'),
+    A('free_baseball', 'Free Baseball', 'GAME MOMENTS', 'Play into extra innings'),
+    A('snakebit', 'Snakebit', 'GAME MOMENTS', 'Lose by exactly 1', { scope: 'margin' }),
+    A('shutout', 'Shutout', 'GAME MOMENTS', 'Win with your opponent at 0 or below', { scope: 'all' }),
 
     A('unicorn', 'Unicorn', 'BIG PLAYS', 'Call a triple'),
     A('take_your_base', 'Take Your Base', 'BIG PLAYS', 'Call a hit by pitch'),
@@ -879,6 +884,9 @@ const Statistician = (() => {
     A('small_ball_specialist', 'Small Ball Specialist', 'BIG PLAYS', 'Call 3 bunts in one game'),
     A('hr_hat_trick', 'HR Hat Trick', 'BIG PLAYS', 'Call 3 HRs in one game'),
     A('cleanup_hitter', 'Cleanup Hitter', 'BIG PLAYS', 'Call a HR that scores 4'),
+    A('hit_for_cycle', 'Hit for the Cycle', 'BIG PLAYS', 'Call a 1B, 2B, 3B and HR in one game'),
+    A('by_way_of_k', 'By Way of the K', 'BIG PLAYS', 'Call all 3 outs of a half-inning as strikeouts'),
+    A('golden_sombrero', 'Golden Sombrero', 'BIG PLAYS', 'Pick strikeout 4 times in a game and miss all 4'),
 
     A('calls_k', 'Strikeouts', 'CAREER CALLS', 'Correct K calls all time', { ...T([10, 50, 100]), outcome: 'strikeout', code: 'K' }),
     A('calls_ipo', 'In Play Outs', 'CAREER CALLS', 'Correct IPO calls all time', { ...T([10, 50, 100]), outcome: 'in_play_out', code: 'IPO' }),
@@ -891,10 +899,16 @@ const Statistician = (() => {
     A('calls_sb', 'Steals', 'CAREER CALLS', 'Correct SB calls all time', { ...T([5, 15, 30]), outcome: 'stolen_base', code: 'SB' }),
     A('calls_dp', 'Double Plays', 'CAREER CALLS', 'Correct DP calls all time', { ...T([5, 15, 30]), outcome: 'double_play', code: 'DP' }),
     A('calls_bu', 'Bunts', 'CAREER CALLS', 'Correct BU calls all time', { ...T([5, 15, 30]), outcome: 'bunt', code: 'BU' }),
+    A('calls_fc', "Fielder's Choices", 'CAREER CALLS', 'Correct FC calls all time', { ...T([5, 15, 30]), outcome: 'fielders_choice', code: 'FC' }),
 
     A('road_trip', 'Road Trip', 'TRAVEL', 'Play at different ballparks', { ...T([3, 5, 10]), scope: 'all' }),
     A('home_cooking', 'Home Cooking', 'TRAVEL', 'Play 10 games at one ballpark', { ...T([10]), scope: 'all' }),
     A('lifer', 'Lifer', 'TRAVEL', 'Play in different seasons', { ...T([5, 10]), scope: 'all' }),
+
+    A('october_baseball', 'October Baseball', 'CALENDAR', 'Play a game in October or November', { scope: 'all' }),
+    A('opening_day', 'Opening Day', 'CALENDAR', 'Play in the first week of the season', { scope: 'all' }),
+    A('doubleheader', 'Doubleheader', 'CALENDAR', 'Play two games in one day', { scope: 'all' }),
+    A('iron_man', 'Iron Man', 'CALENDAR', 'Play games 3 days in a row', { scope: 'all' }),
   ];
   const AWARD = Object.fromEntries(AWARDS.map(a => [a.id, a]));
 
@@ -908,7 +922,7 @@ const Statistician = (() => {
     const book = {};
     const P = id => book[id] || (book[id] = {
       earned: {}, counts: {}, games: 0, wins: 0, points: 0, parks: {}, seasons: new Set(),
-      vs: {}, lastLossTo: null, confRun: 0, p3Run: 0, confUsed: false,
+      vs: {}, lastLossTo: null, confRun: 0, p3Run: 0, confUsed: false, dates: {},
     });
     const give = (pid, g, id, tier = 1, at = null) => {
       const e = P(pid).earned[id] || (P(pid).earned[id] = []);
@@ -943,9 +957,21 @@ const Statistician = (() => {
         if (o === 'T') give(pl.id, g, 'dead_even');
         if (res.scores[i] < 0) give(pl.id, g, 'below_zero');
         if (o === 'W' && g.players.length === 3) give(pl.id, g, 'last_one_standing');
+        if (o === 'W' && res.scores.every((v, j) => j === i || v <= 0)) give(pl.id, g, 'shutout');
+        // Calendar (every era — only the date matters)
+        if (g.date) {
+          const [y, m, dd] = g.date.split('-').map(Number);
+          if (m === 10 || m === 11) give(pl.id, g, 'october_baseball');
+          if ((m === 3 && dd >= 20) || (m === 4 && dd <= 7)) give(pl.id, g, 'opening_day');   // Opening Day is usually the last week of March; spring training doesn't count
+          if (p.dates[g.date]) give(pl.id, g, 'doubleheader');
+          p.dates[g.date] = (p.dates[g.date] || 0) + 1;
+          const day = k => { const t = new Date(Date.UTC(y, m - 1, dd - k)); return t.toISOString().slice(0, 10); };
+          if (p.dates[day(1)] && p.dates[day(2)]) give(pl.id, g, 'iron_man');
+        }
         // Margin awards: only games played in the app (pre-app / beta / hand-added excluded)
         if (inGame) {
           if (o === 'W' && res.margin === 1) give(pl.id, g, 'sweating');
+          if (o === 'L' && res.winner !== null && res.scores[res.winner] - res.scores[i] === 1) give(pl.id, g, 'snakebit');
           if (o === 'W' && res.margin >= 20) give(pl.id, g, 'comfortable');
           if (o === 'W' && res.margin >= 30) give(pl.id, g, 'blowout');
           if (o === 'L' && res.winner !== null && res.scores[res.winner] - res.scores[i] >= 20) give(pl.id, g, 'good_sport');
@@ -996,11 +1022,19 @@ const Statistician = (() => {
     let halfStartPriority = null, halfChanged = false, curHalf = null, priorityEverChanged = false;
     let firstAtBat = true;
     const ended = r.ended;
+    const cycle = g.players.map(() => new Set()), kPick = g.players.map(() => ({ right: 0, wrong: 0 }));
+    const halfK = {}, halfOnlyK = {}; let leader = null, leadChanges = 0, extras = false; const innings = [];
 
     r.plays.forEach((p, k) => {
       const at = p.index;
       if (curHalf !== p.half) { curHalf = p.half; halfStartPriority = p.priorityBefore; halfChanged = false;
-        halfPts[p.half] = Array(n).fill(0); halfPicks[p.half] = Array(n).fill(0); halfRight[p.half] = Array(n).fill(0); }
+        halfPts[p.half] = Array(n).fill(0); halfPicks[p.half] = Array(n).fill(0); halfRight[p.half] = Array(n).fill(0);
+        halfK[p.half] = Array(n).fill(0); halfOnlyK[p.half] = true; }
+      // Free Baseball: the game reached the 10th inning
+      if (!extras && parseInt(p.half, 10) >= 10) { extras = true; ids.forEach(pid => give(pid, g, 'free_baseball', 1, at)); }
+      // By Way of the K: every out this half-inning has to be a strikeout
+      const oc = U.outcome(p.outcome), outsHere = (oc ? oc.outs : 0) + ((p.ev && p.ev.extraOuts) || 0);
+      if (outsHere > 0 && (p.outcome !== 'strikeout' || (p.ev && p.ev.extraOuts))) halfOnlyK[p.half] = false;
       if (abStartPriority === null) abStartPriority = p.priorityBefore;
       if (p.priorityAfter !== p.priorityBefore) { halfChanged = true; priorityEverChanged = true; }
 
@@ -1021,9 +1055,14 @@ const Statistician = (() => {
           if (e.outcome === 'hbp') give(pid, g, 'take_your_base', 1, at);
           if (e.outcome === 'bunt') give(pid, g, 'small_ball', 1, at);
           if (e.outcome === 'home_run' && e.runs >= 4) give(pid, g, 'cleanup_hitter', 1, at);
+          if (['single', 'double', 'triple', 'home_run'].includes(e.outcome)) { cycle[i].add(e.outcome); if (cycle[i].size === 4) give(pid, g, 'hit_for_cycle', 1, at); }
+          if (e.outcome === 'strikeout') halfK[p.half][i]++;
           [['stolen_base', 'speed_demon'], ['walk', 'patient'], ['hbp', 'lightning_rod'], ['bunt', 'small_ball_specialist'], ['home_run', 'hr_hat_trick']]
             .forEach(([o, id]) => { if (inGameCalls[i][o] >= 3) give(pid, g, id, 1, at); });
         }
+        // Golden Sombrero: picked strikeout 4 times this game, wrong every time
+        if (e.pick === 'strikeout') { if (e.correct) kPick[i].right++; else kPick[i].wrong++;
+          if (kPick[i].wrong >= 4 && kPick[i].right === 0) give(pid, g, 'golden_sombrero', 1, at); }
         // confidence
         if (e.conf) {
           give(pid, g, 'bold', 1, at);
@@ -1055,6 +1094,10 @@ const Statistician = (() => {
         if (p.scoresAfter[i] >= 20) give(pid, g, 'payday', 1, at);
       });
 
+      // Seesaw: the outright lead changed hands 5 times
+      const top = Math.max(...p.scoresAfter), lead = p.scoresAfter.filter(v => v === top).length === 1 ? p.scoresAfter.indexOf(top) : null;
+      if (lead !== null) { if (leader !== null && lead !== leader) { leadChanges++; if (leadChanges === 5) ids.forEach(pid => give(pid, g, 'seesaw', 1, at)); } leader = lead; }
+
       // ── End of an at-bat ──
       if (p.endsAtBat) {
         g.players.forEach((_, i) => {
@@ -1076,7 +1119,9 @@ const Statistician = (() => {
       // ── End of a half-inning ──
       if (p.halfComplete) {
         const hp = halfPts[p.half];
+        if (p.half.endsWith('b')) { const t = Math.max(...p.scoresAfter); innings.push(p.scoresAfter.filter(v => v === t).length === 1 ? p.scoresAfter.indexOf(t) : null); }
         g.players.forEach((_, i) => {
+          if (halfOnlyK[p.half] && halfK[p.half][i] >= 3) give(ids[i], g, 'by_way_of_k', 1, at);
           if (halfPicks[p.half][i] >= 3 && halfRight[p.half][i] === halfPicks[p.half][i]) give(ids[i], g, 'perfect_half', 1, at);
           if (hp[i] >= 7 && hp.every((v, j) => j === i || v <= 0)) give(ids[i], g, 'ghost', 1, at);
         });
@@ -1104,6 +1149,7 @@ const Statistician = (() => {
       if (conf[i].right + conf[i].wrong >= 3 && conf[i].wrong === 0) give(pid, g, 'perfect_confidence');
       if (won && conf[i].wrong >= 3) give(pid, g, 'reckless_win');
       if (won && d[i] >= 10) give(pid, g, 'comeback_kid');
+      if (won && innings.length >= 3 && innings.every(x => x === i)) give(pid, g, 'wire_to_wire');
       if (lastAB && lastAB.log.some(e => e.player === i && e.correct)) give(pid, g, 'last_laugh');
       if (won) {
         const firstInning = r.halves.filter(h => parseInt(h.half, 10) === 1).reduce((s, h) => s + h.pts[i], 0);
@@ -4208,6 +4254,19 @@ const AWARD_ART = {
   cal: ['#E5544A', 'M4 6h16v14H4zM4 10h16M8 3v5M16 3v5M8 14h.1M12 14h.1M16 14h.1M8 17h.1M12 17h.1'],
   trophy: ['#F2C14E', 'M7 4h10v4a5 5 0 01-10 0zM7 6H4a3 3 0 003 4M17 6h3a3 3 0 01-3 4M12 13v4M8 21h8M9 17h6v4H9z'],
   boomerang: ['#7AABFF', 'M9 14L4 9l5-5M4 9h11a5 5 0 010 10h-4'],
+  // build 8
+  bicycle: ["#5BD27A", "M6 13a4 4 0 110 8 4 4 0 010-8zM18 13a4 4 0 110 8 4 4 0 010-8zM6 17l4-7h6l2 7M10 10l2 7h-6M9 7h3M15.5 6.5h2.5l-2 3.5"],
+  threeK: ["#FF5A4E", "M4 4v16M14 4l-9.5 8L14 20M19.5 5.5a1.5 1.5 0 110 3 1.5 1.5 0 010-3zM19.5 10.5a1.5 1.5 0 110 3 1.5 1.5 0 010-3zM19.5 15.5a1.5 1.5 0 110 3 1.5 1.5 0 010-3z"],
+  sombrero: ["#F2C14E", "M2 16.5c0 1.8 4.5 3 10 3s10-1.2 10-3-4.5-2.5-10-2.5S2 14.7 2 16.5zM8 14.4c0-4 1.5-8.4 4-8.4s4 4.4 4 8.4M8.3 12h7.4"],
+  finishline: ["#7AABFF", "M17 21V3M17 3.5h5v6h-5M19.5 3.5v6M17 6.5h5M2 14h11M10 11l3 3-3 3"],
+  seesaw: ["#FF9BB3", "M2 17L22 8M12 13.5L9 20h6zM4.5 13.2a1.8 1.8 0 110-3.6 1.8 1.8 0 010 3.6zM19.5 6.4a1.8 1.8 0 110-3.6 1.8 1.8 0 010 3.6z"],
+  extraball: ["#5BD27A", "M10.5 6a7.5 7.5 0 110 15 7.5 7.5 0 010-15zM6.5 8.5c1.6 2.5 1.6 7.5 0 10M14.5 8.5c-1.6 2.5-1.6 7.5 0 10M19.5 2v6M16.5 5h6"],
+  snake: ["#7BD88F", "M4 20c3 0 4-2 7-2s4 2 7 2M6.5 18.7C4 17 4 13.5 7.5 12.5s6.5 1 7.5-1.5-1.5-4.5-4-4.5M11 6.5c0-2 1.3-3.5 3.3-3.5 1.7 0 2.7 1.2 2.7 2.5M13.5 5h.1M17 5.5l2 .5-1.2 1.5M17 6l1.8 2"],
+  padlock: ["#7AABFF", "M5 11h14v10H5zM8 11V7.5a4 4 0 018 0V11M12 14.5v3"],
+  leaf: ["#FF8A3D", "M12 3l1.6 3.4 3.4-1.2-.8 3.8 3.6 1-2.6 2.6 1.4 2.6-3.8.4L14 18.5 12 16l-2 2.5-.8-2.9-3.8-.4 1.4-2.6-2.6-2.6 3.6-1-.8-3.8 3.4 1.2zM12 16v5"],
+  sunrise: ["#FFD23F", "M2 18h20M6 18a6 6 0 0112 0M12 4v3M4.5 9.5l2 1.5M19.5 9.5l-2 1.5M1.5 14h2.5M20 14h2.5M9 21h6"],
+  twoballs: ["#FF8A65", "M8 7a5.5 5.5 0 110 11A5.5 5.5 0 018 7zM5 9c1.1 1.8 1.1 5.2 0 7M11 9c-1.1 1.8-1.1 5.2 0 7M16 6a5.5 5.5 0 110 11M19 8c-1.1 1.8-1.1 5.2 0 7"],
+  dumbbell: ["#9AA6BA", "M7 12h10M4.5 7.5h2.5v9H4.5zM17 7.5h2.5v9H17zM2 10v4M22 10v4"],
 };
 const AWARD_PIC = {
   wins: 'medal', games: 'ticket', season_ticket: 'stadium', points: 'star',
@@ -4224,6 +4283,9 @@ const AWARD_PIC = {
   unicorn: 'rainbow', take_your_base: 'foot', small_ball: 'ball', speed_demon: 'dash', patient: 'walker', lightning_rod: 'bolt',
   small_ball_specialist: 'box', hr_hat_trick: 'tophat', cleanup_hitter: 'burst',
   road_trip: 'car', home_cooking: 'house', lifer: 'cal',
+  hit_for_cycle: 'bicycle', by_way_of_k: 'threeK', golden_sombrero: 'sombrero', wire_to_wire: 'finishline', seesaw: 'seesaw',
+  free_baseball: 'extraball', snakebit: 'snake', shutout: 'padlock',
+  october_baseball: 'leaf', opening_day: 'sunrise', doubleheader: 'twoballs', iron_man: 'dumbbell',
 };
 const AWARD_OFF = '#6E6E76';
 // The award's picture. on = earned (in color) or not yet (gray).
@@ -4238,7 +4300,7 @@ function awardIcon(a, px = 32, on = true) {
     + (art[5] ? `<path d="${art[5]}" stroke="${c(art[6])}" stroke-width="2.6"/>` : '') + '</svg>';
 }
 const AWARD_CATS = [['WINS & GAMES', 'WINS'], ['RIVALRIES', 'RIVALRIES'], ['BIG CALLS', 'BIG CALLS'], ['PICK 3', 'PICK 3'], ['STREAKS & ACCURACY', 'STREAKS'],
-  ['PRIORITY', 'PRIORITY'], ['GAME MOMENTS', 'MOMENTS'], ['BIG PLAYS', 'BIG PLAYS'], ['CAREER CALLS', 'CAREER'], ['TRAVEL', 'TRAVEL']];
+  ['PRIORITY', 'PRIORITY'], ['GAME MOMENTS', 'MOMENTS'], ['BIG PLAYS', 'BIG PLAYS'], ['CAREER CALLS', 'CAREER'], ['TRAVEL', 'TRAVEL'], ['CALENDAR', 'CALENDAR']];
 const tierNum = n => (n >= 1000 ? (n / 1000) + 'K' : String(n));
 const titleCase = s => s.toLowerCase().replace(/\b\w/g, c => c.toUpperCase());
 
