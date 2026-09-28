@@ -805,16 +805,15 @@ const Statistician = (() => {
   const A = (id, name, cat, desc, extra = {}) => ({ id, name, cat, desc, kind: 'once', scope: 'app', ...extra });
   const T = tiers => ({ kind: 'count', tiers });
   const AWARDS = [
-    A('wins', 'Wins', 'WINS & GAMES', 'Win games all time', { ...T([1, 5, 10, 25]), scope: 'all' }),
-    A('games', 'Games Played', 'WINS & GAMES', 'Play games all time', { ...T([5, 10, 25]), scope: 'all' }),
-    A('season_ticket', 'Season Ticket', 'WINS & GAMES', 'Play 20 games', { ...T([20]), scope: 'all' }),
-    A('points', 'Points', 'WINS & GAMES', 'Total points all time', { ...T([100, 500, 1000, 2500]), scope: 'all' }),
+    A('wins', 'Wins', 'WINS & GAMES', 'Win games all time', { ...T([1, 5, 10, 25, 50, 100]), scope: 'all' }),
+    A('games', 'Games Played', 'WINS & GAMES', 'Play games all time', { ...T([5, 10, 25, 50, 100, 200]), scope: 'all' }),
+    A('season_ticket', 'Season Ticket', 'WINS & GAMES', 'Play games in one season', { ...T([10, 20, 30, 40]), scope: 'all' }),
+    A('points', 'Points', 'WINS & GAMES', 'Total points all time', { ...T([100, 500, 1000, 2500, 5000, 10000]), scope: 'all' }),
 
-    A('rivalry', 'Rivalry', 'RIVALRIES', 'Play 25 games vs the same opponent', { ...T([25]), scope: 'all' }),
-    A('blood_feud', 'Blood Feud', 'RIVALRIES', 'Play 50 games vs the same opponent', { ...T([50]), scope: 'all' }),
+    A('rivalry', 'Rivalry', 'RIVALRIES', 'Play games vs the same opponent', { ...T([5, 10, 25, 50, 100, 200]), scope: 'all' }),
     A('dominant', 'Dominant', 'RIVALRIES', 'Win 70%+ vs one opponent (min 10)', { scope: 'all' }),
-    A('dynasty', 'Dynasty', 'RIVALRIES', 'Win 5 straight vs the same opponent', { ...T([5]), scope: 'all' }),
-    A('nemesis', 'Nemesis', 'RIVALRIES', 'Lose 5 straight to the same opponent', { ...T([5]), scope: 'all' }),
+    A('dynasty', 'Dynasty', 'RIVALRIES', 'Win in a row vs the same opponent', { ...T([5, 7, 10]), scope: 'all' }),
+    A('nemesis', 'Nemesis', 'RIVALRIES', 'Lose in a row to the same opponent', { ...T([5, 7, 10]), scope: 'all' }),
     A('revenge', 'Revenge', 'RIVALRIES', 'Beat whoever beat you last time', { scope: 'all' }),
 
     A('bold', 'Bold', 'BIG CALLS', 'Call confidence for the first time'),
@@ -828,13 +827,19 @@ const Statistician = (() => {
     A('reckless', 'Reckless', 'BIG CALLS', 'Lose 3 confidence calls in one game'),
     A('reckless_win', 'Reckless Win', 'BIG CALLS', 'Lose 3 confidence calls and still win'),
     A('assassin', 'Assassin', 'BIG CALLS', 'Steal priority with a confidence call'),
-    A('confidence_correct', 'Confidence Correct', 'BIG CALLS', 'Right on confidence all time', T([10, 25, 50])),
+    A('all_in', 'All In', 'BIG CALLS', 'Use confidence 10 times in one game'),
+    A('poker_face', 'Poker Face', 'BIG CALLS', 'Win without ever using confidence'),
+    A('ice_water', 'Ice Water', 'BIG CALLS', 'Trailing in the 9th or later, nail a confidence call'),
+    A('confidence_correct', 'Confidence Correct', 'BIG CALLS', 'Right on confidence all time', T([10, 25, 50, 100, 250])),
 
     A('first_p3', 'First Pick 3', 'PICK 3', 'Hit your first Pick 3 bonus'),
     A('prophet', 'Prophet', 'PICK 3', 'Pick 3 bonus in the first half-inning'),
     A('hat_trick', 'Hat Trick', 'PICK 3', '3 Pick 3 bonuses in one game'),
     A('clairvoyant', 'Clairvoyant', 'PICK 3', 'Pick 3 bonus 3 games in a row'),
-    A('p3_bonuses', 'Pick 3 Bonuses', 'PICK 3', 'Pick 3 bonuses all time', T([5, 15, 30])),
+    A('heartbreaker', 'Heartbreaker', 'PICK 3', 'Hit the first 2 of a Pick 3, miss the 3rd'),
+    A('side_retired', 'Side Retired', 'PICK 3', 'Hit a Pick 3 of three outs'),
+    A('hit_parade', 'Hit Parade', 'PICK 3', 'Hit a Pick 3 of three hits'),
+    A('p3_bonuses', 'Pick 3 Bonuses', 'PICK 3', 'Pick 3 bonuses all time', T([5, 15, 30, 50, 100])),
 
     A('on_fire', 'On Fire', 'STREAKS & ACCURACY', '5 right in a row'),
     A('wave', 'Wave', 'STREAKS & ACCURACY', '7 right in a row'),
@@ -845,13 +850,15 @@ const Statistician = (() => {
     A('dead_eye', 'Dead Eye', 'STREAKS & ACCURACY', '40%+ right in a game (min 20 picks)'),
     A('sniper', 'Sniper', 'STREAKS & ACCURACY', '50%+ right in a game (min 20 picks)'),
     A('ice_cold', 'Ice Cold', 'STREAKS & ACCURACY', 'Miss 6 in a row'),
-    A('correct_picks', 'Correct Picks', 'STREAKS & ACCURACY', 'Right picks all time', T([25, 100, 250])),
+    A('oaf_king', 'Oaf King', 'STREAKS & ACCURACY', 'A whole game without a right pick (20+ picks)'),
+    A('correct_picks', 'Correct Picks', 'STREAKS & ACCURACY', 'Right picks all time', T([25, 100, 250, 500, 1000, 2500])),
 
     A('oracle', 'Oracle', 'PRIORITY', 'Hold priority 5 straight at-bats'),
     A('priority_hog', 'Priority Hog', 'PRIORITY', 'Hold priority 10+ straight at-bats'),
     A('king_of_the_hill', 'King of the Hill', 'PRIORITY', 'Hold priority 3 full innings'),
     A('perfect_game', 'Perfect Game', 'PRIORITY', 'Win without ever losing priority'),
     A('stolen_thunder', 'Stolen Thunder', 'PRIORITY', 'Non-priority player scores on the first at-bat'),
+    A('hot_potato', 'Hot Potato', 'PRIORITY', 'Priority changes hands 5 times in one half-inning'),
 
     A('payday', 'Payday', 'GAME MOMENTS', 'Score 20+ in a game'),
     A('rocket', 'Rocket', 'GAME MOMENTS', '10+ points in one half-inning'),
@@ -869,6 +876,10 @@ const Statistician = (() => {
     A('dead_even', 'Dead Even', 'GAME MOMENTS', 'Finish a game tied', { scope: 'all' }),
     A('below_zero', 'Below Zero', 'GAME MOMENTS', 'Finish with a negative score', { scope: 'all' }),
     A('last_one_standing', 'Last One Standing', 'GAME MOMENTS', 'Win a 3-player game', { scope: 'all' }),
+    A('collapse', 'Collapse', 'GAME MOMENTS', 'Lose after leading by 10+'),
+    A('early_bird', 'Early Bird', 'GAME MOMENTS', 'Lead by 10+ after the 1st inning'),
+    A('clutch', 'Clutch', 'GAME MOMENTS', 'Score 10+ in the 9th inning'),
+    A('every_frame', 'Every Frame', 'GAME MOMENTS', 'Score in all 9 innings'),
     A('wire_to_wire', 'Wire to Wire', 'GAME MOMENTS', 'Lead after every inning and win'),
     A('seesaw', 'Seesaw', 'GAME MOMENTS', '5+ lead changes in one game'),
     A('free_baseball', 'Free Baseball', 'GAME MOMENTS', 'Play into extra innings'),
@@ -886,24 +897,27 @@ const Statistician = (() => {
     A('cleanup_hitter', 'Cleanup Hitter', 'BIG PLAYS', 'Call a HR that scores 4'),
     A('hit_for_cycle', 'Hit for the Cycle', 'BIG PLAYS', 'Call a 1B, 2B, 3B and HR in one game'),
     A('by_way_of_k', 'By Way of the K', 'BIG PLAYS', 'Call all 3 outs of a half-inning as strikeouts'),
+    A('punchout_king', 'Punchout King', 'BIG PLAYS', 'Call 7 strikeouts in one game'),
+    A('twin_killing', 'Twin Killing', 'BIG PLAYS', 'Call 2 double plays in one game'),
+    A('bases_clearing', 'Bases Clearing', 'BIG PLAYS', 'Call a 1B, 2B or 3B that scores 3'),
     A('golden_sombrero', 'Golden Sombrero', 'BIG PLAYS', 'Pick strikeout 4 times in a game and miss all 4'),
 
-    A('calls_k', 'Strikeouts', 'CAREER CALLS', 'Correct K calls all time', { ...T([10, 50, 100]), outcome: 'strikeout', code: 'K' }),
-    A('calls_ipo', 'In Play Outs', 'CAREER CALLS', 'Correct IPO calls all time', { ...T([10, 50, 100]), outcome: 'in_play_out', code: 'IPO' }),
-    A('calls_1b', 'Singles', 'CAREER CALLS', 'Correct 1B calls all time', { ...T([10, 50, 100]), outcome: 'single', code: '1B' }),
-    A('calls_2b', 'Doubles', 'CAREER CALLS', 'Correct 2B calls all time', { ...T([5, 25, 50]), outcome: 'double', code: '2B' }),
-    A('calls_3b', 'Triples', 'CAREER CALLS', 'Correct 3B calls all time', { ...T([3, 10, 25]), outcome: 'triple', code: '3B' }),
-    A('calls_hr', 'Home Runs', 'CAREER CALLS', 'Correct HR calls all time', { ...T([5, 25, 50]), outcome: 'home_run', code: 'HR' }),
-    A('calls_bb', 'Walks', 'CAREER CALLS', 'Correct BB calls all time', { ...T([10, 25, 50]), outcome: 'walk', code: 'BB' }),
-    A('calls_hbp', 'Hit by Pitch', 'CAREER CALLS', 'Correct HBP calls all time', { ...T([5, 15, 30]), outcome: 'hbp', code: 'HBP' }),
-    A('calls_sb', 'Steals', 'CAREER CALLS', 'Correct SB calls all time', { ...T([5, 15, 30]), outcome: 'stolen_base', code: 'SB' }),
-    A('calls_dp', 'Double Plays', 'CAREER CALLS', 'Correct DP calls all time', { ...T([5, 15, 30]), outcome: 'double_play', code: 'DP' }),
-    A('calls_bu', 'Bunts', 'CAREER CALLS', 'Correct BU calls all time', { ...T([5, 15, 30]), outcome: 'bunt', code: 'BU' }),
-    A('calls_fc', "Fielder's Choices", 'CAREER CALLS', 'Correct FC calls all time', { ...T([5, 15, 30]), outcome: 'fielders_choice', code: 'FC' }),
+    A('calls_k', 'Strikeouts', 'CAREER CALLS', 'Correct K calls all time', { ...T([10, 50, 100, 250, 500]), outcome: 'strikeout', code: 'K' }),
+    A('calls_ipo', 'In Play Outs', 'CAREER CALLS', 'Correct IPO calls all time', { ...T([10, 50, 100, 250, 500]), outcome: 'in_play_out', code: 'IPO' }),
+    A('calls_1b', 'Singles', 'CAREER CALLS', 'Correct 1B calls all time', { ...T([10, 50, 100, 250, 500]), outcome: 'single', code: '1B' }),
+    A('calls_2b', 'Doubles', 'CAREER CALLS', 'Correct 2B calls all time', { ...T([5, 25, 50, 100, 250]), outcome: 'double', code: '2B' }),
+    A('calls_3b', 'Triples', 'CAREER CALLS', 'Correct 3B calls all time', { ...T([3, 10, 25, 50, 100]), outcome: 'triple', code: '3B' }),
+    A('calls_hr', 'Home Runs', 'CAREER CALLS', 'Correct HR calls all time', { ...T([5, 25, 50, 100, 250]), outcome: 'home_run', code: 'HR' }),
+    A('calls_bb', 'Walks', 'CAREER CALLS', 'Correct BB calls all time', { ...T([10, 25, 50, 100, 250]), outcome: 'walk', code: 'BB' }),
+    A('calls_hbp', 'Hit by Pitch', 'CAREER CALLS', 'Correct HBP calls all time', { ...T([5, 15, 30, 50, 100]), outcome: 'hbp', code: 'HBP' }),
+    A('calls_sb', 'Steals', 'CAREER CALLS', 'Correct SB calls all time', { ...T([5, 15, 30, 50, 100]), outcome: 'stolen_base', code: 'SB' }),
+    A('calls_dp', 'Double Plays', 'CAREER CALLS', 'Correct DP calls all time', { ...T([5, 15, 30, 50, 100]), outcome: 'double_play', code: 'DP' }),
+    A('calls_bu', 'Bunts', 'CAREER CALLS', 'Correct BU calls all time', { ...T([5, 15, 30, 50, 100]), outcome: 'bunt', code: 'BU' }),
+    A('calls_fc', "Fielder's Choices", 'CAREER CALLS', 'Correct FC calls all time', { ...T([5, 15, 30, 50, 100]), outcome: 'fielders_choice', code: 'FC' }),
 
-    A('road_trip', 'Road Trip', 'TRAVEL', 'Play at different ballparks', { ...T([3, 5, 10]), scope: 'all' }),
-    A('home_cooking', 'Home Cooking', 'TRAVEL', 'Play 10 games at one ballpark', { ...T([10]), scope: 'all' }),
-    A('lifer', 'Lifer', 'TRAVEL', 'Play in different seasons', { ...T([5, 10]), scope: 'all' }),
+    A('road_trip', 'Road Trip', 'TRAVEL', 'Play at different ballparks', { ...T([3, 5, 10, 20, 30]), scope: 'all' }),
+    A('home_cooking', 'Home Cooking', 'TRAVEL', 'Play games at one ballpark', { ...T([10, 25, 50, 100]), scope: 'all' }),
+    A('lifer', 'Lifer', 'TRAVEL', 'Play in different seasons', { ...T([5, 10, 15, 20]), scope: 'all' }),
 
     A('october_baseball', 'October Baseball', 'CALENDAR', 'Play a game in October or November', { scope: 'all' }),
     A('opening_day', 'Opening Day', 'CALENDAR', 'Play in the first week of the season', { scope: 'all' }),
@@ -922,7 +936,7 @@ const Statistician = (() => {
     const book = {};
     const P = id => book[id] || (book[id] = {
       earned: {}, counts: {}, games: 0, wins: 0, points: 0, parks: {}, seasons: new Set(),
-      vs: {}, lastLossTo: null, confRun: 0, p3Run: 0, confUsed: false, dates: {},
+      vs: {}, lastLossTo: null, confRun: 0, p3Run: 0, confUsed: false, dates: {}, seasonGames: {},
     });
     const give = (pid, g, id, tier = 1, at = null) => {
       const e = P(pid).earned[id] || (P(pid).earned[id] = []);
@@ -949,7 +963,7 @@ const Statistician = (() => {
         const p = P(pl.id), o = outcomeFor(g, i);
         p.games++; p.points += res.scores[i]; if (o === 'W') p.wins++;
         count(pl.id, g, 'wins', p.wins); count(pl.id, g, 'games', p.games);
-        count(pl.id, g, 'season_ticket', p.games); count(pl.id, g, 'points', p.points);
+        p.seasonGames[season(g)] = (p.seasonGames[season(g)] || 0) + 1; count(pl.id, g, 'season_ticket', Math.max(...Object.values(p.seasonGames))); count(pl.id, g, 'points', p.points);
         if (g.park) { p.parks[g.park] = (p.parks[g.park] || 0) + 1;
           count(pl.id, g, 'road_trip', Object.keys(p.parks).length);
           count(pl.id, g, 'home_cooking', Math.max(...Object.values(p.parks))); }
@@ -982,7 +996,6 @@ const Statistician = (() => {
           const v = p.vs[op.id] || (p.vs[op.id] = { games: 0, w: 0, l: 0, run: 0, lossRun: 0 });
           v.games++;
           count(pl.id, g, 'rivalry', Math.max(...Object.values(p.vs).map(x => x.games)));
-          count(pl.id, g, 'blood_feud', Math.max(...Object.values(p.vs).map(x => x.games)));
           if (res.winner === i) { v.w++; v.run++; v.lossRun = 0; }
           else if (res.winner === j) { v.l++; v.lossRun++; v.run = 0; }
           count(pl.id, g, 'dynasty', Math.max(...Object.values(p.vs).map(x => x.run)));
@@ -1024,12 +1037,15 @@ const Statistician = (() => {
     const ended = r.ended;
     const cycle = g.players.map(() => new Set()), kPick = g.players.map(() => ({ right: 0, wrong: 0 }));
     const halfK = {}, halfOnlyK = {}; let leader = null, leadChanges = 0, extras = false; const innings = [];
+    const p3Hits = {}, halfPrioChanges = {}, maxLead = Array(n).fill(-Infinity), ninthPts = Array(n).fill(0);
 
     r.plays.forEach((p, k) => {
       const at = p.index;
       if (curHalf !== p.half) { curHalf = p.half; halfStartPriority = p.priorityBefore; halfChanged = false;
         halfPts[p.half] = Array(n).fill(0); halfPicks[p.half] = Array(n).fill(0); halfRight[p.half] = Array(n).fill(0);
-        halfK[p.half] = Array(n).fill(0); halfOnlyK[p.half] = true; }
+        halfK[p.half] = Array(n).fill(0); halfOnlyK[p.half] = true; p3Hits[p.half] = g.players.map(() => []); halfPrioChanges[p.half] = 0; }
+      // Hot Potato: priority changed hands 5 times this half-inning
+      if (p.priorityAfter !== p.priorityBefore && ++halfPrioChanges[p.half] === 5) ids.forEach(pid => give(pid, g, 'hot_potato', 1, at));
       // Free Baseball: the game reached the 10th inning
       if (!extras && parseInt(p.half, 10) >= 10) { extras = true; ids.forEach(pid => give(pid, g, 'free_baseball', 1, at)); }
       // By Way of the K: every out this half-inning has to be a strikeout
@@ -1057,15 +1073,25 @@ const Statistician = (() => {
           if (e.outcome === 'home_run' && e.runs >= 4) give(pid, g, 'cleanup_hitter', 1, at);
           if (['single', 'double', 'triple', 'home_run'].includes(e.outcome)) { cycle[i].add(e.outcome); if (cycle[i].size === 4) give(pid, g, 'hit_for_cycle', 1, at); }
           if (e.outcome === 'strikeout') halfK[p.half][i]++;
+          if (e.fromP3) p3Hits[p.half][i].push(e.outcome);
+          if (['single', 'double', 'triple'].includes(e.outcome) && e.runs >= 3) give(pid, g, 'bases_clearing', 1, at);
+          if (inGameCalls[i].strikeout >= 7) give(pid, g, 'punchout_king', 1, at);
+          if (inGameCalls[i].double_play >= 2) give(pid, g, 'twin_killing', 1, at);
           [['stolen_base', 'speed_demon'], ['walk', 'patient'], ['hbp', 'lightning_rod'], ['bunt', 'small_ball_specialist'], ['home_run', 'hr_hat_trick']]
             .forEach(([o, id]) => { if (inGameCalls[i][o] >= 3) give(pid, g, id, 1, at); });
         }
         // Golden Sombrero: picked strikeout 4 times this game, wrong every time
         if (e.pick === 'strikeout') { if (e.correct) kPick[i].right++; else kPick[i].wrong++;
           if (kPick[i].wrong >= 4 && kPick[i].right === 0) give(pid, g, 'golden_sombrero', 1, at); }
+        // Heartbreaker: Pick 3 alive through two at-bats, missed on the third
+        if (e.fromP3 && !e.correct && e.ab === 3) give(pid, g, 'heartbreaker', 1, at);
+        const inning = parseInt(p.half, 10);
+        if (inning === 9) { ninthPts[i] += e.pts; if (ninthPts[i] >= 10) give(pid, g, 'clutch', 1, at); }
         // confidence
         if (e.conf) {
           give(pid, g, 'bold', 1, at);
+          if (conf[i].right + conf[i].wrong + 1 >= 10) give(pid, g, 'all_in', 1, at);
+          if (e.correct && inning >= 9 && p.scoresBefore[i] < Math.max(...p.scoresBefore.filter((_, j) => j !== i))) give(pid, g, 'ice_water', 1, at);
           if (e.correct) {
             conf[i].right++; confWrongRun[i] = 0;
             P0.counts._conf = (P0.counts._conf || 0) + 1; count(pid, g, 'confidence_correct', P0.counts._conf, at);
@@ -1086,6 +1112,9 @@ const Statistician = (() => {
           p3[i]++;
           P0.counts._p3 = (P0.counts._p3 || 0) + 1; count(pid, g, 'p3_bonuses', P0.counts._p3, at);
           give(pid, g, 'first_p3', 1, at);
+          const three = p3Hits[p.half][i].slice(-3), OUTS = ['strikeout', 'in_play_out', 'double_play', 'fielders_choice'], HITS = ['single', 'double', 'triple', 'home_run'];
+          if (three.length === 3 && three.every(o => OUTS.includes(o))) give(pid, g, 'side_retired', 1, at);
+          if (three.length === 3 && three.every(o => HITS.includes(o))) give(pid, g, 'hit_parade', 1, at);
           if (p.half === '1t') give(pid, g, 'prophet', 1, at);
           if (p3[i] >= 3) give(pid, g, 'hat_trick', 1, at);
         }
@@ -1094,6 +1123,7 @@ const Statistician = (() => {
         if (p.scoresAfter[i] >= 20) give(pid, g, 'payday', 1, at);
       });
 
+      g.players.forEach((_, i) => { maxLead[i] = Math.max(maxLead[i], p.scoresAfter[i] - Math.max(...p.scoresAfter.filter((_, j) => j !== i))); });
       // Seesaw: the outright lead changed hands 5 times
       const top = Math.max(...p.scoresAfter), lead = p.scoresAfter.filter(v => v === top).length === 1 ? p.scoresAfter.indexOf(top) : null;
       if (lead !== null) { if (leader !== null && lead !== leader) { leadChanges++; if (leadChanges === 5) ids.forEach(pid => give(pid, g, 'seesaw', 1, at)); } leader = lead; }
@@ -1120,6 +1150,7 @@ const Statistician = (() => {
       if (p.halfComplete) {
         const hp = halfPts[p.half];
         if (p.half.endsWith('b')) { const t = Math.max(...p.scoresAfter); innings.push(p.scoresAfter.filter(v => v === t).length === 1 ? p.scoresAfter.indexOf(t) : null); }
+        if (p.half === '1b') g.players.forEach((_, i) => { if (p.scoresAfter[i] - Math.max(...p.scoresAfter.filter((_, j) => j !== i)) >= 10) give(ids[i], g, 'early_bird', 1, at); });
         g.players.forEach((_, i) => {
           if (halfOnlyK[p.half] && halfK[p.half][i] >= 3) give(ids[i], g, 'by_way_of_k', 1, at);
           if (halfPicks[p.half][i] >= 3 && halfRight[p.half][i] === halfPicks[p.half][i]) give(ids[i], g, 'perfect_half', 1, at);
@@ -1150,6 +1181,11 @@ const Statistician = (() => {
       if (won && conf[i].wrong >= 3) give(pid, g, 'reckless_win');
       if (won && d[i] >= 10) give(pid, g, 'comeback_kid');
       if (won && innings.length >= 3 && innings.every(x => x === i)) give(pid, g, 'wire_to_wire');
+      if (won && conf[i].right + conf[i].wrong === 0) give(pid, g, 'poker_face');
+      if (res.winner !== null && !won && !res.leaders.includes(i) && maxLead[i] >= 10) give(pid, g, 'collapse');
+      if (nums[i].picks >= 20 && nums[i].right === 0) give(pid, g, 'oaf_king');
+      const inn = k => r.halves.filter(h => parseInt(h.half, 10) === k).reduce((t, h) => t + h.pts[i], 0);
+      if (r.halves.some(h => parseInt(h.half, 10) >= 9) && [1, 2, 3, 4, 5, 6, 7, 8, 9].every(k => inn(k) > 0)) give(pid, g, 'every_frame');
       if (lastAB && lastAB.log.some(e => e.player === i && e.correct)) give(pid, g, 'last_laugh');
       if (won) {
         const firstInning = r.halves.filter(h => parseInt(h.half, 10) === 1).reduce((s, h) => s + h.pts[i], 0);
@@ -3323,7 +3359,7 @@ SCREENS.final = () => {
   ${awards.length ? `<h2 class="cond" style="margin:6px 0 0;font-size:22px;font-weight:800;letter-spacing:.6px">EARNED TODAY</h2>
   <div style="display:flex;flex-direction:column;gap:8px">${awards.map(a => `<div class="card" style="border-radius:16px;padding:10px 14px;display:flex;align-items:center;gap:12px">
     <div style="width:40px;height:40px;border-radius:12px;background:var(--goldtint);display:flex;align-items:center;justify-content:center">${awardIcon(a.award, 28)}</div>
-    <div style="flex-grow:1;display:flex;flex-direction:column;min-width:0"><span style="font-size:16px;font-weight:700">${esc(a.award.name)}${a.award.tiers && a.award.tiers.length > 1 ? ' · ' + ['', 'Bronze', 'Silver', 'Gold', 'Gold'][a.tier] : ''}</span><span class="courier meta" style="font-size:12px;color:var(--text2)">${esc(a.award.desc)}</span></div>
+    <div style="flex-grow:1;display:flex;flex-direction:column;min-width:0"><span style="font-size:16px;font-weight:700">${esc(a.award.name)}${a.award.tiers && a.award.tiers.length > 1 ? ' · ' + (TIER_NAMES[a.tier] || '') : ''}</span><span class="courier meta" style="font-size:12px;color:var(--text2)">${esc(a.award.desc)}</span></div>
     <span style="font-size:14px;font-weight:600;color:var(--text2)">${esc(a.names.join(', '))}</span></div>`).join('')}</div>` : ''}
   ${g.note ? `<div class="card" style="padding:12px 16px"><span class="cond label" style="padding:0">GAME NOTE</span><div style="font-size:15px;line-height:1.45;margin-top:4px">${esc(g.note)}</div></div>` : ''}
 </div>
@@ -4255,22 +4291,37 @@ const AWARD_ART = {
   trophy: ['#F2C14E', 'M7 4h10v4a5 5 0 01-10 0zM7 6H4a3 3 0 003 4M17 6h3a3 3 0 01-3 4M12 13v4M8 21h8M9 17h6v4H9z'],
   boomerang: ['#7AABFF', 'M9 14L4 9l5-5M4 9h11a5 5 0 010 10h-4'],
   // build 8
+  brokenheart: ["#FF6B8A", "M12 20S3 14.5 3 8.8A4.6 4.6 0 0112 6a4.6 4.6 0 019 2.8C21 14.5 12 20 12 20zM12 6l-1.5 4 2.5 2-2 3.5 1 4.5"],
+  threeouts: ["#9BB0C8", "M5 9.5a2.5 2.5 0 110 5 2.5 2.5 0 010-5zM12 9.5a2.5 2.5 0 110 5 2.5 2.5 0 010-5zM19 9.5a2.5 2.5 0 110 5 2.5 2.5 0 010-5zM3 19h18", "", "", "", "", "", "M5 10.5a1.5 1.5 0 110 3 1.5 1.5 0 010-3zM12 10.5a1.5 1.5 0 110 3 1.5 1.5 0 010-3zM19 10.5a1.5 1.5 0 110 3 1.5 1.5 0 010-3z"],
+  popper: ["#FF8FC8", "M3 21l4.5-12.5 8 8zM7.5 8.5l8 8M14 3.5c.5 1.5-.5 2.5-2 3M20.5 10c-1.5-.5-2.5.5-3 2M17 4l.1.1M20 6.5l.1.1M18.5 2.5v1.5M21.5 5.5H20"],
+  chips: ["#E5544A", "M5 7c0-1.4 3.1-2.5 7-2.5s7 1.1 7 2.5-3.1 2.5-7 2.5S5 8.4 5 7zM5 7v3.5c0 1.4 3.1 2.5 7 2.5s7-1.1 7-2.5V7M5 10.5V14c0 1.4 3.1 2.5 7 2.5s7-1.1 7-2.5v-3.5M5 14v3.5c0 1.4 3.1 2.5 7 2.5s7-1.1 7-2.5V14"],
+  pokerface: ["#FFC94D", "M12 3a9 9 0 110 18 9 9 0 010-18zM8 10h2M14 10h2M8.5 15.5h7"],
+  icewater: ["#9BE0FF", "M5 4h14l-1.8 16H6.8zM7.5 9h3v3h-3zM12.5 11l2.8.6-.6 2.8-2.8-.6zM5.5 8c2 .8 4 .8 6.5 0s4.5-.8 6.5 0"],
+  potato: ["#D9A066", "M5 15c0-3.5 3-5.5 7-5.5s7 2 7 5.5-3 5.5-7 5.5-7-2-7-5.5zM10 14.5h.1M14 16.5h.1M12.5 13.5h.1M8 7c1-1 0-2 1-3.5M12 7c1-1 0-2 1-3.5M16 7c1-1 0-2 1-3.5"],
+  collapse: ["#A1A1AA", "M5 20h14M6.5 20v-5h6v5M7.5 15v-4.5h4.5V15M14.5 9.5l3.6-2.1 2.1 3.6-3.6 2.1zM9 7.5l2.9-2.2 2.2 2.9-2.9 2.2M17 16.5l.1.1M20 18.5l.1.1"],
+  bird: ["#FFD23F", "M4 17c2.5 2 7.5 2.5 11-1 3-3 3-7 3-9 1 0 2.5-.5 3-1.5-1-.3-2-.8-2.7-1.6A3.5 3.5 0 0012 6c0 1 .3 2 .8 2.8C9.5 11.5 6 13 4 17zM16.5 5.5h.1M9 18.5l-1 3M12.5 18l.5 3"],
+  stopwatch: ["#5BD27A", "M12 7a7 7 0 110 14 7 7 0 010-14zM10 2.5h4M12 2.5V7M12 14l3-3M18.5 6.5l1.5-1.5"],
+  filmstrip: ["#B48CFF", "M4 3h16v18H4zM8 3v18M16 3v18M4 7h4M4 11h4M4 15h4M16 7h4M16 11h4M16 15h4M4 19h4M16 19h4"],
+  crookedcrown: ["#C7A36B", "M4 18.5l16-3M4.5 18L3 8.5l5 3.5 3-6.5 4.5 5.5 5-4.5-1 11M9 21l.1.1"],
+  glove: ["#FF5A4E", "M7 5.5A3.5 3.5 0 0110.5 2h4A4.5 4.5 0 0119 6.5V13a4 4 0 01-4 4H9.5A3.5 3.5 0 016 13.5V11a2 2 0 012-2h3M7 5.5V9M9 17v4h7v-4M11 9a2 2 0 010 4H8.5"],
+  chainlinks: ["#7AABFF", "M9.5 14.5l5-5M8 11L5.5 13.5a3.5 3.5 0 005 5L13 16M16 13l2.5-2.5a3.5 3.5 0 00-5-5L11 8"],
+  broom: ["#D9A066", "M19 3l-7.5 9M11.5 12c-2.5-1-5 0-6.5 2l6.5 6.5c2-1.5 3-4 2-6.5zM5 14l-2 2M7 16.2l-2.5 2.5M9.3 18.5l-2 2"],
   bicycle: ["#5BD27A", "M6 13a4 4 0 110 8 4 4 0 010-8zM18 13a4 4 0 110 8 4 4 0 010-8zM6 17l4-7h6l2 7M10 10l2 7h-6M9 7h3M15.5 6.5h2.5l-2 3.5"],
   threeK: ["#FF5A4E", "M4 4v16M14 4l-9.5 8L14 20M19.5 5.5a1.5 1.5 0 110 3 1.5 1.5 0 010-3zM19.5 10.5a1.5 1.5 0 110 3 1.5 1.5 0 010-3zM19.5 15.5a1.5 1.5 0 110 3 1.5 1.5 0 010-3z"],
   sombrero: ["#F2C14E", "M2 16.5c0 1.8 4.5 3 10 3s10-1.2 10-3-4.5-2.5-10-2.5S2 14.7 2 16.5zM8 14.4c0-4 1.5-8.4 4-8.4s4 4.4 4 8.4M8.3 12h7.4"],
   finishline: ["#7AABFF", "M17 21V3M17 3.5h5v6h-5M19.5 3.5v6M17 6.5h5M2 14h11M10 11l3 3-3 3"],
   seesaw: ["#FF9BB3", "M2 17L22 8M12 13.5L9 20h6zM4.5 13.2a1.8 1.8 0 110-3.6 1.8 1.8 0 010 3.6zM19.5 6.4a1.8 1.8 0 110-3.6 1.8 1.8 0 010 3.6z"],
   extraball: ["#5BD27A", "M10.5 6a7.5 7.5 0 110 15 7.5 7.5 0 010-15zM6.5 8.5c1.6 2.5 1.6 7.5 0 10M14.5 8.5c-1.6 2.5-1.6 7.5 0 10M19.5 2v6M16.5 5h6"],
-  snake: ["#7BD88F", "M4 20c3 0 4-2 7-2s4 2 7 2M6.5 18.7C4 17 4 13.5 7.5 12.5s6.5 1 7.5-1.5-1.5-4.5-4-4.5M11 6.5c0-2 1.3-3.5 3.3-3.5 1.7 0 2.7 1.2 2.7 2.5M13.5 5h.1M17 5.5l2 .5-1.2 1.5M17 6l1.8 2"],
+  snake: ["#7BD88F", "M6 21.5c-.8-3.2-.2-6.5 2.2-9C9.6 9 12.4 7 15.8 7.2c2.4.1 4.4.9 5.6 2.3L13.2 12l6.2 3.2c-2.8 1.6-6.3 1.6-9.2.3M19.6 9.9l-.4 2.6M16.6 13.4l.3 2M11.8 9.6h.1"],
   padlock: ["#7AABFF", "M5 11h14v10H5zM8 11V7.5a4 4 0 018 0V11M12 14.5v3"],
-  leaf: ["#FF8A3D", "M12 3l1.6 3.4 3.4-1.2-.8 3.8 3.6 1-2.6 2.6 1.4 2.6-3.8.4L14 18.5 12 16l-2 2.5-.8-2.9-3.8-.4 1.4-2.6-2.6-2.6 3.6-1-.8-3.8 3.4 1.2zM12 16v5"],
+  pumpkin: ["#FF8A3D", "M12 7.5c-4.5 0-8 2.8-8 6.3S7.5 20 12 20s8-2.7 8-6.2-3.5-6.3-8-6.3zM12 7.5c-2.2 0-3.5 2.8-3.5 6.3S9.8 20 12 20M12 7.5c2.2 0 3.5 2.8 3.5 6.3S14.2 20 12 20M12 7.5c0-2 .6-3.2 2-4M13.5 5.5c1.5-.8 3-.5 3.8.5"],
   sunrise: ["#FFD23F", "M2 18h20M6 18a6 6 0 0112 0M12 4v3M4.5 9.5l2 1.5M19.5 9.5l-2 1.5M1.5 14h2.5M20 14h2.5M9 21h6"],
   twoballs: ["#FF8A65", "M8 7a5.5 5.5 0 110 11A5.5 5.5 0 018 7zM5 9c1.1 1.8 1.1 5.2 0 7M11 9c-1.1 1.8-1.1 5.2 0 7M16 6a5.5 5.5 0 110 11M19 8c-1.1 1.8-1.1 5.2 0 7"],
   dumbbell: ["#9AA6BA", "M7 12h10M4.5 7.5h2.5v9H4.5zM17 7.5h2.5v9H17zM2 10v4M22 10v4"],
 };
 const AWARD_PIC = {
   wins: 'medal', games: 'ticket', season_ticket: 'stadium', points: 'star',
-  rivalry: 'drop', blood_feud: 'swords', dominant: 'bars', dynasty: 'trident', nemesis: 'devil', revenge: 'boomerang',
+  rivalry: 'swords', dominant: 'bars', dynasty: 'trident', nemesis: 'devil', revenge: 'boomerang',
   bold: 'huff', called_shot: 'bomb', big_brain: 'brain', first_to_third: 'runner', hubris: 'clown', diamond_hands: 'gem',
   perfect_confidence: 'shield', rough_patch: 'chartDown', reckless: 'skull', reckless_win: 'dice', assassin: 'dagger', confidence_correct: 'arm',
   first_p3: 'bigstar', prophet: 'sparkles', hat_trick: 'slots', clairvoyant: 'crystal', p3_bonuses: 'slots',
@@ -4285,7 +4336,10 @@ const AWARD_PIC = {
   road_trip: 'car', home_cooking: 'house', lifer: 'cal',
   hit_for_cycle: 'bicycle', by_way_of_k: 'threeK', golden_sombrero: 'sombrero', wire_to_wire: 'finishline', seesaw: 'seesaw',
   free_baseball: 'extraball', snakebit: 'snake', shutout: 'padlock',
-  october_baseball: 'leaf', opening_day: 'sunrise', doubleheader: 'twoballs', iron_man: 'dumbbell',
+  heartbreaker: 'brokenheart', side_retired: 'threeouts', hit_parade: 'popper', all_in: 'chips', poker_face: 'pokerface', ice_water: 'icewater',
+  hot_potato: 'potato', collapse: 'collapse', early_bird: 'bird', clutch: 'stopwatch', every_frame: 'filmstrip', oaf_king: 'crookedcrown',
+  punchout_king: 'glove', twin_killing: 'chainlinks', bases_clearing: 'broom',
+  october_baseball: 'pumpkin', opening_day: 'sunrise', doubleheader: 'twoballs', iron_man: 'dumbbell',
 };
 const AWARD_OFF = '#6E6E76';
 // The award's picture. on = earned (in color) or not yet (gray).
@@ -4302,6 +4356,9 @@ function awardIcon(a, px = 32, on = true) {
 const AWARD_CATS = [['WINS & GAMES', 'WINS'], ['RIVALRIES', 'RIVALRIES'], ['BIG CALLS', 'BIG CALLS'], ['PICK 3', 'PICK 3'], ['STREAKS & ACCURACY', 'STREAKS'],
   ['PRIORITY', 'PRIORITY'], ['GAME MOMENTS', 'MOMENTS'], ['BIG PLAYS', 'BIG PLAYS'], ['CAREER CALLS', 'CAREER'], ['TRAVEL', 'TRAVEL'], ['CALENDAR', 'CALENDAR']];
 const tierNum = n => (n >= 1000 ? (n / 1000) + 'K' : String(n));
+const TIER_NAMES = ['', 'Bronze', 'Silver', 'Gold', 'Platinum', 'Diamond', 'Hall of Fame'];
+// Long ladders show 3 tiers at a time: the last one earned, the one you're chasing, and the one after
+const tierWin = a => { const n = a.tiers.length; if (n <= 3) return [0, n]; const st = Math.max(0, Math.min(a.tier - 1, n - 3)); return [st, st + 3]; };
 const titleCase = s => s.toLowerCase().replace(/\b\w/g, c => c.toUpperCase());
 
 // ── Loading: every game any player in the club has played (awards are per person, across clubs) ──
@@ -4397,7 +4454,8 @@ function awardRow(a, inGame) {
     right = `<span class="shoulders num" style="font-size:15px;font-weight:800;color:${on ? 'var(--gold)' : 'var(--text3)'}">${p.value} / ${tierNum(p.target)}</span>`;
     bar = `<div style="height:4px;border-radius:2px;background:var(--card3);overflow:hidden;margin-top:2px"><div style="height:4px;border-radius:2px;background:var(--gold);width:${Math.min(100, Math.round(p.value / p.target * 100))}%"></div></div>`;
   } else right = `<span class="courier" style="font-size:11px;font-weight:700;color:${on ? 'var(--gold)' : 'var(--text3)'}">${on ? niceDate(last.date) : 'Not yet'}</span>`;
-  const tiers = a.tiers && a.tiers.length > 1 ? `<span style="display:inline-flex;gap:3px;margin-left:6px;vertical-align:middle">${a.tiers.map((_, i) => `<span style="width:6px;height:6px;border-radius:3px;background:${i < a.tier ? 'var(--gold)' : 'var(--card3)'}"></span>`).join('')}</span>` : '';
+  const [w0, w1] = a.tiers ? tierWin(a) : [0, 0];
+  const tiers = a.tiers && a.tiers.length > 1 ? `<span style="display:inline-flex;gap:3px;margin-left:6px;vertical-align:middle">${a.tiers.slice(w0, w1).map((_, k) => k + w0).map(i => `<span style="width:6px;height:6px;border-radius:3px;background:${i < a.tier ? 'var(--gold)' : 'var(--card3)'}"></span>`).join('')}</span>` : '';
   return `<button class="row press" ${act('openSheet', 'award:' + a.id)} style="gap:12px;padding:9px 0;align-items:center">
     <span style="width:40px;height:40px;flex-shrink:0;display:flex;align-items:center;justify-content:center;opacity:${on ? 1 : 0.75}">${awardIcon(a, 32, on)}</span>
     <div style="flex-grow:1;min-width:0;display:flex;flex-direction:column;gap:3px">
@@ -4419,14 +4477,16 @@ function awardSheet() {
   if (a.kind === 'count') {
     const p = a.progress, n = a.tiers.length;
     const reached = a.earnedAt[a.earnedAt.length - 1];
-    const fill = n > 1 ? Math.max(0, Math.min(1, (a.tier - 1 + (p.done ? 0 : Math.min(1, (p.value - (a.tier ? a.tiers[a.tier - 1] : 0)) / (p.target - (a.tier ? a.tiers[a.tier - 1] : 0))))) / (n - 1))) : Math.min(1, p.value / p.target);
-    const note = [reached && `Reached ${tierNum(a.tiers[a.tier - 1])} on ${niceDate(reached.date)}`, p.done ? 'All tiers done' : `${Math.max(0, p.target - p.value)} more for ${tierNum(p.target)}`].filter(Boolean).join(' · ');
+    const [w0, w1] = tierWin(a), shown = a.tiers.slice(w0, w1).map((t, k) => [t, k + w0]);
+    const frac = p.done ? 0 : Math.min(1, (p.value - (a.tier ? a.tiers[a.tier - 1] : 0)) / (p.target - (a.tier ? a.tiers[a.tier - 1] : 0)));
+    const fill = n > 1 ? Math.max(0, Math.min(1, (a.tier - 1 + frac - w0) / (shown.length - 1))) : Math.min(1, p.value / p.target);
+    const note = [reached && `${TIER_NAMES[a.tier] || 'Reached'} · ${tierNum(a.tiers[a.tier - 1])} on ${niceDate(reached.date)}`, p.done ? 'All tiers done' : `${Math.max(0, p.target - p.value)} more for ${tierNum(p.target)}`].filter(Boolean).join(' · ');
     prog = `<div style="display:flex;align-items:baseline;justify-content:space-between"><span class="cond" style="font-size:14px;font-weight:800;letter-spacing:.8px;color:var(--text3)">${pid === S.user.uid ? 'YOUR PROGRESS' : 'PROGRESS'} · ${esc(who.toUpperCase())}</span>
       <span class="shoulders num" style="font-size:22px;font-weight:900"><span style="color:${on ? 'var(--gold)' : 'var(--text)'}">${p.value}</span> <span style="color:var(--text4)">/ ${tierNum(p.done ? a.tiers[n - 1] : p.target)}</span></span></div>
     ${n > 1 ? `<div style="position:relative;height:34px">
       <div style="position:absolute;left:11px;right:11px;top:9px;height:4px;border-radius:2px;background:var(--card3)"><div style="height:4px;border-radius:2px;background:var(--gold);width:${Math.round(fill * 100)}%"></div></div>
-      <div style="position:absolute;left:0;right:0;top:0;display:flex;justify-content:space-between">${a.tiers.map((t, i) => `<span style="width:22px;height:22px;border-radius:11px;border:2px solid ${i < a.tier ? 'var(--gold)' : '#4A4A52'};background:${i < a.tier ? 'var(--gold)' : 'var(--sheet)'};display:flex;align-items:center;justify-content:center">${i < a.tier ? '<svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="#1A1406" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 6.5l2.3 2.3 4.7-5.3"/></svg>' : ''}</span>`).join('')}</div></div>
-    <div style="display:flex;justify-content:space-between;margin-top:-8px">${a.tiers.map((t, i) => `<span class="shoulders" style="width:22px;text-align:center;font-size:16px;font-weight:900;color:${i < a.tier ? 'var(--gold)' : 'var(--text4)'};white-space:nowrap;display:flex;justify-content:center">${tierNum(t)}</span>`).join('')}</div>`
+      <div style="position:absolute;left:0;right:0;top:0;display:flex;justify-content:space-between">${shown.map(([t, i]) => `<span style="width:22px;height:22px;border-radius:11px;border:2px solid ${i < a.tier ? 'var(--gold)' : '#4A4A52'};background:${i < a.tier ? 'var(--gold)' : 'var(--sheet)'};display:flex;align-items:center;justify-content:center">${i < a.tier ? '<svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="#1A1406" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 6.5l2.3 2.3 4.7-5.3"/></svg>' : ''}</span>`).join('')}</div></div>
+    <div style="display:flex;justify-content:space-between;margin-top:-8px">${shown.map(([t, i]) => `<span class="shoulders" style="width:22px;text-align:center;font-size:16px;font-weight:900;color:${i < a.tier ? 'var(--gold)' : 'var(--text4)'};white-space:nowrap;display:flex;justify-content:center">${tierNum(t)}</span>`).join('')}</div>`
     : `<div style="height:6px;border-radius:3px;background:var(--card3);overflow:hidden"><div style="height:6px;background:var(--gold);width:${Math.round(fill * 100)}%"></div></div>`}
     <span class="courier" style="font-size:11px;font-weight:700;color:var(--text2)">${note}</span>`;
   } else {
