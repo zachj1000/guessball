@@ -1924,6 +1924,12 @@ const Store = {
   json(k, d) { try { const v = this.getItem(k); return v ? JSON.parse(v) : d; } catch (e) { return d; } },
   put(k, v) { this.setItem(k, JSON.stringify(v)); },
 };
+// Launch day (build 7): the test builds used these same phone-storage names with test data (test clubs, a half-played
+// test game, unsent test changes). Clear that once so the real app starts clean — keep only appearance, My photo and the device id.
+if (ENV.name === 'live' && !Store.getItem('gb_launch7')) {
+  try { Object.keys(localStorage).filter(k => k.startsWith('gb_') && !['gb_settings', 'gb_myphoto', 'gb_device'].includes(k)).forEach(k => localStorage.removeItem(k)); } catch (e) { /* storage blocked */ }
+  Store.setItem('gb_launch7', '1');
+}
 // ── Problem log (Admin tools → Problem log). Kept on this phone only, for chasing freezes we can't reproduce:
 //    script errors, moments the phone stopped responding (the app's clock skipped), and the last taps/touches
 //    with which layer they landed on — so after a freeze we can tell "taps never arrived" from "taps arrived, nothing redrew".
