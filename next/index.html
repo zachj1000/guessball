@@ -842,8 +842,8 @@ const Statistician = (() => {
     A('twenty_straight', 'Twenty Straight', 'STREAKS & ACCURACY', '20 right in a row'),
     A('perfect_half', 'Perfect Half', 'STREAKS & ACCURACY', 'Every pick right in a half-inning (min 3)'),
     A('hot_streak', 'Hot Streak', 'STREAKS & ACCURACY', 'Score on 10 straight at-bats'),
-    A('dead_eye', 'Dead Eye', 'STREAKS & ACCURACY', '55%+ in a game (min 10 picks)'),
-    A('sniper', 'Sniper', 'STREAKS & ACCURACY', '70%+ in a game (min 10 picks)'),
+    A('dead_eye', 'Dead Eye', 'STREAKS & ACCURACY', '40%+ right in a game (min 20 picks)'),
+    A('sniper', 'Sniper', 'STREAKS & ACCURACY', '50%+ right in a game (min 20 picks)'),
     A('ice_cold', 'Ice Cold', 'STREAKS & ACCURACY', 'Miss 6 in a row'),
     A('correct_picks', 'Correct Picks', 'STREAKS & ACCURACY', 'Right picks all time', T([25, 100, 250])),
 
@@ -1144,8 +1144,8 @@ const Statistician = (() => {
     g.players.forEach((pl, i) => {
       const pid = pl.id, won = res.winner === i;
       const a = pct(nums[i].right, nums[i].picks);
-      if (nums[i].picks >= 10 && a >= 0.55) give(pid, g, 'dead_eye');
-      if (nums[i].picks >= 10 && a >= 0.70) give(pid, g, 'sniper');
+      if (nums[i].picks >= 20 && a >= 0.40) give(pid, g, 'dead_eye');
+      if (nums[i].picks >= 20 && a >= 0.50) give(pid, g, 'sniper');
       if (conf[i].right + conf[i].wrong >= 3 && conf[i].wrong === 0) give(pid, g, 'perfect_confidence');
       if (won && conf[i].wrong >= 3) give(pid, g, 'reckless_win');
       if (won && d[i] >= 10) give(pid, g, 'comeback_kid');
