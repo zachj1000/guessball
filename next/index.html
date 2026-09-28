@@ -18,7 +18,7 @@
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta name="twitter:card" content="summary_large_image">
-<link rel="apple-touch-icon" href="../apple-touch-icon.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=Big+Shoulders+Display:wght@700;800;900&family=Courier+Prime:wght@400;700&family=Norican&display=swap">
@@ -1185,11 +1185,11 @@ const FilingCabinet = (() => {
   const nameKey = s => s.trim().toLowerCase().replace(/\s+/g, ' ').replace(/[.#$\[\]\/]/g, '_');
   const clean = o => JSON.parse(JSON.stringify(o)); // drops undefined (Firebase rejects it)
 
-  function create({ db, storage, deviceId, now = () => Date.now(), random = Math.random }) {
+  function create({ db, storage, deviceId, root = 'v2', now = () => Date.now(), random = Math.random }) {
     let uid = null;
     const listeners = new Set();
     let online = false;
-    const R = p => 'v2/' + p;
+    const R = p => root + '/' + p;
 
     // ── Outbox (kept on the phone) ──
     const load = (k, d) => { try { const v = storage.getItem(k); return v ? JSON.parse(v) : d; } catch (e) { return d; } };
@@ -1632,7 +1632,7 @@ const FilingCabinet = (() => {
 
     // ════════════ Admin (Xaq only) ════════════
     const exportAll = () => get('');
-    const isAdmin = async () => { need(); return (await get('admins/' + uid)) === true; };
+    const isAdmin = async () => { need(); await flush(); return (await db.get('v2/admins/' + uid)) === true; };   // one admin list for the real app and QA
 
     return { setUser, onStatus: f => { listeners.add(f); f(status()); return () => listeners.delete(f); }, status, flush,
       myAccount, saveProfile, unlinkAccount, profiles,
@@ -1643,12 +1643,12 @@ const FilingCabinet = (() => {
   }
 
   // ── Firebase adapter (used in the app). Pass in the Firebase database module + db instance. ──
-  function firebaseAdapter(F, database) {
+  function firebaseAdapter(F, database, root = 'v2') {
     return {
       get: async p => (await F.get(F.ref(database, p))).val(),
       update: changes => F.update(F.ref(database), changes),
       onConnected: cb => F.onValue(F.ref(database, '.info/connected'), s => cb(s.val() === true)),
-      newId: () => F.push(F.ref(database, 'v2/games')).key,
+      newId: () => F.push(F.ref(database, root + '/games')).key,
     };
   }
 
@@ -1666,7 +1666,9 @@ const FilingCabinet = (() => {
 //  that returns HTML. Buttons carry data-act="…" and the matching
 //  function in ACT runs when tapped, then the screen redraws.
 // ════════════════════════════════════════════════════════════════
-const VERSION = '2.0 · test build 6.9.1';
+// Which copy of the app this is: the real app, or Guess Ball Next (QA, with its own test data)
+const ENV = {"name":"qa","data":"qa","store":"gbqa_"};
+const VERSION = ENV.name === 'qa' ? '2.0 · QA build 7' : '2.0';
 const RULES_JSON = {
   "rules": {
     "v2": {
@@ -1775,9 +1777,115 @@ const RULES_JSON = {
         }
       }
     },
+    "qa": {
+      ".read": "root.child('v2').child('admins').child(auth.uid).val() === true",
+      "admins": {
+        ".read": "auth != null",
+        ".write": false
+      },
+      "users": {
+        "$uid": {
+          ".read": "auth.uid === $uid",
+          ".write": "auth.uid === $uid"
+        }
+      },
+      "profiles": {
+        ".read": "auth != null",
+        "$pid": {
+          ".write": "(auth.uid === $pid) || ((!data.exists()) && (newData.child('createdBy').val() === auth.uid) && (newData.child('account').val() === false)) || ((data.child('account').val() === false) && (((data.child('club').exists()) && (root.child('qa').child('clubs').child(data.child('club').val()).child('members').child(auth.uid).child('captain').val() === true)) || ((!data.child('club').exists()) && (data.child('createdBy').val() === auth.uid)))) || (root.child('v2').child('admins').child(auth.uid).val() === true)",
+          "name": {
+            ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 16"
+          }
+        }
+      },
+      "clubNames": {
+        ".read": "auth != null",
+        "$key": {
+          ".write": "((!data.exists()) && (newData.exists())) || ((data.exists()) && (!newData.exists()) && ((root.child('qa').child('clubs').child(data.val()).child('members').child(auth.uid).child('captain').val() === true) || (root.child('v2').child('admins').child(auth.uid).val() === true)))"
+        }
+      },
+      "clubList": {
+        ".read": "auth != null",
+        "$code": {
+          ".write": "(root.child('qa').child('clubs').child($code).child('members').child(auth.uid).child('captain').val() === true) || ((!data.exists()) && (newData.parent().parent().child('clubs').child($code).child('info/createdBy').val() === auth.uid)) || (root.child('v2').child('admins').child(auth.uid).val() === true)"
+        }
+      },
+      "clubs": {
+        "$code": {
+          ".write": "((!newData.exists()) && (root.child('qa').child('clubs').child($code).child('members').child(auth.uid).child('captain').val() === true)) || ((!newData.exists()) && (root.child('v2').child('admins').child(auth.uid).val() === true))",
+          "info": {
+            ".read": "auth != null",
+            ".write": "((!data.exists()) && (newData.child('createdBy').val() === auth.uid)) || (root.child('qa').child('clubs').child($code).child('members').child(auth.uid).child('captain').val() === true) || (root.child('v2').child('admins').child(auth.uid).val() === true)",
+            "name": {
+              ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 30"
+            },
+            "public": {
+              ".validate": "newData.isBoolean()"
+            }
+          },
+          "members": {
+            ".read": "(root.child('qa').child('clubs').child($code).child('members').child(auth.uid).exists()) || (root.child('qa').child('clubs').child($code).child('info/public').val() === true) || (root.child('v2').child('admins').child(auth.uid).val() === true)",
+            "$pid": {
+              ".write": "(root.child('qa').child('clubs').child($code).child('members').child(auth.uid).child('captain').val() === true) || (root.child('v2').child('admins').child(auth.uid).val() === true) || (($pid === auth.uid) && (!data.exists()) && (root.child('qa').child('clubs').child($code).child('info/createdBy').val() === auth.uid) && (!root.child('qa').child('clubs').child($code).child('members').exists())) || (($pid === auth.uid) && (!data.exists()) && (root.child('qa').child('clubs').child($code).child('info/public').val() === true) && (newData.child('captain').val() !== true)) || ((root.child('qa').child('clubs').child($code).child('members').child(auth.uid).exists()) && (!data.exists()) && (newData.child('guest').val() === true) && (newData.child('captain').val() !== true)) || (($pid === auth.uid) && (!newData.exists()))",
+              "name": {
+                ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 16"
+              }
+            }
+          },
+          "requests": {
+            ".read": "(root.child('qa').child('clubs').child($code).child('members').child(auth.uid).child('captain').val() === true) || (root.child('v2').child('admins').child(auth.uid).val() === true)",
+            "$uid": {
+              ".read": "auth.uid === $uid",
+              ".write": "((auth.uid === $uid) && ((!newData.exists()) || (!root.child('qa').child('clubs').child($code).child('members').child(auth.uid).exists()))) || (root.child('qa').child('clubs').child($code).child('members').child(auth.uid).child('captain').val() === true) || (root.child('v2').child('admins').child(auth.uid).val() === true)"
+            }
+          },
+          "claims": {
+            ".read": "(root.child('qa').child('clubs').child($code).child('members').child(auth.uid).child('captain').val() === true) || (root.child('v2').child('admins').child(auth.uid).val() === true)",
+            "$guest": {
+              ".read": "data.child('uid').val() === auth.uid",
+              ".write": "((newData.child('uid').val() === auth.uid) && (!data.exists())) || ((data.child('uid').val() === auth.uid) && (!newData.exists())) || (root.child('qa').child('clubs').child($code).child('members').child(auth.uid).child('captain').val() === true) || (root.child('v2').child('admins').child(auth.uid).val() === true)"
+            }
+          },
+          "games": {
+            ".read": "(root.child('qa').child('clubs').child($code).child('members').child(auth.uid).exists()) || (root.child('qa').child('clubs').child($code).child('info/public').val() === true) || (root.child('v2').child('admins').child(auth.uid).val() === true)",
+            "$gid": {
+              ".write": "(root.child('qa').child('clubs').child($code).child('members').child(auth.uid).exists()) || (!root.child('qa').child('games').child($gid).exists()) || (root.child('v2').child('admins').child(auth.uid).val() === true)"
+            }
+          }
+        }
+      },
+      "games": {
+        "$gid": {
+          ".read": "auth != null",
+          ".write": "((!data.exists()) && (newData.child('host').val() === auth.uid)) || ((data.child('host').val() === auth.uid) && (newData.exists()) && ((data.child('ended').val() !== true) || (data.child('era').val() === 'hand')) && (newData.child('host').val() === auth.uid)) || ((data.child('host').val() === auth.uid) && (!newData.exists()) && ((data.child('era').val() === 'hand') || (data.child('ended').val() !== true))) || ((!newData.exists()) && (((data.child('clubList/0').exists()) && (root.child('qa').child('clubs').child(data.child('clubList/0').val()).child('members').child(auth.uid).child('captain').val() === true)) || ((data.child('clubList/1').exists()) && (root.child('qa').child('clubs').child(data.child('clubList/1').val()).child('members').child(auth.uid).child('captain').val() === true)) || ((data.child('clubList/2').exists()) && (root.child('qa').child('clubs').child(data.child('clubList/2').val()).child('members').child(auth.uid).child('captain').val() === true)))) || (root.child('v2').child('admins').child(auth.uid).val() === true)"
+        }
+      },
+      "playerGames": {
+        ".read": "auth != null",
+        "$pid": {
+          "$gid": {
+            ".write": "(root.child('qa').child('games').child($gid).child('host').val() === auth.uid) || (!root.child('qa').child('games').child($gid).exists()) || (root.child('v2').child('admins').child(auth.uid).val() === true)"
+          }
+        }
+      },
+      "offers": {
+        "$uid": {
+          ".read": "auth.uid === $uid",
+          "$guest": {
+            ".write": "((auth.uid === $uid) && (!newData.exists())) || ((newData.exists()) && (root.child('qa').child('clubs').child(newData.child('code').val()).child('members').child($guest).child('guest').val() === true) && (root.child('qa').child('clubs').child(newData.child('code').val()).child('members').child(auth.uid).exists()) && (newData.child('by').val() === auth.uid)) || (root.child('v2').child('admins').child(auth.uid).val() === true)"
+          }
+        }
+      },
+      "live": {
+        ".read": "auth != null",
+        "$pid": {
+          ".write": "(newData.child('host').val() === auth.uid) || (data.child('host').val() === auth.uid) || (root.child('v2').child('admins').child(auth.uid).val() === true)"
+        }
+      }
+    },
     "$old": {
-      ".read": "$old !== 'v2'",
-      ".write": "$old !== 'v2'"
+      ".read": "$old !== 'v2' && $old !== 'qa'",
+      ".write": "$old !== 'v2' && $old !== 'qa'"
     }
   }
 };
@@ -1807,11 +1915,12 @@ const LOADING_LINES = ['Mowing the outfield...', 'Chalking the foul lines...', '
   'Spitting sunflower seeds...', 'Starting the wave...', 'Racing the mascots...', 'Bribing the official scorer...',
   'Calling for the cutoff man...', 'Doing the Jah...', 'Glazing Shohei Ohtani...'];
 
-// ── Phone storage (never crashes if Safari blocks it) ──
+// ── Phone storage (never crashes if Safari blocks it). QA keeps its own keys so it never touches the real app's. ──
+const sk = k => (k.startsWith('gb_') ? ENV.store + k.slice(3) : k);
 const Store = {
-  getItem: k => { try { return localStorage.getItem(k); } catch (e) { return null; } },
-  setItem: (k, v) => { try { localStorage.setItem(k, v); } catch (e) { /* full or blocked */ } },
-  removeItem: k => { try { localStorage.removeItem(k); } catch (e) { /* blocked */ } },
+  getItem: k => { try { return localStorage.getItem(sk(k)); } catch (e) { return null; } },
+  setItem: (k, v) => { try { localStorage.setItem(sk(k), v); } catch (e) { /* full or blocked */ } },
+  removeItem: k => { try { localStorage.removeItem(sk(k)); } catch (e) { /* blocked */ } },
   json(k, d) { try { const v = this.getItem(k); return v ? JSON.parse(v) : d; } catch (e) { return d; } },
   put(k, v) { this.setItem(k, JSON.stringify(v)); },
 };
@@ -2635,7 +2744,7 @@ function wire() {
 // Called by the Firebase loader at the bottom of the page.
 const App = {
   start(fb) {
-    FCab = FilingCabinet.create({ db: fb.adapter, storage: Store, deviceId });
+    FCab = FilingCabinet.create({ db: fb.adapter, storage: Store, deviceId, root: ENV.data });
     FCab.onStatus(s => { S.online = s.online; S.pending = s.pending; });
     fb.onUser(async user => {
       if (!user) Store.removeItem('gb_last_user');
@@ -4630,7 +4739,7 @@ const ap = () => { const a = S.settings.ap || (S.settings.ap = {}); for (const k
   return a; };
 const saveAp = () => Store.put('gb_settings', S.settings);
 const favTeam = () => (S.account && S.account.team) || null;
-const myPhoto = () => { try { return localStorage.getItem('gb_myphoto'); } catch (e) { return null; } };
+const myPhoto = () => { return Store.getItem('gb_myphoto'); };
 
 // ── Color math (so any team color works as a button, in both themes) ──
 const hexRgb = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16));
@@ -4788,7 +4897,7 @@ async function shrinkPhoto(file) {
 }
 $app().addEventListener('change', async e => {
   const i = e.target; if (!i.dataset || !i.dataset.photo || !i.files || !i.files[0]) return;
-  try { const d = await shrinkPhoto(i.files[0]); localStorage.setItem('gb_myphoto', d); ap().bg = 'mine'; saveAp(); buzz(); render(); toast('Photo set'); }
+  try { const d = await shrinkPhoto(i.files[0]); localStorage.setItem(sk('gb_myphoto'), d); ap().bg = 'mine'; saveAp(); buzz(); render(); toast('Photo set'); }
   catch (e2) { toast('Couldn’t use that photo — try another', true); }
 });
 
@@ -4799,7 +4908,7 @@ Object.assign(ACT, {
   apPark: team => { ap().park = team; saveAp(); S.sheet = null; buzz(); render(); },
   apToggleFrost: () => { ap().frost = !ap().frost; saveAp(); buzz(); render(); },
   apToggleGame: () => { ap().gamePark = !ap().gamePark; saveAp(); buzz(); render(); },
-  apClearPhoto: () => { try { localStorage.removeItem('gb_myphoto'); } catch (e) { /* ok */ } render(); toast('Removed — using your stadium pick instead'); },
+  apClearPhoto: () => { Store.removeItem('gb_myphoto'); render(); toast('Removed — using your stadium pick instead'); },
 });
 applyTheme();
 
@@ -4874,7 +4983,7 @@ try {
   if (!online) addEventListener('online', () => { A.getRedirectResult(auth, A.browserPopupRedirectResolver).catch(() => {}); }, { once: true });
   const database = D.getDatabase(app);
   window.FB = {
-    adapter: FilingCabinet.firebaseAdapter(D, database),
+    adapter: FilingCabinet.firebaseAdapter(D, database, ENV.data),
     onUser: cb => A.onAuthStateChanged(auth, cb),
     signIn: () => { const p = new A.GoogleAuthProvider(); p.setCustomParameters({ prompt: 'select_account' }); return A.signInWithPopup(auth, p, A.browserPopupRedirectResolver); },
     signOut: () => A.signOut(auth),
