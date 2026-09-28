@@ -112,6 +112,15 @@ a { color: var(--link); text-decoration: none; -webkit-tap-highlight-color: tran
           mask-image: linear-gradient(180deg, #000 0, #000 calc(100% - var(--bar) - 94px - var(--dock, 0px)), transparent calc(100% - var(--bar) - 66px - var(--dock, 0px))); }
 /* Leave room for the LIVE bar so it never covers the bottom of a page */
 .screen:has(.livebar) .page.tabbed { --dock: 56px; }
+/* Split pages (Stats, Awards): the header stays put and only the data area scrolls, so its scroll bar starts at the data */
+.page.split { overflow-y: hidden; padding-bottom: 0; -webkit-mask-image: none; mask-image: none; }
+.page.split > [data-scroll] { flex: 1 1 auto; min-height: 0; overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain; position: relative;
+  margin: 0 -20px; padding: 2px 20px calc(var(--bar) + 110px + var(--dock, 0px)); display: flex; flex-direction: column; gap: 14px;
+  -webkit-mask-image: linear-gradient(180deg, #000 0, #000 calc(100% - var(--bar) - 94px - var(--dock, 0px)), transparent calc(100% - var(--bar) - 66px - var(--dock, 0px)));
+          mask-image: linear-gradient(180deg, #000 0, #000 calc(100% - var(--bar) - 94px - var(--dock, 0px)), transparent calc(100% - var(--bar) - 66px - var(--dock, 0px))); }
+.page.split > [data-scroll] > * { flex-shrink: 0; min-width: 0; }
+.swipe-ghost { position: absolute; pointer-events: none; overflow: hidden; display: flex; flex-direction: column; gap: 14px; box-sizing: border-box; }
+.swipe-ghost > * { flex-shrink: 0; min-width: 0; }
 /* The outcome the scorekeeper chose: neutral — a lighter card with a thin light edge (not a player's or accent color) */
 .picked { box-shadow: inset 0 0 0 1.5px rgba(255,255,255,.55); }
 html[data-theme="light"] .picked { box-shadow: inset 0 0 0 1.5px rgba(0,0,0,.35); }
@@ -2541,6 +2550,7 @@ function render() {
     clearTimeout(render.t); render.t = setTimeout(render, SPLASH_UNTIL - Date.now() + 10); return;
   }
   // While the opening animation plays, hold other redraws (e.g. games finishing loading) so nothing swaps mid-glide
+  if (render.swiping) { clearTimeout(render.ti); render.ti = setTimeout(render, 120); return; }   // mid-swipe: draw after
   if (Date.now() < (render.introUntil || 0)) { clearTimeout(render.ti); render.ti = setTimeout(render, render.introUntil - Date.now() + 10); return; }
   const L = render.last;
   const focusEl = document.activeElement, focus = focusEl && focusEl.dataset && focusEl.dataset.model;
@@ -2577,16 +2587,24 @@ function render() {
 }
 // Update a screen in place: the scrolling page element itself is kept (so a scroll or swipe in
 // progress on iPhone isn't cut off), and only the pieces whose content changed are replaced.
+// Keep an element, swap only its changed children. A scroll area inside ([data-scroll]) is kept too and patched the same way,
+// so its scroll position survives data loading in (never rebuilt under the thumb).
+function patchKids(o, n) {
+  if (o.getAttribute('style') !== n.getAttribute('style')) o.setAttribute('style', n.getAttribute('style') || '');
+  const a = [...o.children], b = [...n.children];
+  if (a.length === b.length && a.every((x, k) => x.tagName === b[k].tagName)) a.forEach((x, k) => {
+    if (x.outerHTML === b[k].outerHTML) return;
+    if (x.hasAttribute('data-scroll') && b[k].hasAttribute('data-scroll')) patchKids(x, b[k]); else x.replaceWith(b[k]);
+  });
+  else { const top = o.scrollTop; o.replaceChildren(...b); o.scrollTop = top; }
+}
 function patchScreen(scr, html) {
   const t = document.createElement('div'); t.innerHTML = html;
   const pick = root => [...root.children].find(c => c.matches('.page, .fixedpage'));
   const o = pick(scr), n = pick(t);
   if (!o || !n || o.className !== n.className) { scr.replaceChildren(...t.children); return; }
   // The page: keep the element, swap only changed pieces inside it
-  if (o.getAttribute('style') !== n.getAttribute('style')) o.setAttribute('style', n.getAttribute('style') || '');
-  const a = [...o.children], b = [...n.children];
-  if (a.length === b.length && a.every((x, k) => x.tagName === b[k].tagName)) a.forEach((x, k) => { if (x.outerHTML !== b[k].outerHTML) x.replaceWith(b[k]); });
-  else { const top = o.scrollTop; o.replaceChildren(...b); o.scrollTop = top; }
+  patchKids(o, n);
   // Everything around the page (tab bar, LIVE bar, popups): rebuild only if it changed
   const around = root => [...root.children].filter(c => !c.matches('.page, .fixedpage')).map(c => c.outerHTML).join('');
   if (around(scr) !== around(t)) {
@@ -2898,20 +2916,42 @@ async function afterJoin(code, msg) {
 // Safe by design: listeners are passive (they never block or take over iPhone's scrolling), the direction is decided in the
 // first few pixels (mostly up/down = a normal scroll, left alone), and sideways swipes are ignored in places that already
 // scroll sideways (chips, line scores), in text boxes, in sheets, and on every game screen.
+const swipePreview = (screen, name) => {       // the other tab's data area, drawn without switching to it
+  const cfg = SWIPE_TABS[screen]; let html;
+  if (screen === 'stats') { const keep = S.statTab; S.statTab = name; html = SCREENS.stats(); S.statTab = keep; }
+  else { if (!S.aw) return null; const keep = S.aw.cat; S.aw.cat = name; html = SCREENS.awards(); S.aw.cat = keep; }
+  const t = document.createElement('div'); t.innerHTML = html; const d = t.querySelector('[data-swipe]'); return d ? d.innerHTML : null;
+};
 const SWIPE_TABS = {
   stats: { list: () => STAT_TABS, cur: () => S.statTab || 'STANDINGS', go: t => ACT.statTab(t) },
-  awards: { list: () => ['ALL'].concat(AWARD_CATS.map(c => c[0])), cur: () => (S.aw && S.aw.cat) || 'ALL', go: t => { ACT.awCat(t); const pg = $app().querySelector('.screen .page'); if (pg) pg.scrollTop = 0; } },
+  awards: { list: () => ['ALL'].concat(AWARD_CATS.map(c => c[0])), cur: () => (S.aw && S.aw.cat) || 'ALL', go: t => { ACT.awCat(t); const pg = $app().querySelector('.screen [data-scroll]') || $app().querySelector('.screen .page'); if (pg) pg.scrollTop = 0; } },
 };
 function swipes(el) {
   let t = null;
   const pageOf = () => $app().querySelector('.screen .page, .screen .fixedpage');
+  const movable = mode => (mode === 'tabs' && $app().querySelector('.screen [data-swipe]')) || pageOf();   // tabs: only the data area moves; header and tab bar stay put
   const sideScroller = n => { for (; n && n !== el; n = n.parentElement) {
     if (n.matches && n.matches('[data-keep], .chips, .field, input, textarea, select, .sheet-layer, .sheet')) return true;
     if (n.scrollWidth > n.clientWidth + 2) { const ox = getComputedStyle(n).overflowX; if (ox === 'auto' || ox === 'scroll') return true; }
   } return false; };
-  const reset = (pg, animate) => { if (!pg) return; pg.style.transition = animate ? 'transform .18s ease-out, opacity .18s' : ''; pg.style.transform = ''; pg.style.opacity = '';
-    if (animate) setTimeout(() => { pg.style.transition = ''; }, 200); };
+  const move = (n, x, anim) => { if (!n) return; n.style.transition = anim ? `transform ${anim}s ease-out` : ''; n.style.transform = x ? `translate3d(${x}px,0,0)` : ''; };
+  const clearGhosts = g => { Object.values(g.ghosts || {}).forEach(d => d.remove()); g.ghosts = {}; render.swiping = false; };
+  // While swiping between tabs, the neighbouring tab is drawn beside the data area so you see what's coming
+  const makeGhosts = g => {
+    g.ghosts = {}; const area = g.pg, page = pageOf(); if (!area || !page || !area.hasAttribute('data-swipe')) return;
+    const cfg = SWIPE_TABS[S.screen], list = cfg.list(), i = list.indexOf(cfg.cur()), cs = getComputedStyle(area);
+    render.swiping = true;                                     // hold redraws until the swipe is over
+    [-1, 1].forEach(k => {
+      const name = list[i + k]; if (!name) return;
+      const html = swipePreview(S.screen, name); if (html == null) return;
+      const d = document.createElement('div'); d.className = 'swipe-ghost'; d.setAttribute('aria-hidden', 'true'); d.innerHTML = html;
+      d.querySelectorAll('[data-act],[data-region],[data-model],[data-keep],[data-swipe],[data-scroll],[id]').forEach(n => ['data-act', 'data-region', 'data-model', 'data-keep', 'data-swipe', 'data-scroll', 'id'].forEach(a => n.removeAttribute(a)));
+      Object.assign(d.style, { top: area.offsetTop + 'px', left: area.offsetLeft + 'px', width: area.offsetWidth + 'px', height: area.clientHeight + 'px', padding: cs.padding });
+      move(d, k * innerWidth); page.appendChild(d); g.ghosts[k] = d;
+    });
+  };
   el.addEventListener('touchstart', e => {
+    if (t) { clearGhosts(t); move(t.pg, 0); }
     t = null;
     if (e.touches.length !== 1 || S.sheet || S.screen === 'game' || S.screen === 'loading') return;
     const x = e.touches[0].clientX, y = e.touches[0].clientY;
@@ -2920,50 +2960,48 @@ function swipes(el) {
     if (x <= 24 && backB) mode = 'back';
     else if (SWIPE_TABS[S.screen] && !sideScroller(e.target)) mode = 'tabs';
     if (!mode) return;
-    t = { mode, x, y, t0: Date.now(), dir: null, dx: 0, backB, pg: pageOf() };
+    t = { mode, x, y, t0: Date.now(), dir: null, dx: 0, backB, pg: movable(mode), ghosts: {} };
   }, { passive: true });
   el.addEventListener('touchmove', e => {
-    if (!t || e.touches.length !== 1) { t = null; return; }
+    if (!t || e.touches.length !== 1) { if (t) { clearGhosts(t); move(t.pg, 0, .18); } t = null; return; }
     const dx = e.touches[0].clientX - t.x, dy = e.touches[0].clientY - t.y;
     if (!t.dir) {
       if (Math.abs(dx) + Math.abs(dy) < 10) return;
       t.dir = Math.abs(dx) > Math.abs(dy) * 1.4 ? 'h' : 'v';
       if (t.dir === 'v' || (t.mode === 'back' && dx < 0)) { t = null; return; }       // a scroll: hands off
+      if (t.mode === 'tabs') makeGhosts(t);
     }
     t.dx = dx;
-    const pg = t.pg; if (!pg) return;
-    if (t.mode === 'back') { pg.style.transform = `translate3d(${Math.max(0, dx)}px,0,0)`; return; }
-    const cfg = SWIPE_TABS[S.screen], list = cfg.list(), i = list.indexOf(cfg.cur());
-    const edge = (dx > 0 && i <= 0) || (dx < 0 && i >= list.length - 1);                 // nothing that way: resist
-    pg.style.transform = `translate3d(${edge ? dx * 0.2 : dx}px,0,0)`; pg.style.opacity = String(1 - Math.min(0.35, Math.abs(dx) / 900));
+    if (t.mode === 'back') { move(t.pg, Math.max(0, dx)); return; }
+    const k = dx < 0 ? 1 : -1, x = t.ghosts[k] ? dx : dx * 0.2;                          // nothing that way: resist
+    move(t.pg, x); if (t.ghosts[1]) move(t.ghosts[1], innerWidth + x); if (t.ghosts[-1]) move(t.ghosts[-1], -innerWidth + x);
   }, { passive: true });
   const end = () => {
     if (!t) return; const g = t; t = null;
-    const pg = g.pg; if (!pg || g.dir !== 'h') { reset(pg, false); return; }
+    const pg = g.pg; if (!pg || g.dir !== 'h') { clearGhosts(g); move(pg, 0); return; }
     const w = innerWidth, v = Math.abs(g.dx) / Math.max(1, Date.now() - g.t0), far = Math.abs(g.dx) > w * 0.33 || (v > 0.5 && Math.abs(g.dx) > 40);
     if (g.mode === 'back') {
-      if (!(far && g.dx > 0)) return reset(pg, true);
-      pg.style.transition = 'transform .16s ease-out'; pg.style.transform = `translate3d(${w}px,0,0)`;
-      setTimeout(() => { reset(pg, false); Diag.add('tap', 'swipe back'); const a = g.backB.dataset.act; if (ACT[a]) ACT[a](g.backB.dataset.arg, g.backB); }, 150);
+      if (!(far && g.dx > 0)) return move(pg, 0, .18);
+      move(pg, w, .16);
+      setTimeout(() => { move(pg, 0); Diag.add('tap', 'swipe back'); const a = g.backB.dataset.act; if (ACT[a]) ACT[a](g.backB.dataset.arg, g.backB); }, 150);
       return;
     }
-    const cfg = SWIPE_TABS[S.screen]; if (!cfg) return reset(pg, true);
-    const list = cfg.list(), i = list.indexOf(cfg.cur()), j = i + (g.dx < 0 ? 1 : -1);
-    if (!far || j < 0 || j >= list.length) return reset(pg, true);
-    const from = g.dx < 0 ? -1 : 1;
-    pg.style.transition = 'transform .14s ease-in, opacity .14s'; pg.style.transform = `translate3d(${from * w * 0.6}px,0,0)`; pg.style.opacity = '0';
+    const cfg = SWIPE_TABS[S.screen]; const k = g.dx < 0 ? 1 : -1, ghost = g.ghosts[k];
+    if (!cfg || !far || !ghost) {                                                          // not far enough: everything slides back
+      move(pg, 0, .2); Object.entries(g.ghosts).forEach(([kk, d]) => move(d, kk * w, .2));
+      setTimeout(() => clearGhosts(g), 220); return;
+    }
+    const list = cfg.list(), next = list[list.indexOf(cfg.cur()) + k];
+    move(pg, -k * w, .18); move(ghost, 0, .18);
     setTimeout(() => {
-      Diag.add('tap', 'swipe to ' + list[j]); cfg.go(list[j]);
-      const np = pageOf(); if (!np) return;
-      np.style.transition = ''; np.style.transform = `translate3d(${-from * w * 0.35}px,0,0)`; np.style.opacity = '0';
-      requestAnimationFrame(() => requestAnimationFrame(() => { np.style.transition = 'transform .2s ease-out, opacity .2s'; np.style.transform = ''; np.style.opacity = '';
-        setTimeout(() => { np.style.transition = ''; }, 220); }));
-      const chip = $app().querySelector(`.screen [data-act="${S.screen === 'stats' ? 'statTab' : 'awCat'}"][data-arg="${list[j]}"]`);
+      clearGhosts(g); move(pg, 0);                            // the real tab takes the ghost's place in the same frame
+      Diag.add('tap', 'swipe to ' + next); cfg.go(next);
+      const chip = $app().querySelector(`.screen [data-act="${S.screen === 'stats' ? 'statTab' : 'awCat'}"][data-arg="${next}"]`);
       if (chip && chip.scrollIntoView) chip.scrollIntoView({ block: 'nearest', inline: 'center', behavior: 'smooth' });
-    }, 140);
+    }, 185);
   };
   el.addEventListener('touchend', end, { passive: true });
-  el.addEventListener('touchcancel', () => { if (t) { reset(t.pg, true); t = null; } }, { passive: true });
+  el.addEventListener('touchcancel', () => { if (t) { clearGhosts(t); move(t.pg, 0, .18); t = null; } }, { passive: true });
 }
 function wire() {
   const el = $app();
@@ -2990,7 +3028,7 @@ function wire() {
   // iPhone scroll lock guard: a scrolling page sitting exactly at its top or bottom can hand the swipe to the
   // (unscrollable) page behind it and then stay stuck. Keep every long page 1px away from its ends when a touch starts.
   el.addEventListener('touchstart', e => {
-    const sc = e.target.closest('.page, .fixedpage, .sheet'); if (!sc || e.target.closest('input,textarea')) return;
+    const sc = e.target.closest('[data-scroll], .page, .fixedpage, .sheet'); if (!sc || e.target.closest('input,textarea')) return;
     const max = sc.scrollHeight - sc.clientHeight;
     if (max > 2) { if (sc.scrollTop <= 0) sc.scrollTop = 1; else if (sc.scrollTop >= max) sc.scrollTop = max - 1; }
   }, { passive: true });
@@ -3958,11 +3996,11 @@ SCREENS.stats = () => {
     <span style="font-size:15px;line-height:1.45;color:var(--text2)">Finished games for ${esc(scopeName().toLowerCase().replace(/\b\w/g, c => c.toUpperCase()))} show up here.</span>
     <button class="press cond small-btn" style="align-self:flex-start;height:40px;border-radius:20px;margin-top:4px" ${act('addGame')}>${ICON.plus} ADD A PAST GAME</button></div>`;
   else body = { STANDINGS: statsStandings, HISTORY: statsHistory, RECORDS: statsRecords, H2H: statsH2H }[tab](games);
-  return `<div class="page tabbed">
+  return `<div class="page tabbed split">
   <div style="display:flex;align-items:center;justify-content:space-between"><h1 class="cond" style="margin:0;font-size:34px;font-weight:800;letter-spacing:.4px">STATS</h1>
     <button class="press cond" ${act('openSwitcher')} style="height:34px;padding:0 12px;border-radius:17px;background:var(--card);font-size:17px;font-weight:700;letter-spacing:.6px;display:flex;align-items:center;gap:6px;max-width:60%;overflow:hidden;white-space:nowrap">${esc(scopeName())} ${ICON.down}</button></div>
   <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:2px;padding:3px;border-radius:12px;background:var(--card)">${STAT_TABS.map(t => `<button class="cond" ${act('statTab', t)} style="height:36px;border-radius:9px;font-size:14px;font-weight:800;letter-spacing:0;color:${t === tab ? 'var(--text)' : 'var(--text3)'};background:${t === tab ? 'var(--card3)' : 'transparent'}">${t}</button>`).join('')}</div>
-  ${body}
+  <div data-scroll data-swipe>${body}</div>
 </div>${tabbar('stats')}${liveBar()}`;
 };
 
@@ -4314,7 +4352,7 @@ Object.assign(SHEETS, { season: seasonSheet, h2hPick: h2hPickSheet, deleteGame: 
 
 // ════════════ Actions ════════════
 Object.assign(ACT, {
-  statTab: t => { S.statTab = t; render(); const p = $app().querySelector('.page'); if (p) p.scrollTop = 0; },
+  statTab: t => { S.statTab = t; render(); const p = $app().querySelector('.screen [data-scroll]') || $app().querySelector('.page'); if (p) p.scrollTop = 0; },
   standOpen: id => { S.statOpen = S.statOpen === id ? null : id; render(); },
   pickSeason: y => { S.statSeason = y; S.sheet = null; render(); },
   h2hPick: arg => { const [side, id] = arg.split('|'); if (side === 'a') { S.h2hA = id; S.h2hB = null; } else S.h2hB = id; S.sheet = null; render(); },
@@ -4616,11 +4654,11 @@ SCREENS.awards = () => {
     body = `${tools}<div data-region="awlist" style="display:flex;flex-direction:column;gap:14px"><span class="courier meta" style="padding:0 2px">${got} of ${list.length} earned · tap one for details</span>${recent}${secs || `<div class="card" style="padding:18px;font-size:15px;color:var(--text2)">${q ? `No awards${wonOnly ? ' you’ve won' : ''} match “${esc(S.awq.trim())}”` : 'No awards won yet'}.</div>`}</div>`;
   }
   const chips = [['ALL', 'ALL']].concat(AWARD_CATS).map(([c, label]) => `<button class="press cond" ${act('awCat', c)} style="flex-shrink:0;height:30px;padding:0 12px;border-radius:15px;font-size:14px;font-weight:800;letter-spacing:.6px;background:${c === cat ? 'var(--text)' : 'var(--card)'};color:${c === cat ? 'var(--bg)' : 'var(--text5)'}">${label}</button>`).join('');
-  return `<div class="page tabbed">
+  return `<div class="page tabbed split">
   <div style="display:flex;align-items:center;justify-content:space-between;gap:10px"><h1 class="cond" style="margin:0;font-size:34px;font-weight:800;letter-spacing:.4px">AWARDS</h1>
     <button class="press" ${act('openSheet', 'awPlayer')} style="height:34px;padding:0 14px;border-radius:17px;background:var(--card);font-size:15px;font-weight:700;display:flex;align-items:center;gap:6px;max-width:60%;overflow:hidden;white-space:nowrap">${esc(awardPlayerName(pid))} ${ICON.down}</button></div>
   <div class="chips" data-keep="awchips" style="display:flex;gap:8px;overflow-x:auto;margin:0 -20px;padding:0 20px;scrollbar-width:none">${chips}</div>
-  ${body}
+  <div data-scroll data-swipe>${body}</div>
 </div>${tabbar('awards')}${liveBar()}`;
 };
 function awardRow(a, inGame) {
