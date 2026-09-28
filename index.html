@@ -2434,11 +2434,22 @@ SCREENS.createClub = () => {
 </div>`;
 };
 
+// ── Game options (Settings → Game options) ──
+const gameOptionsSummary = () => [S.settings.awake ? 'Screen on' : '', S.settings.sound ? 'Sounds' : ''].filter(Boolean).join(' · ') || 'Off';
+SCREENS.gameOptions = () => {
+  const tg = [['awake', 'Keep screen awake', 'Stops your phone from locking while the game screen is open. Needs iOS 18.4 or newer when Guess Ball is on your home screen.'],
+    ['sound', 'Sounds', 'A chime when someone makes a correct call and a jingle for awards. Silent when your phone is on silent.']];
+  return `<div class="page" style="gap:10px">
+  <div class="topbar">${backBtn()}<h1 class="cond h1">GAME OPTIONS</h1></div>
+  <div class="list">${tg.map(([k, label, sub]) => `<div class="row" style="min-height:52px">
+    <div style="flex-grow:1;padding:6px 0">${info('t_' + k, `<span style="font-size:16px;font-weight:500;color:var(--text)">${label}</span>`, sub, '')}</div>${toggle(S.settings[k], 'setting', k)}</div>`).join('')}</div>
+  <span class="courier meta" style="line-height:1.5">Saved on this phone only.</span>
+</div>${liveBar()}`;
+};
+
 // ── Settings ──
 SCREENS.settings = () => {
   const a = S.account || {};
-  const tg = [['haptic', 'Vibration', 'Taps, correct calls, awards'], ['sound', 'Sounds', 'Crowd cheer and award jingle'],
-    ['awake', 'Keep screen awake', 'So your phone doesn’t lock mid-inning'], ['big', 'Larger text', 'Easier to read in the sun']];
   return `<div class="page" style="gap:10px">
   <div class="topbar">${backBtn()}<h1 class="cond h1">SETTINGS</h1></div>
   <div class="card" style="padding:14px;display:flex;align-items:center;gap:12px">
@@ -2448,10 +2459,8 @@ SCREENS.settings = () => {
   <div class="list">
     <button class="row press" ${act('go', 'editProfile')}><span style="flex-grow:1;font-size:16px;font-weight:500">Favorite team</span><span style="font-size:15px;color:var(--text3)">${esc(shortTeam(a.team) || 'None')}</span>${ICON.chev}</button>
     <button class="row press" ${act('go', 'appearance')}><span style="flex-grow:1;font-size:16px;font-weight:500">Appearance</span><span style="font-size:15px;color:var(--text3)">${esc(appearanceSummary())}</span>${ICON.chev}</button>
+    <button class="row press" ${act('go', 'gameOptions')}><span style="flex-grow:1;font-size:16px;font-weight:500">Game options</span><span style="font-size:15px;color:var(--text3)">${esc(gameOptionsSummary())}</span>${ICON.chev}</button>
   </div>
-  <span class="cond label" style="margin-top:6px">DURING GAMES</span>
-  <div class="list">${tg.map(([k, label, sub]) => `<div class="row" style="min-height:52px">
-    <div style="flex-grow:1;padding:6px 0">${info('t_' + k, `<span style="font-size:16px;font-weight:500;color:var(--text)">${label}</span>`, sub, '')}</div>${toggle(S.settings[k], 'setting', k)}</div>`).join('')}</div>
   <span class="cond label" style="margin-top:6px">HELP</span>
   <div class="list">
     <button class="row press" ${act('howToPlay')}><span style="flex-grow:1;font-size:16px;font-weight:500">How to play</span>${ICON.chev}</button>
@@ -2685,7 +2694,7 @@ function back() {
   S.screen = prev.screen; S.params = prev.params; S.sheet = null; S.info = null; S.draft = {}; S.q = '';
   render();
 }
-const buzz = () => { if (S.settings.haptic && navigator.vibrate) navigator.vibrate(8); };
+const buzz = () => {};   // vibration removed: iPhones don't allow it for web apps
 const fail = e => { console.error(e); S.busy = false; toast(e && e.message ? e.message : 'Something went wrong — try again', true); };
 
 // ════════════ Data ════════════
@@ -3715,6 +3724,7 @@ const Sound = {
     if (!S.settings.sound) return;
     try {
       this.ctx = this.ctx || new (window.AudioContext || window.webkitAudioContext)();
+      if (this.ctx.state === 'suspended') this.ctx.resume().catch(() => {});
       const c = this.ctx, t = c.currentTime;
       const notes = kind === 'award' ? [784, 988, 1175, 1568] : kind === 'right' ? [880, 1319] : [220];
       notes.forEach((f, k) => {
@@ -3727,6 +3737,14 @@ const Sound = {
     } catch (e) { /* no sound available */ }
   },
 };
+// iPhone only lets a web app start sound during a tap. Sounds play a moment after the tap (once the play is saved),
+// so wake the sound system up on the first tap, and again after the app comes back from the background.
+const unlockSound = () => { if (!S.settings.sound) return; try {
+  const C = window.AudioContext || window.webkitAudioContext; if (!C) return;
+  Sound.ctx = Sound.ctx || new C(); if (Sound.ctx.state !== 'running') Sound.ctx.resume().catch(() => {});
+  const b = Sound.ctx.createBuffer(1, 1, 22050), src = Sound.ctx.createBufferSource(); src.buffer = b; src.connect(Sound.ctx.destination); src.start(0);
+} catch (e) { /* no sound */ } };
+['touchend', 'click'].forEach(t => document.addEventListener(t, () => { if (!Sound.ctx || Sound.ctx.state !== 'running') unlockSound(); }, { passive: true, capture: true }));
 const Awake = {
   lock: null,
   async on() { if (!S.settings.awake || this.lock || !('wakeLock' in navigator)) return; try { this.lock = await navigator.wakeLock.request('screen'); this.lock.addEventListener('release', () => { this.lock = null; }); } catch (e) { /* not allowed */ } },
@@ -5194,7 +5212,7 @@ const TEAM_STYLE = {
   'Texas Rangers': ['TEX', '#003278'], 'Toronto Blue Jays': ['TOR', '#134A8E'], 'Washington Nationals': ['WSH', '#AB0003'],
 };
 const ACCENTS = { blue: '#2F6FE4', green: '#1F9D55', red: '#D9412F', purple: '#7B4FE0', orange: '#E67A1F', teal: '#14919B' };
-const AP_DEFAULT = { theme: 'dark', accent: 'blue', bg: 'stadium', park: null, picks: {}, gamePark: true, frost: true };
+const AP_DEFAULT = { theme: 'dark', accent: 'blue', bg: 'stadium', park: null, picks: {}, frost: true };
 // Always the same object (fills in any missing settings once), so "ap().x = !ap().x" works
 const ap = () => { const a = S.settings.ap || (S.settings.ap = {}); for (const k in AP_DEFAULT) if (!(k in a)) a[k] = AP_DEFAULT[k];
   if (!a.frostOn) { a.frost = true; a.frostOn = 1; }          // build 6.4: frosted cards switched on for everyone once
@@ -5250,14 +5268,14 @@ function favPhoto() {
   const team = a.park || (PARKS[favTeam()] ? favTeam() : null);
   const p = team && parkPick(team); return p ? p.src : null;
 }
-// A game's park (In games, show the park you're at). forShare: the share card always uses the game's park.
+// A game's park: a game at a ballpark always shows that park's default photo (no photos yet: your menu photo). forShare: the share card always uses the game's park.
 function parkPhotoFor(g, forShare) {
   if (!g) return null;
   const team = teamForPark(g.park) || (g.home && PARKS[g.home] && (!g.park || g.park === PARKS[g.home].park) ? g.home : null);
   if (forShare) { const p = team && photoById(PARKS[team].default); return p ? p.src : null; }
   const a = ap();
   if (a.bg === 'off') return null;
-  if (!a.gamePark || g.tv) return favPhoto();   // watching at home: your usual photo, not the ballpark
+  if (g.tv) return favPhoto();   // watching at home: your usual photo, not the ballpark
   const p = team && photoById(PARKS[team].default); return p ? p.src : favPhoto();   // a game always shows that park's default shot
 }
 const PHOTO_FAV = ['home', 'stats', 'awards', 'club', 'newGame'], PHOTO_GAME = ['game', 'final'];
@@ -5311,19 +5329,21 @@ SCREENS.appearance = () => {
   return `<div class="page">
   <div class="topbar">${backBtn()}<h1 class="cond h1">APPEARANCE</h1></div>
   <div style="display:flex;flex-direction:column;align-items:center;gap:8px">
-    <div style="position:relative;width:150px;height:318px;border-radius:30px;border:3px solid var(--line2);overflow:hidden;background:${src ? `#000 url('${src}') center/cover` : 'var(--bg)'}">${src ? `<div style="position:absolute;inset:0;background:var(--wash)"></div>` : ''}
+    <div style="position:relative;width:120px;height:254px;border-radius:26px;border:3px solid var(--line2);overflow:hidden;background:${src ? `#000 url('${src}') center/cover` : 'var(--bg)'}">${src ? `<div style="position:absolute;inset:0;background:var(--wash)"></div>` : ''}
       ${previewCards(!!src && a.frost)}</div>
     <span class="courier meta">${esc(caption)}</span></div>
+  <span class="cond label">BACKGROUND</span>
+  ${seg('bg', [['off', 'OFF'], ['stadium', 'STADIUM'], ['mine', 'MY PHOTO']])}
+  ${parkRow}${mineRow}
+  ${a.bg !== 'off' ? `<span class="courier meta" style="line-height:1.5">Games at a ballpark show that park’s own photo. Games at home show yours.</span>` : ''}
   <span class="cond label">THEME</span>
   ${seg('theme', [['dark', 'DARK'], ['light', 'LIGHT'], ['auto', 'AUTO']])}
   <div class="list"><div class="row" style="min-height:52px"><div style="flex-grow:1;padding:6px 0">${info('apFrost', '<span style="font-size:16px;font-weight:500;color:var(--text)">Frosted cards</span>', 'Blurs the stadium photo behind each card (you can see it in the preview above). Only shows when a background photo is on. If the app ever feels sticky, turn this off.', '')}</div>${toggle(a.frost, 'apToggleFrost')}</div></div>
   <span class="cond label">ACCENT COLOR</span>
   <div class="card" style="padding:12px;display:flex;gap:10px;flex-wrap:wrap">${Object.entries(ACCENTS).map(([k, c]) => dot(k, c)).join('')}${teamSwatch}</div>
   ${teamSwatch ? `<span class="courier meta" style="margin-top:-6px">${TEAM_STYLE[fav][0]} = your favorite team’s color.</span>` : ''}
-  <span class="cond label">BACKGROUND</span>
-  ${seg('bg', [['off', 'OFF'], ['stadium', 'STADIUM'], ['mine', 'MY PHOTO']])}
-  ${parkRow}${mineRow}
-  ${a.bg !== 'off' ? `<div class="list"><div class="row" style="min-height:56px"><div style="flex-grow:1;padding:6px 0">${info('apGame', '<span style="font-size:16px;font-weight:500;color:var(--text)">In games, show the park you’re at</span>', a.bg === 'mine' ? 'On: games show that ballpark’s photo. Off: your photo stays up during games too.' : 'Games show that ballpark’s own photo (at Dodger Stadium: Sunset from the top), whatever you picked here. Parks without photos use your pick above.', '')}</div>${toggle(a.gamePark, 'apToggleGame')}</div></div>` : ''}
+  <span class="cond label">TEXT</span>
+  <div class="list"><div class="row" style="min-height:52px"><div style="flex-grow:1;padding:6px 0">${info('apBig', '<span style="font-size:16px;font-weight:500;color:var(--text)">Larger text</span>', 'Makes text a little bigger everywhere. Easier to read in the sun.', '')}</div>${toggle(S.settings.big, 'setting', 'big')}</div></div>
 </div>`;
 };
 // Two sample cards inside the preview phone, so frosted vs plain is easy to see
@@ -5370,7 +5390,6 @@ Object.assign(ACT, {
   apPick: arg => { const [team, id] = arg.split('|'); const a = ap(); a.picks = { ...a.picks, [team]: id }; a.park = team; saveAp(); buzz(); render(); },
   apPark: team => { ap().park = team; saveAp(); S.sheet = null; buzz(); render(); },
   apToggleFrost: () => { ap().frost = !ap().frost; saveAp(); buzz(); render(); },
-  apToggleGame: () => { ap().gamePark = !ap().gamePark; saveAp(); buzz(); render(); },
   apClearPhoto: () => { Store.removeItem('gb_myphoto'); render(); toast('Removed — using your stadium pick instead'); },
 });
 applyTheme();
