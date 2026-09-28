@@ -1235,8 +1235,58 @@ const Statistician = (() => {
       .map(([id, p]) => ({ id, tier: Math.max(...p.earned[awardId].map(x => x.tier)), first: p.earned[awardId][0].date }));
   }
 
+  // ── Scouting report: one player's habits, from games played in the app (they record every pick) ──
+  const NAMES = { strikeout: 'Strikeout', in_play_out: 'In-play out', double_play: 'Double play', fielders_choice: "Fielder's choice",
+    bunt: 'Bunt', walk: 'Walk', hbp: 'Hit by pitch', single: 'Single', double: 'Double', triple: 'Triple', home_run: 'Home run', stolen_base: 'Stolen base' };
+  const STYLE = { strikeout: 'Strikeout hunter', in_play_out: 'Plays the percentages', double_play: 'Rally killer', fielders_choice: 'Lives for the weird ones',
+    bunt: 'Small-ball diehard', walk: 'Loves a free pass', hbp: 'Waits to get plunked', single: 'Singles machine', double: 'Gap-to-gap thinker',
+    triple: 'Chases unicorns', home_run: 'Swings for the fences', stolen_base: 'Always running' };
+  function scouting(games, pid) {
+    const list = chrono(games.filter(g => g.ended !== false && hasPlays(g) && seatOf(g, pid) >= 0));
+    const calls = {}, innPts = {}, innGames = {};
+    let picks = 0, right = 0, confUsed = 0, confRight = 0, p3Halves = 0, p3Hits = 0, abs = 0, held = 0;
+    list.forEach(g => {
+      const i = seatOf(g, pid), r = replay(g);
+      const seen = new Set();
+      r.plays.forEach(p => {
+        const inning = parseInt(p.half, 10);
+        if (p.endsAtBat) { abs++; if (p.priorityBefore === i) held++; }
+        p.log.forEach(e => {
+          if (e.player !== i) return;
+          picks++; if (e.correct) right++;
+          const c = calls[e.pick] || (calls[e.pick] = { n: 0, right: 0 }); c.n++; if (e.correct) c.right++;
+          if (e.conf) { confUsed++; if (e.correct) confRight++; }
+          if (e.p3Bonus) p3Hits++;
+          innPts[inning] = (innPts[inning] || 0) + e.pts; seen.add(inning);
+        });
+      });
+      seen.forEach(k => { innGames[k] = (innGames[k] || 0) + 1; });
+      p3Halves += (g.events || []).filter(ev => ev.type === 'pick3' && ev.picks && ev.picks[i]).length;   // half-innings they played Pick 3
+    });
+    if (!list.length || picks < 20) return { ready: false, games: list.length, picks };
+    const rows = Object.entries(calls).map(([o, c]) => ({ outcome: o, code: CODES[o], name: NAMES[o] || o, n: c.n, right: c.right, pct: c.right / c.n }));
+    const go = rows.slice().sort((a, b) => b.n - a.n)[0];
+    const rated = rows.filter(x => x.n >= 5);
+    const best = rated.filter(x => x.right > 0).sort((a, b) => b.pct - a.pct || b.n - a.n).slice(0, 2);
+    const worst = rated.filter(x => !best.includes(x)).sort((a, b) => a.pct - b.pct || b.n - a.n).slice(0, 2);
+    const inn = Object.keys(innPts).map(Number).filter(k => k <= 9 && innGames[k] >= Math.max(1, Math.ceil(list.length / 3)))
+      .map(k => ({ inning: k, avg: innPts[k] / innGames[k] })).sort((a, b) => b.avg - a.avg)[0] || null;
+    const confPer = confUsed / list.length, confPct = confUsed ? confRight / confUsed : null;
+    // "The book on …": a one-line roast built from the numbers
+    let line = STYLE[go.outcome] || 'A true original';
+    if (confPer >= 3 && confPct !== null && confPct < 0.35) line += " who never met a confidence call they didn't like";
+    else if (confPct !== null && confUsed >= 5 && confPct >= 0.5) line += ' with ice in their veins';
+    else if (confPer < 0.5) line += ' who keeps confidence in their pocket';
+    line += '.';
+    if (worst[0] && worst[0].pct < 0.15) line += ` Can't read a ${worst[0].name.toLowerCase()} to save their life.`;
+    else if (right / picks >= 0.35) line += ' Sees the ball better than the batter.';
+    return { ready: true, games: list.length, picks, accuracy: right / picks, go: { ...go, share: go.n / picks }, best, worst,
+      conf: { perGame: confPer, pct: confPct, used: confUsed }, inning: inn, p3: { hits: p3Hits, halves: p3Halves },
+      priority: abs ? held / abs : null, line };
+  }
+
   return { AWARDS, CODES, result, outcomeFor, replay, gameNumbers, lineScore, standings, seasons, history,
-           records, h2h, opponents, summary, awardBook, awardsFor, awardsInGame, whoHas };
+           records, h2h, opponents, summary, awardBook, awardsFor, awardsInGame, whoHas, scouting };
 })();
 
 
@@ -1616,7 +1666,8 @@ const FilingCabinet = (() => {
     // Fix the matchup mid-game (teams / ballpark)
     function updateGameInfo(g, fields) {
       const ch = {};
-      ['away', 'home', 'park'].forEach(k => { if (k in fields) { g[k] = fields[k]; ch['games/' + g.id + '/' + k] = fields[k]; } });
+      ['away', 'home', 'park', 'tv'].forEach(k => { if (k in fields) { g[k] = k === 'tv' ? (fields.tv ? true : null) : fields[k]; ch['games/' + g.id + '/' + k] = g[k]; } });
+      if (g.tv === null) delete g.tv;
       save('gb_live', g);
       return queue(ch);
     }
@@ -1645,19 +1696,20 @@ const FilingCabinet = (() => {
         ['games/' + g.id + '/scores']: scores, ['games/' + g.id + '/mlb']: mlb, ['games/' + g.id + '/note']: g.note, ...liveOff });
     }
     // Add a game by hand (final scores only). Anyone can; it counts like a pre-app game.
-    async function addHandGame({ players, scores, date, away = '', home = '', park = '', mlb = null, note = '' }) {
+    async function addHandGame({ players, scores, date, away = '', home = '', park = '', mlb = null, note = '', tv = false }) {
       need();
       const me = await get('profiles/' + uid);
       const clubList = await clubsFor(players.map(p => p.id));
       const g = { id: db.newId(), host: uid, addedBy: me.name, era: 'hand', date, seq: now(), players, scores,
-        away, home, park, mlb, note, clubList, ended: true };
+        away, home, park, mlb, note, clubList, ended: true, ...(tv ? { tv: true } : {}) };
       await queue({ ['games/' + g.id]: g, ...indexChanges(g, { date, seq: g.seq }) });
       return g;
     }
     async function editHandGame(g, fields) {
-      const allowed = ['scores', 'date', 'away', 'home', 'park', 'mlb', 'note'];
+      const allowed = ['scores', 'date', 'away', 'home', 'park', 'mlb', 'note', 'tv'];
       const ch = {};
-      allowed.forEach(k => { if (k in fields) { g[k] = fields[k]; ch['games/' + g.id + '/' + k] = fields[k]; } });
+      allowed.forEach(k => { if (k in fields) { const v = k === 'tv' ? (fields.tv ? true : null) : fields[k]; g[k] = v; ch['games/' + g.id + '/' + k] = v; } });
+      if (g.tv === null) delete g.tv;
       if ('date' in fields) Object.assign(ch, indexChanges(g, { date: g.date, seq: g.seq }));
       gameCache.delete(g.id);                          // don't serve the old copy
       await queue(ch);
@@ -1721,6 +1773,20 @@ const FilingCabinet = (() => {
 
     // ════════════ Admin (Xaq only) ════════════
     const exportAll = () => get('');
+    // Monthly safety copy (admin only): the first time the admin opens the app each month, copy everything
+    // into backups/<yyyy-mm> inside this copy's own data. Keeps the last 6. Returns the month saved, or null.
+    async function monthlyBackup(keep = 6) {
+      need();
+      const month = localDate(now()).slice(0, 7);
+      const have = (await get('backups')) || {};
+      if (have[month]) return null;
+      const all = (await get('')) || {}; delete all.backups;
+      const games = Object.keys(all.games || {}).length;
+      const ch = { ['backups/' + month]: { at: now(), by: uid, games, data: JSON.stringify(all) } };
+      Object.keys(have).sort().slice(0, Math.max(0, Object.keys(have).length + 1 - keep)).forEach(m => { ch['backups/' + m] = null; });
+      await queue(ch);
+      return month;
+    }
     const isAdmin = async () => { need(); await flush(); return (await db.get('v2/admins/' + uid)) === true; };   // one admin list for the real app and QA
 
     return { setUser, onStatus: f => { listeners.add(f); f(status()); return () => listeners.delete(f); }, status, flush,
@@ -1728,7 +1794,7 @@ const FilingCabinet = (() => {
       createClub, findClubs, myClubs, clubInfo, roster, joinClub, requests, answerRequest, leaveClub, setCaptain, removeMember, updateClub,
       addGuest, renameGuest, claimGuest, answerClaim, myAliases, accounts, offerGuest, myOffers, dismissOffer, myClaims,
       startGame, liveGame, findLiveGame, addEvent, undo, takeOver, updateGameInfo, endGame, discardGame, addHandGame, editHandGame, deleteGame,
-      loadGames, historyOf, exportAll, isAdmin };
+      loadGames, historyOf, exportAll, monthlyBackup, isAdmin };
   }
 
   // ── Firebase adapter (used in the app). Pass in the Firebase database module + db instance. ──
@@ -1762,6 +1828,9 @@ const RULES_JSON = {
   "rules": {
     "v2": {
       ".read": "root.child('v2').child('admins').child(auth.uid).val() === true",
+      "backups": {
+        ".write": "root.child('v2').child('admins').child(auth.uid).val() === true"
+      },
       "admins": {
         ".read": "auth != null",
         ".write": false
@@ -1868,6 +1937,9 @@ const RULES_JSON = {
     },
     "qa": {
       ".read": "root.child('v2').child('admins').child(auth.uid).val() === true",
+      "backups": {
+        ".write": "root.child('v2').child('admins').child(auth.uid).val() === true"
+      },
       "admins": {
         ".read": "auth != null",
         ".write": false
@@ -2664,7 +2736,9 @@ async function afterSignIn(user) {
     S.stack = []; S.screen = 'setupName'; render(); return;
   }
   S.account = acct;
-  FCab.isAdmin().then(a => { S.admin = a; Store.setItem('gb_admin', a ? '1' : ''); }).catch(() => { S.admin = Store.getItem('gb_admin') === '1'; });
+  FCab.isAdmin().then(a => { S.admin = a; Store.setItem('gb_admin', a ? '1' : '');
+    if (a) setTimeout(() => FCab.monthlyBackup().then(m => m && Diag.add('app', 'monthly backup saved: ' + m)).catch(e => Diag.add('error', 'monthly backup: ' + e.message)), 8000);   // quietly, after the app has settled
+  }).catch(() => { S.admin = Store.getItem('gb_admin') === '1'; });
   if (S.screen !== 'home') { S.stack = []; S.screen = 'home'; render(); }
   await loadClubs();
   if (!S.g) { const lg = FCab.liveGame(); if (lg && !lg.ended && lg.host === user.uid) openGame(lg); }
@@ -3431,8 +3505,9 @@ function matchupSheet() {
   <div class="list">
     <button class="row press" ${act('openSheet', 'pickTeam:away')}><span class="cond" style="width:48px;font-size:15px;font-weight:800;color:var(--text3)">AWAY</span><span style="flex-grow:1;font-size:17px;font-weight:600">${esc(g.away || 'Choose team')}</span>${ICON.chev}</button>
     <button class="row press" ${act('openSheet', 'pickTeam:home')}><span class="cond" style="width:48px;font-size:15px;font-weight:800;color:var(--text3)">HOME</span><span style="flex-grow:1;font-size:17px;font-weight:600">${esc(g.home || 'Choose team')}</span>${ICON.chev}</button>
-    <button class="row press" ${act('openSheet', 'park')}><span class="cond" style="width:48px;font-size:15px;font-weight:800;color:var(--text3)">PARK</span><span style="flex-grow:1;font-size:17px;font-weight:600">${esc(g.park || 'Choose park')}</span>${ICON.chev}</button>
-  </div>`;
+    ${g.tv ? '' : `<button class="row press" ${act('openSheet', 'park')}><span class="cond" style="width:48px;font-size:15px;font-weight:800;color:var(--text3)">PARK</span><span style="flex-grow:1;font-size:17px;font-weight:600">${esc(g.park || 'Choose park')}</span>${ICON.chev}</button>`}
+  </div>
+  <div class="seg cond"><button class="${g.tv ? '' : 'on'}" ${act('mWhere', 'park')}>AT THE BALLPARK</button><button class="${g.tv ? 'on' : ''}" ${act('mWhere', 'home')}>AT HOME</button></div>`;
 }
 function endHalfSheet() {
   const s = S.g.s;
@@ -3631,6 +3706,7 @@ Object.assign(ACT, {
     S.draft = {}; render();
   },
   ngParkReset: () => { S.ng.park = ''; S.sheet = null; render(); },
+  mWhere: w => { FCab.updateGameInfo(S.g.game, { tv: w === 'home' }); buzz(); render(); },
   ngWhere: w => { S.ng.tv = w === 'home'; buzz(); render(); },
   startGame: async () => {
     const n = S.ng; S.busy = true; render();
@@ -4046,6 +4122,7 @@ SCREENS.addGame = () => {
     <button class="row press" ${act('openSheet', 'pickTeam:away')}><span class="cond" style="width:48px;font-size:15px;font-weight:800;color:var(--text3)">AWAY</span><span style="flex-grow:1;font-size:16px;color:${d.away ? 'var(--text)' : 'var(--text4)'}">${esc(d.away || 'Choose team')}</span>${ICON.chev}</button>
     <button class="row press" ${act('openSheet', 'pickTeam:home')}><span class="cond" style="width:48px;font-size:15px;font-weight:800;color:var(--text3)">HOME</span><span style="flex-grow:1;font-size:16px;color:${d.home ? 'var(--text)' : 'var(--text4)'}">${esc(d.home || 'Choose team')}</span>${ICON.chev}</button>
     <button class="row press" ${act('openSheet', 'park')}><span class="cond" style="width:48px;font-size:15px;font-weight:800;color:var(--text3)">PARK</span><span style="flex-grow:1;font-size:16px;color:${d.park || TEAMS[d.home] ? 'var(--text)' : 'var(--text4)'}">${esc(d.park || TEAMS[d.home] || 'Ballpark')}</span>${ICON.chev}</button></div>
+  <div class="seg cond"><button class="${d.tv ? '' : 'on'}" ${act('agWhere', 'park')}>AT THE BALLPARK</button><button class="${d.tv ? 'on' : ''}" ${act('agWhere', 'home')}>AT HOME</button></div>
   <span class="cond label">NOTE · OPTIONAL</span>
   <label class="field"><input data-model="ag.note" value="${attr(d.note)}" maxlength="280" placeholder="Anything worth remembering"></label>
   <button class="big-btn cond press" style="margin-top:6px" ${act('agSave')} data-check="addGame" data-ok="${ok ? 1 : 0}" ${ok && !S.busy ? '' : 'disabled'}>${editing ? 'SAVE CHANGES' : 'ADD GAME'}</button>
@@ -4215,16 +4292,17 @@ Object.assign(ACT, {
   },
   editGame: id => {
     const g = S.params.game || (scopeGames() || []).find(x => x.id === id);
-    S.ag = { id: g.id, game: g, date: g.date, players: g.players.map((p, i) => ({ id: p.id, name: p.name, score: String(g.scores[i]) })), away: g.away || '', home: g.home || '', park: g.park || '', note: g.note || '' };
+    S.ag = { id: g.id, game: g, tv: !!g.tv, date: g.date, players: g.players.map((p, i) => ({ id: p.id, name: p.name, score: String(g.scores[i]) })), away: g.away || '', home: g.home || '', park: g.park || '', note: g.note || '' };
     S.ng = S.ag; go('addGame');
   },
+  agWhere: w => { S.ag.tv = w === 'home'; buzz(); render(); },
   agRemove: i => { S.ag.players.splice(+i, 1); render(); },
   agSave: async () => {
     const d = S.ag; S.busy = true; render();
     const scores = d.players.map(p => Math.round(+p.score));
     try {
-      if (d.id) await FCab.editHandGame(d.game, { scores, date: d.date, away: d.away, home: d.home, park: d.park || TEAMS[d.home] || '', note: d.note });
-      else await FCab.addHandGame({ players: d.players.map(p => ({ id: p.id, name: p.name })), scores, date: d.date, away: d.away, home: d.home, park: d.park || TEAMS[d.home] || '', note: d.note });
+      if (d.id) await FCab.editHandGame(d.game, { scores, date: d.date, away: d.away, home: d.home, park: d.park || TEAMS[d.home] || '', note: d.note, tv: !!d.tv });
+      else await FCab.addHandGame({ players: d.players.map(p => ({ id: p.id, name: p.name })), scores, date: d.date, away: d.away, home: d.home, park: d.park || TEAMS[d.home] || '', note: d.note, tv: !!d.tv });
       S.busy = false; back(); if (d.id) back();
       toast(d.id ? 'Game updated' : 'Game added'); await loadScopeGames(true); loadHome();
     } catch (e) { fail(e); }
