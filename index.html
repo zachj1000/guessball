@@ -4762,6 +4762,33 @@ function clubPicker() {
 }
 
 // ── Roster member sheet ──
+// ── Scouting report (bottom of a player's profile) — built from games played in the app ──
+function scoutingReport(games, pid, name) {
+  const r = Statistician.scouting(games, pid);
+  const head = `<div style="display:flex;justify-content:space-between;align-items:baseline;margin-top:4px"><span class="cond" style="font-size:22px;font-weight:800;letter-spacing:.4px">SCOUTING REPORT</span>${r.ready ? `<span class="courier meta">${plural(r.games, 'app game')} · ${r.picks} picks</span>` : ''}</div>`;
+  if (!r.ready) return head + `<div style="background:var(--sheetcard);border-radius:16px;padding:14px 16px;font-size:15px;color:var(--text2);line-height:1.45">Not enough to go on yet. The scouts need a full game played in the app${r.picks ? ` (${r.picks} picks so far)` : ''} — old games didn't record every pick.</div>`;
+  const card = (label, big, small) => `<div style="background:var(--sheetcard);border-radius:16px;padding:10px 12px;display:flex;flex-direction:column;gap:2px;min-width:0"><span class="cond" style="font-size:13px;font-weight:800;letter-spacing:.8px;color:var(--text3)">${label}</span><span class="shoulders num" style="font-size:28px;font-weight:900;line-height:1.05">${big}</span><span class="courier meta" style="font-size:11px">${small}</span></div>`;
+  const pct = x => Math.round(x * 100) + '%';
+  const ord = n => n + (n === 1 ? 'st' : n === 2 ? 'nd' : n === 3 ? 'rd' : 'th');
+  const callRow = (c, color) => `<div style="display:flex;align-items:center;gap:12px;padding:9px 0;border-top:1px solid var(--line)">
+      <span class="shoulders" style="width:44px;font-size:22px;font-weight:900">${c.code}</span>
+      <div style="flex-grow:1;min-width:0"><div style="display:flex;justify-content:space-between;align-items:baseline"><span style="font-size:15px;font-weight:600">${esc(c.name)} · ${c.right} of ${c.n}</span><span class="shoulders num" style="font-size:18px;font-weight:900;color:${color}">${pct(c.pct)}</span></div>
+      <div style="height:5px;border-radius:3px;background:var(--card3);overflow:hidden;margin-top:4px"><div style="height:5px;border-radius:3px;background:${color};width:${Math.max(2, Math.round(c.pct * 100))}%"></div></div></div></div>`;
+  const line2 = (label, sub, big) => `<div style="background:var(--sheetcard);border-radius:16px;padding:12px 14px;display:flex;justify-content:space-between;align-items:center;gap:10px"><div style="display:flex;flex-direction:column;gap:2px"><span class="cond" style="font-size:13px;font-weight:800;letter-spacing:.8px;color:var(--text3)">${label}</span><span class="courier meta" style="font-size:11px">${sub}</span></div><span class="shoulders num" style="font-size:26px;font-weight:900">${big}</span></div>`;
+  return head + `
+  <div style="background:var(--sheetcard);border-radius:16px;padding:12px 14px;box-shadow:inset 0 0 0 1.5px rgba(242,193,78,.35)"><span class="cond" style="font-size:13px;font-weight:800;letter-spacing:.8px;color:var(--gold)">THE BOOK ON ${esc(name.toUpperCase())}</span>
+    <div style="font-size:17px;font-weight:600;line-height:1.35;margin-top:4px">${esc(r.line)}</div></div>
+  <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px">
+    ${card('GO-TO CALL', r.go.code, pct(r.go.share) + ' of picks')}
+    ${card('CONFIDENCE', r.conf.perGame.toFixed(1), 'per game' + (r.conf.pct == null ? '' : ' · ' + pct(r.conf.pct) + ' hit'))}
+    ${card('HEATS UP', r.inning ? ord(r.inning.inning) : '—', r.inning ? r.inning.avg.toFixed(1) + ' pts avg' : 'not enough yet')}</div>
+  ${r.best.length || r.worst.length ? `<div style="background:var(--sheetcard);border-radius:16px;padding:4px 14px 6px">
+    ${r.best.length ? `<div class="cond" style="font-size:13px;font-weight:800;letter-spacing:.8px;color:var(--text3);padding-top:8px">BEST CALLS</div>${r.best.map(c => callRow(c, 'var(--green)')).join('')}` : ''}
+    ${r.worst.length ? `<div class="cond" style="font-size:13px;font-weight:800;letter-spacing:.8px;color:var(--text3);padding-top:10px">BLIND SPOTS</div>${r.worst.map(c => callRow(c, 'var(--orange)')).join('')}` : ''}</div>` : ''}
+  ${r.p3.halves ? line2('PICK 3', `Bonus hit ${r.p3.hits} of ${plural(r.p3.halves, 'half-inning')}`, pct(r.p3.hits / r.p3.halves)) : ''}
+  ${r.priority != null ? line2('PRIORITY', `Held it for ${pct(r.priority)} of at-bats`, pct(r.priority)) : ''}
+  <span class="courier meta" style="text-align:center">Only games played in the app count · 5+ picks for best calls and blind spots</span>`;
+}
 function memberSheet() {
   const pid = S.sheet.arg, d = clubData() || { roster: [] }, m = (d.roster || []).find(x => x.pid === pid) || { name: 'Player' };
   const games = scopeGames() || [], row = Statistician.standings(games).find(r => r.id === pid) || { w: 0, l: 0, t: 0, games: 0, winPct: null, avgPts: null, accuracy: null };
@@ -4792,6 +4819,7 @@ function memberSheet() {
     ${tile('RECORD', `${row.w}–${row.l}${row.t ? '–' + row.t : ''}`, plural(row.games, 'game'))}${tile('WIN %', row.winPct == null ? '—' : Math.round(row.winPct * 100) + '%', 'All seasons')}
     ${tile('AVG POINTS', row.avgPts == null ? '—' : row.avgPts.toFixed(1), 'Per game')}${tile('ACCURACY', row.accuracy == null ? '—' : Math.round(row.accuracy * 100) + '%', 'Correct calls')}</div>
   ${vs}
+  ${scoutingReport(games, pid, m.name)}
   ${recent.length ? `<span class="cond label" style="padding:0">RECENT GAMES</span><div class="list">${recent.map(line).join('')}</div>` : ''}
   <span class="courier meta">${esc((clubOf(S.scope) || {}).name || '')} games only</span>
   ${cap && pid !== me ? `<button class="press cond mid-btn" style="background:var(--sheetcard);color:var(--orange);font-size:17px" ${act('openSheet', 'removeMember:' + pid)}>REMOVE FROM CLUB <span class="cond tag gold" style="font-size:10px;margin-left:4px">CAPTAINS</span></button>` : ''}`;
