@@ -2179,7 +2179,7 @@ SCREENS.home = () => {
     ${scopeChip()}
     ${claimCard()}
     ${typeof resumeCard === 'function' ? resumeCard() : ''}
-    <button class="press cond mid-btn" ${act('newGame')}>${ICON.plus} NEW GAME</button>
+    ${S.g && !S.g.s.ended ? '' : `<button class="press cond mid-btn" ${act('newGame')}>${ICON.plus} NEW GAME</button>`}
     ${body}
     ${h.loading && !h.rows.length ? '' : `<button class="press cond mid-btn" ${act('shareApp')}><svg width="17" height="17" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 10V2M5 4.5L8 1.5l3 3M3 8v5.5h10V8"/></svg> SHARE GUESS BALL</button>`}
   </div>${tabbar('games')}`;
