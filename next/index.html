@@ -2278,6 +2278,7 @@ SCREENS.settings = () => {
   <div class="list">
     <button class="row press" ${act('howToPlay')}><span style="flex-grow:1;font-size:16px;font-weight:500">How to play</span>${ICON.chev}</button>
     <button class="row press" ${act('openSheet', 'rules')}><span style="flex-grow:1;font-size:16px;font-weight:500">Rules cheat sheet</span>${ICON.chev}</button>
+    <button class="row press" ${act('go', 'diag')}><div style="flex-grow:1;display:flex;flex-direction:column;gap:2px;padding:8px 0"><span style="font-size:16px;font-weight:500">Problem log</span><span class="courier meta">Something went wrong? Screenshot this and send it to Xaq</span></div>${ICON.chev}</button>
   </div>
   ${S.admin ? `<span class="cond label" style="margin-top:6px">ADMIN</span><div class="list"><button class="row press" ${act('go', 'admin')}><span style="flex-grow:1;font-size:16px;font-weight:500">Admin tools</span><span class="courier meta">Only you</span>${ICON.chev}</button></div>` : ''}
   <button class="press cond mid-btn" style="margin-top:8px;font-size:18px;color:var(--orange)" ${act('signOut')}>SIGN OUT</button>
@@ -2325,14 +2326,17 @@ SCREENS.admin = () => `<div class="page">
   <div class="list">
     <button class="row press" ${act('exportAll')}><div style="flex-grow:1;display:flex;flex-direction:column;gap:2px;padding:8px 0"><span style="font-size:16px;font-weight:600">Export all data</span><span class="courier meta">Downloads everything in Firebase as one file</span></div>${ICON.chev}</button>
     <button class="row press" ${act('copyRules')}><div style="flex-grow:1;display:flex;flex-direction:column;gap:2px;padding:8px 0"><span style="font-size:16px;font-weight:600">Copy security rules</span><span class="courier meta">Paste into Firebase → Realtime Database → Rules</span></div>${ICON.chev}</button>
-    <button class="row press" ${act('go', 'diag')}><div style="flex-grow:1;display:flex;flex-direction:column;gap:2px;padding:8px 0"><span style="font-size:16px;font-weight:600">Problem log</span><span class="courier meta">Errors, freezes and the last taps on this phone</span></div>${ICON.chev}</button>
     <button class="row press" ${act('adminDelete')}><div style="flex-grow:1;display:flex;flex-direction:column;gap:2px;padding:8px 0"><span style="font-size:16px;font-weight:600">Delete a game</span><span class="courier meta">Any club · stats and awards recalculate</span></div>${ICON.chev}</button>
   </div></div>`;
 
+const deviceLine = () => { const u = navigator.userAgent, ios = /OS (\d+)_(\d+)/.exec(u);
+  const standalone = navigator.standalone === true || (window.matchMedia && matchMedia('(display-mode: standalone)').matches);
+  return (/iPhone/.test(u) ? 'iPhone' : /iPad/.test(u) ? 'iPad' : /Android/.test(u) ? 'Android' : 'Computer') + (ios ? ' iOS ' + ios[1] + '.' + ios[2] : '') + (standalone ? ' · home-screen app' : ' · browser'); };
 const DIAG_LABEL = { error: 'ERROR', stall: 'FROZE', tap: 'tap', touch: 'touch', app: 'app' };
 SCREENS.diag = () => { const rows = Diag.get(); return `<div class="page">
   <div class="topbar">${backBtn()}<h1 class="cond h1">PROBLEM LOG</h1></div>
-  <span class="courier meta" style="color:var(--text2)">Newest first · this phone only. After a freeze, reopen the app, come here and tap COPY, then send it to Claude.</span>
+  <span class="courier meta" style="color:var(--text2)">What the app noticed on this phone, newest first. Something went wrong? Take a screenshot of this page (or tap COPY and paste it in a text) and send it to Xaq.</span>
+  <div class="card courier" style="padding:10px 14px;font-size:12px;line-height:1.5;color:var(--text2)">Guess Ball ${esc(VERSION)} · ${esc((S.account && S.account.name) || 'not signed in')}<br>${esc(deviceLine())} · ${new Date().toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}</div>
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><button class="press cond small-btn" ${act('diagCopy')}>COPY</button><button class="press cond small-btn" ${act('diagClear')}>CLEAR</button></div>
   <div class="card" style="padding:4px 14px">${rows.length ? rows.map((r, k) => `<div style="display:flex;gap:10px;padding:7px 0;${k ? 'border-top:1px solid var(--line)' : ''};font-size:13px">
     <span class="courier" style="width:84px;flex-shrink:0;font-size:12px;color:var(--text3)">${new Date(r.t).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', second: '2-digit' })}</span>
@@ -2699,7 +2703,7 @@ const ACT = {
   },
   diagCopy: async () => {
     const txt = Diag.get().map(r => `${new Date(r.t).toISOString().slice(11, 19)} ${r.k} ${r.d} [${r.s}${r.sh ? '/' + r.sh : ''}]`).join('\n');
-    try { await navigator.clipboard.writeText(VERSION + ' · ' + navigator.userAgent.slice(0, 80) + '\n' + txt); toast('Copied — paste it to Claude'); } catch (e) { toast('Could not copy', true); }
+    try { await navigator.clipboard.writeText('Guess Ball ' + VERSION + ' · ' + ((S.account && S.account.name) || '') + ' · ' + deviceLine() + '\n' + txt); toast('Copied — paste it in a text to Xaq'); } catch (e) { toast('Could not copy', true); }
   },
   diagClear: () => { Diag.clear(); render(); },
   exportAll: async () => {
