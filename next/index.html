@@ -2926,6 +2926,11 @@ const SWIPE_TABS = {
   stats: { list: () => STAT_TABS, cur: () => S.statTab || 'STANDINGS', go: t => ACT.statTab(t) },
   awards: { list: () => ['ALL'].concat(AWARD_CATS.map(c => c[0])), cur: () => (S.aw && S.aw.cat) || 'ALL', go: t => { ACT.awCat(t); const pg = $app().querySelector('.screen [data-scroll]') || $app().querySelector('.screen .page'); if (pg) pg.scrollTop = 0; } },
 };
+// Nothing but chip rows should ever sit scrolled sideways. If iPhone nudges a page over, put it back.
+function unshift() {
+  const a = $app(); if (!a) return;
+  [a, document.documentElement, document.body, ...a.querySelectorAll('.screen, .page, .fixedpage, [data-scroll], [data-swipe]')].forEach(n => { if (n.scrollLeft) n.scrollLeft = 0; });
+}
 function swipes(el) {
   let t = null;
   const pageOf = () => $app().querySelector('.screen .page, .screen .fixedpage');
@@ -2997,7 +3002,10 @@ function swipes(el) {
       clearGhosts(g); move(pg, 0);                            // the real tab takes the ghost's place in the same frame
       Diag.add('tap', 'swipe to ' + next); cfg.go(next);
       const chip = $app().querySelector(`.screen [data-act="${S.screen === 'stats' ? 'statTab' : 'awCat'}"][data-arg="${next}"]`);
-      if (chip && chip.scrollIntoView) chip.scrollIntoView({ block: 'nearest', inline: 'center', behavior: 'smooth' });
+      const row = chip && chip.closest('.chips');              // only the chip row scrolls sideways (scrollIntoView shifted the whole page on iPhone)
+      if (row && row.scrollWidth > row.clientWidth) { const want = chip.offsetLeft - (row.clientWidth - chip.offsetWidth) / 2;
+        row.scrollTo({ left: Math.max(0, Math.min(want, row.scrollWidth - row.clientWidth)), behavior: 'smooth' }); }
+      unshift();
     }, 185);
   };
   el.addEventListener('touchend', end, { passive: true });
@@ -3006,6 +3014,9 @@ function swipes(el) {
 function wire() {
   const el = $app();
   swipes(el);
+  document.addEventListener('scroll', e => {                   // guard: a page scrolled sideways snaps straight back (chip rows are allowed)
+    const n = e.target; if (n && n.scrollLeft && n.nodeType === 1 && !n.closest('.chips, [data-keep]')) n.scrollLeft = 0;
+  }, { capture: true, passive: true });
   el.addEventListener('click', e => {
     const b = e.target.closest('[data-act]');
     if (!b || b.disabled || !el.contains(b)) return;
