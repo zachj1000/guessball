@@ -5212,7 +5212,7 @@ const TEAM_STYLE = {
   'Texas Rangers': ['TEX', '#003278'], 'Toronto Blue Jays': ['TOR', '#134A8E'], 'Washington Nationals': ['WSH', '#AB0003'],
 };
 const ACCENTS = { blue: '#2F6FE4', green: '#1F9D55', red: '#D9412F', purple: '#7B4FE0', orange: '#E67A1F', teal: '#14919B' };
-const AP_DEFAULT = { theme: 'dark', accent: 'blue', bg: 'stadium', park: null, picks: {}, gamePark: true, frost: true };
+const AP_DEFAULT = { theme: 'dark', accent: 'blue', bg: 'stadium', park: null, picks: {}, frost: true };
 // Always the same object (fills in any missing settings once), so "ap().x = !ap().x" works
 const ap = () => { const a = S.settings.ap || (S.settings.ap = {}); for (const k in AP_DEFAULT) if (!(k in a)) a[k] = AP_DEFAULT[k];
   if (!a.frostOn) { a.frost = true; a.frostOn = 1; }          // build 6.4: frosted cards switched on for everyone once
@@ -5268,14 +5268,14 @@ function favPhoto() {
   const team = a.park || (PARKS[favTeam()] ? favTeam() : null);
   const p = team && parkPick(team); return p ? p.src : null;
 }
-// A game's park (In games, show the park you're at). forShare: the share card always uses the game's park.
+// A game's park: a game at a ballpark always shows that park's default photo (no photos yet: your menu photo). forShare: the share card always uses the game's park.
 function parkPhotoFor(g, forShare) {
   if (!g) return null;
   const team = teamForPark(g.park) || (g.home && PARKS[g.home] && (!g.park || g.park === PARKS[g.home].park) ? g.home : null);
   if (forShare) { const p = team && photoById(PARKS[team].default); return p ? p.src : null; }
   const a = ap();
   if (a.bg === 'off') return null;
-  if (!a.gamePark || g.tv) return favPhoto();   // watching at home: your usual photo, not the ballpark
+  if (g.tv) return favPhoto();   // watching at home: your usual photo, not the ballpark
   const p = team && photoById(PARKS[team].default); return p ? p.src : favPhoto();   // a game always shows that park's default shot
 }
 const PHOTO_FAV = ['home', 'stats', 'awards', 'club', 'newGame'], PHOTO_GAME = ['game', 'final'];
@@ -5335,7 +5335,7 @@ SCREENS.appearance = () => {
   <span class="cond label">BACKGROUND</span>
   ${seg('bg', [['off', 'OFF'], ['stadium', 'STADIUM'], ['mine', 'MY PHOTO']])}
   ${parkRow}${mineRow}
-  ${a.bg !== 'off' ? `<div class="list"><div class="row" style="min-height:56px"><div style="flex-grow:1;padding:6px 0">${info('apGame', '<span style="font-size:16px;font-weight:500;color:var(--text)">In games, show the park you’re at</span>', a.bg === 'mine' ? 'On: games show that ballpark’s photo. Off: your photo stays up during games too.' : 'Games show that ballpark’s own photo (at Dodger Stadium: Sunset from the top), whatever you picked here. Parks without photos use your pick above.', '')}</div>${toggle(a.gamePark, 'apToggleGame')}</div></div>` : ''}
+  ${a.bg !== 'off' ? `<span class="courier meta" style="line-height:1.5">Games at a ballpark show that park’s own photo. Games at home show yours.</span>` : ''}
   <span class="cond label">THEME</span>
   ${seg('theme', [['dark', 'DARK'], ['light', 'LIGHT'], ['auto', 'AUTO']])}
   <div class="list"><div class="row" style="min-height:52px"><div style="flex-grow:1;padding:6px 0">${info('apFrost', '<span style="font-size:16px;font-weight:500;color:var(--text)">Frosted cards</span>', 'Blurs the stadium photo behind each card (you can see it in the preview above). Only shows when a background photo is on. If the app ever feels sticky, turn this off.', '')}</div>${toggle(a.frost, 'apToggleFrost')}</div></div>
@@ -5390,7 +5390,6 @@ Object.assign(ACT, {
   apPick: arg => { const [team, id] = arg.split('|'); const a = ap(); a.picks = { ...a.picks, [team]: id }; a.park = team; saveAp(); buzz(); render(); },
   apPark: team => { ap().park = team; saveAp(); S.sheet = null; buzz(); render(); },
   apToggleFrost: () => { ap().frost = !ap().frost; saveAp(); buzz(); render(); },
-  apToggleGame: () => { ap().gamePark = !ap().gamePark; saveAp(); buzz(); render(); },
   apClearPhoto: () => { Store.removeItem('gb_myphoto'); render(); toast('Removed — using your stadium pick instead'); },
 });
 applyTheme();
