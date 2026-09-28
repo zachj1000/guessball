@@ -4732,10 +4732,11 @@ const TEAM_STYLE = {
   'Texas Rangers': ['TEX', '#003278'], 'Toronto Blue Jays': ['TOR', '#134A8E'], 'Washington Nationals': ['WSH', '#AB0003'],
 };
 const ACCENTS = { blue: '#2F6FE4', green: '#1F9D55', red: '#D9412F', purple: '#7B4FE0', orange: '#E67A1F', teal: '#14919B' };
-const AP_DEFAULT = { theme: 'dark', accent: 'blue', bg: 'off', park: null, picks: {}, gamePark: true, frost: true };
+const AP_DEFAULT = { theme: 'dark', accent: 'blue', bg: 'stadium', park: null, picks: {}, gamePark: true, frost: true };
 // Always the same object (fills in any missing settings once), so "ap().x = !ap().x" works
 const ap = () => { const a = S.settings.ap || (S.settings.ap = {}); for (const k in AP_DEFAULT) if (!(k in a)) a[k] = AP_DEFAULT[k];
   if (!a.frostOn) { a.frost = true; a.frostOn = 1; }          // build 6.4: frosted cards switched on for everyone once
+  if (!a.bgOn) { if (a.bg === 'off') a.bg = 'stadium'; a.bgOn = 1; }   // build 7: stadium photo is the default (your favorite team's park; plain if it has no photos yet)
   return a; };
 const saveAp = () => Store.put('gb_settings', S.settings);
 const favTeam = () => (S.account && S.account.team) || null;
