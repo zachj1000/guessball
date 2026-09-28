@@ -3361,7 +3361,7 @@ SCREENS.result = () => {
     <div style="display:flex;align-items:center;justify-content:space-between">
       <button class="press" ${act('resStep', key + '|-1')} style="width:40px;height:40px;border-radius:20px;background:var(--card2);font-size:22px;font-weight:700" ${r[key] > (key === 'runs' && hr ? 1 : 0) ? '' : 'disabled'}>−</button>
       <span class="shoulders num" style="font-size:36px;font-weight:900">${r[key]}</span>
-      <button class="press" ${act('resStep', key + '|1')} style="width:40px;height:40px;border-radius:20px;background:var(--card2);font-size:22px;font-weight:700" ${r[key] < max ? '' : 'disabled'}>+</button></div>${key === 'runs' && hr ? '<span data-hrnote class="courier" style="font-size:12px;font-weight:700;color:var(--gold);text-align:center">+1 for the batter</span>' : ''}</div>`;
+      <button class="press" ${act('resStep', key + '|1')} style="width:40px;height:40px;border-radius:20px;background:var(--card2);font-size:22px;font-weight:700" ${r[key] < max ? '' : 'disabled'}>+</button></div></div>`;
   const label = r.outcome ? `SAVE · ${OC[r.outcome][1].toUpperCase()}${r.runs ? ` · ${r.runs} RUN${r.runs > 1 ? 'S' : ''}` : ''}` : 'SELECT WHAT HAPPENED';
   return `<div class="fixedpage" style="gap:12px">
   ${gameTop(backBtn('gBack'), halfName(s) + ' · AB ' + s.ab)}
