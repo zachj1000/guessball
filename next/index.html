@@ -2514,6 +2514,7 @@ SCREENS.admin = () => `<div class="page">
     <button class="row press" ${act('exportAll')}><div style="flex-grow:1;display:flex;flex-direction:column;gap:2px;padding:8px 0"><span style="font-size:16px;font-weight:600">Export all data</span><span class="courier meta">Downloads everything in Firebase as one file</span></div>${ICON.chev}</button>
     <button class="row press" ${act('copyRules')}><div style="flex-grow:1;display:flex;flex-direction:column;gap:2px;padding:8px 0"><span style="font-size:16px;font-weight:600">Copy security rules</span><span class="courier meta">Paste into Firebase → Realtime Database → Rules</span></div>${ICON.chev}</button>
     <button class="row press" ${act('adminDelete')}><div style="flex-grow:1;display:flex;flex-direction:column;gap:2px;padding:8px 0"><span style="font-size:16px;font-weight:600">Delete a game</span><span class="courier meta">Any club · stats and awards recalculate</span></div>${ICON.chev}</button>
+    <button class="row press" ${act('testSound')}><div style="flex-grow:1;display:flex;flex-direction:column;gap:2px;padding:8px 0"><span style="font-size:16px;font-weight:600">Test sound</span><span class="courier meta">${esc(S.soundCheck || 'Plays the award jingle and shows what the phone reports')}</span></div></button>
   </div></div>`;
 
 const deviceLine = () => { const u = navigator.userAgent, ios = /OS (\d+)_(\d+)/.exec(u);
@@ -3745,6 +3746,13 @@ const unlockSound = () => { if (!S.settings.sound) return; try {
   const b = Sound.ctx.createBuffer(1, 1, 22050), src = Sound.ctx.createBufferSource(); src.buffer = b; src.connect(Sound.ctx.destination); src.start(0);
 } catch (e) { /* no sound */ } };
 ['touchend', 'click'].forEach(t => document.addEventListener(t, () => { if (!Sound.ctx || Sound.ctx.state !== 'running') unlockSound(); }, { passive: true, capture: true }));
+// Settings → Game options → TEST SOUND: plays the award jingle and reports what the phone's sound system says
+ACT.testSound = () => {
+  const was = S.settings.sound; S.settings.sound = true; unlockSound(); Sound.play('award'); S.settings.sound = was;
+  setTimeout(() => { const st = Sound.ctx ? Sound.ctx.state : 'unavailable';
+    S.soundCheck = `Sound system: ${st}${Sound.ctx ? ' · ' + Math.round(Sound.ctx.sampleRate / 100) / 10 + 'kHz' : ''}${navigator.audioSession ? ' · session ' + navigator.audioSession.type : ''}. No sound? Check that silent mode is off and the volume is up.`;
+    render(); }, 600);
+};
 const Awake = {
   lock: null,
   async on() { if (!S.settings.awake || this.lock || !('wakeLock' in navigator)) return; try { this.lock = await navigator.wakeLock.request('screen'); this.lock.addEventListener('release', () => { this.lock = null; }); } catch (e) { /* not allowed */ } },
