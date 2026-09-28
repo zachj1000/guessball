@@ -1884,8 +1884,8 @@ const RULES_JSON = {
       }
     },
     "$old": {
-      ".read": "$old !== 'v2' && $old !== 'qa'",
-      ".write": "$old !== 'v2' && $old !== 'qa'"
+      ".read": "$old !== 'v2' && $old !== 'qa' && root.child('v2').child('admins').child(auth.uid).val() === true",
+      ".write": false
     }
   }
 };
@@ -2541,6 +2541,8 @@ async function loadFound() {
 // so nothing from the last person (club list, claim cards, stats) shows up for the next one.
 function resetUserState() {
   if (typeof Popup !== 'undefined') Popup.clear();
+  if (typeof loadScopeGames !== 'undefined') { loadScopeGames.p = null; loadScopeGames.key = null; }   // loads still on their way belong to the old account
+  if (typeof loadClub !== 'undefined') loadClub.busy = null;
   Object.assign(S, { g: null, account: null, admin: false, clubs: [], scope: 'mine', sheet: null, info: null,
     home: { loading: true, rows: [], recent: [], games: 0 }, data: null, aw: null, club: null, cs: null, final: null,
     claimOffers: null, claimWaiting: null, claimStats: null, accounts: null, guestOpen: null, found: [], adminGames: null,
@@ -3665,8 +3667,17 @@ const H2H_A = '#2F6FE4', H2H_B = '#C9392E';
 // ── The games for the selected club (shared by Home and Stats) ──
 function scopeGames() { return (S.data && S.data.key === S.scope) ? S.data.games : null; }
 async function loadScopeGames(force) {
-  const key = S.scope, cacheKey = 'gb_games_' + S.user.uid + '_' + key;
+  const key = S.scope;
   if (!force && S.data && S.data.key === key && S.data.games) return S.data.games;
+  // One load at a time per club: anyone asking while it's on its way shares the same answer
+  if (loadScopeGames.key === key && loadScopeGames.p) return loadScopeGames.p;
+  loadScopeGames.key = key;
+  const p = loadScopeGamesNow(key);
+  loadScopeGames.p = p;
+  try { return await p; } finally { if (loadScopeGames.p === p) loadScopeGames.p = null; }
+}
+async function loadScopeGamesNow(key) {
+  const cacheKey = 'gb_games_' + S.user.uid + '_' + key;
   if (!S.data || S.data.key !== key) S.data = { key, games: Store.json(cacheKey, null), loading: true };
   render();
   try {
@@ -4418,9 +4429,15 @@ const plural = (n, w) => `${n} ${w}${n === 1 ? '' : 's'}`;
 
 async function loadClub(force) {
   const code = S.scope; if (code === 'mine' || !FCab) return;
+  if (loadClub.busy === code) return;          // already loading this club — never start a second copy (build 7 freeze: every redraw
+                                               // while the club loaded started another load, hundreds of them on a phone)
   const key = 'gb_club_' + S.user.uid + '_' + code;
   if (!S.club || S.club.code !== code) S.club = Store.json(key, null) || { code, roster: null, req: { joins: [], claims: [] } };
   if (!force && S.club.fresh) return;
+  loadClub.busy = code;
+  try { await loadClubNow(code, key); } finally { if (loadClub.busy === code) loadClub.busy = null; }
+}
+async function loadClubNow(code, key) {
   render();
   try {
     const [roster] = await Promise.all([withTimeout(FCab.roster(code), 12000), loadScopeGames()]);
@@ -4440,7 +4457,7 @@ const amCaptain = () => { const d = clubData(); const me = d && d.roster && d.ro
 SCREENS.club = () => {
   if (S.scope === 'mine') return clubPicker();
   const d = clubData();
-  if (FCab && S.user && (!d || !d.fresh)) setTimeout(() => loadClub(), 0);
+  if (FCab && S.user && (!d || !d.fresh) && loadClub.busy !== S.scope) setTimeout(() => loadClub(), 0);
   const c = clubOf(S.scope) || { name: scopeName(), public: false };
   const loaded = !!scopeGames(), games = scopeGames() || [];
   const cap = amCaptain();
