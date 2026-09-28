@@ -1924,6 +1924,29 @@ const Store = {
   json(k, d) { try { const v = this.getItem(k); return v ? JSON.parse(v) : d; } catch (e) { return d; } },
   put(k, v) { this.setItem(k, JSON.stringify(v)); },
 };
+// ── Problem log (Admin tools → Problem log). Kept on this phone only, for chasing freezes we can't reproduce:
+//    script errors, moments the phone stopped responding (the app's clock skipped), and the last taps/touches
+//    with which layer they landed on — so after a freeze we can tell "taps never arrived" from "taps arrived, nothing redrew".
+const Diag = (() => {
+  let log = Store.json('gb_diag', []), save = 0;
+  const add = (kind, detail) => {
+    let sc = '', sh = ''; try { sc = S.screen || ''; sh = (S.sheet && S.sheet.name) || ''; } catch (e) { /* still starting */ }
+    const d = String(detail == null ? '' : detail).slice(0, 160), prev = log[log.length - 1];
+    if (prev && prev.k === kind && prev.d.replace(/ ×\d+$/, '') === d && prev.s === sc && kind === 'touch') {   // a run of touches on the same layer: one line
+      prev.n = (prev.n || 1) + 1; prev.d = d + ' ×' + prev.n; prev.t = Date.now();
+    } else log.push({ t: Date.now(), k: kind, s: sc, sh, d });
+    if (log.length > 150) log = log.slice(-150);
+    clearTimeout(save); save = setTimeout(() => Store.put('gb_diag', log), 400);
+  };
+  addEventListener('error', e => add('error', (e.message || 'error') + (e.lineno ? ' @' + e.lineno : '')));
+  addEventListener('unhandledrejection', e => add('error', 'promise: ' + ((e.reason && (e.reason.message || e.reason.code)) || e.reason)));
+  let last = Date.now(), vis = true;
+  setInterval(() => { const now = Date.now(); if (vis && now - last > 2500) add('stall', 'phone busy ' + ((now - last) / 1000).toFixed(1) + 's'); last = now; }, 500);
+  document.addEventListener('visibilitychange', () => { vis = document.visibilityState === 'visible'; last = Date.now(); add('app', vis ? 'opened' : 'went to background'); });
+  const layer = el => { const l = el && el.closest && el.closest('.sheet-layer,.toast-layer,.tabbar,.livebar,.popup,.screen,#bg'); return l ? (l.id || l.className.split(' ')[0]) : (el && el.tagName || '?'); };
+  addEventListener('touchstart', e => add('touch', layer(e.target)), { capture: true, passive: true });
+  return { add, get: () => log.slice().reverse(), clear: () => { log = []; Store.put('gb_diag', log); } };
+})();
 const deviceId = Store.getItem('gb_device') || (() => { const d = 'd' + Math.random().toString(36).slice(2, 10); Store.setItem('gb_device', d); return d; })();
 
 // ── Screen state ──
@@ -2302,8 +2325,20 @@ SCREENS.admin = () => `<div class="page">
   <div class="list">
     <button class="row press" ${act('exportAll')}><div style="flex-grow:1;display:flex;flex-direction:column;gap:2px;padding:8px 0"><span style="font-size:16px;font-weight:600">Export all data</span><span class="courier meta">Downloads everything in Firebase as one file</span></div>${ICON.chev}</button>
     <button class="row press" ${act('copyRules')}><div style="flex-grow:1;display:flex;flex-direction:column;gap:2px;padding:8px 0"><span style="font-size:16px;font-weight:600">Copy security rules</span><span class="courier meta">Paste into Firebase → Realtime Database → Rules</span></div>${ICON.chev}</button>
+    <button class="row press" ${act('go', 'diag')}><div style="flex-grow:1;display:flex;flex-direction:column;gap:2px;padding:8px 0"><span style="font-size:16px;font-weight:600">Problem log</span><span class="courier meta">Errors, freezes and the last taps on this phone</span></div>${ICON.chev}</button>
     <button class="row press" ${act('adminDelete')}><div style="flex-grow:1;display:flex;flex-direction:column;gap:2px;padding:8px 0"><span style="font-size:16px;font-weight:600">Delete a game</span><span class="courier meta">Any club · stats and awards recalculate</span></div>${ICON.chev}</button>
   </div></div>`;
+
+const DIAG_LABEL = { error: 'ERROR', stall: 'FROZE', tap: 'tap', touch: 'touch', app: 'app' };
+SCREENS.diag = () => { const rows = Diag.get(); return `<div class="page">
+  <div class="topbar">${backBtn()}<h1 class="cond h1">PROBLEM LOG</h1></div>
+  <span class="courier meta" style="color:var(--text2)">Newest first · this phone only. After a freeze, reopen the app, come here and tap COPY, then send it to Claude.</span>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><button class="press cond small-btn" ${act('diagCopy')}>COPY</button><button class="press cond small-btn" ${act('diagClear')}>CLEAR</button></div>
+  <div class="card" style="padding:4px 14px">${rows.length ? rows.map((r, k) => `<div style="display:flex;gap:10px;padding:7px 0;${k ? 'border-top:1px solid var(--line)' : ''};font-size:13px">
+    <span class="courier" style="width:84px;flex-shrink:0;font-size:12px;color:var(--text3)">${new Date(r.t).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', second: '2-digit' })}</span>
+    <span class="cond" style="width:52px;flex-shrink:0;font-weight:800;letter-spacing:.4px;color:${r.k === 'error' || r.k === 'stall' ? 'var(--orange)' : 'var(--text2)'}">${DIAG_LABEL[r.k] || r.k}</span>
+    <span style="flex-grow:1;min-width:0;word-break:break-word">${esc(r.d)}<span class="courier" style="color:var(--text3)"> · ${esc(r.s)}${r.sh ? ' / ' + esc(r.sh) : ''}</span></span></div>`).join('') : '<div class="courier meta" style="padding:12px 0">Nothing logged yet.</div>'}</div>
+</div>`; };
 
 const SHEETS = { switcher: switcherSheet, request: requestSheet, nickname: nicknameSheet, team: teamSheet, delete: deleteSheet };
 
@@ -2662,6 +2697,11 @@ const ACT = {
     try { await navigator.clipboard.writeText(JSON.stringify(RULES_JSON, null, 2)); toast('Rules copied — paste them in Firebase and Publish'); }
     catch (e) { toast('Couldn’t copy: ' + e.message, true); }
   },
+  diagCopy: async () => {
+    const txt = Diag.get().map(r => `${new Date(r.t).toISOString().slice(11, 19)} ${r.k} ${r.d} [${r.s}${r.sh ? '/' + r.sh : ''}]`).join('\n');
+    try { await navigator.clipboard.writeText(VERSION + ' · ' + navigator.userAgent.slice(0, 80) + '\n' + txt); toast('Copied — paste it to Claude'); } catch (e) { toast('Could not copy', true); }
+  },
+  diagClear: () => { Diag.clear(); render(); },
   exportAll: async () => {
     try {
       const data = await FCab.exportAll();
@@ -2687,6 +2727,7 @@ function wire() {
     e.preventDefault();
     if (!FCab && !['info', 'back', 'go', 'toast', 'closeSheet', 'openSheet', 'tab', 'setting', 'howToPlay', 'tutNext', 'tutPrev', 'tutDone', 'openSwitcher', 'pickScope'].includes(b.dataset.act))
       return toast('Still connecting — try again in a moment');
+    Diag.add('tap', b.dataset.act + (b.dataset.arg ? ' ' + b.dataset.arg : ''));
     fn(b.dataset.arg, b);
   });
   el.addEventListener('input', e => {
