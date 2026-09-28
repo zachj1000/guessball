@@ -3355,12 +3355,13 @@ SCREENS.result = () => {
         <div style="display:flex;gap:3px;flex-wrap:wrap">${pri ? PRI() : ''}${v.conf ? CONFB(!pri && g.players.length < 3) : ''}${v.fromP3 ? P3B() : ''}</div></div>
       <span class="shoulders" style="font-size:${g.players.length > 2 ? 22 : 26}px;font-weight:900;flex-shrink:0">${code(v.pick)}</span></div>`;
   }).join('');
+  const hr = r.outcome === 'home_run';                 // a home run always scores the batter: runs start at 1 and can't go below
   const stepper = (label, key, max) => `<div class="card" style="border-radius:16px;padding:10px 12px;display:flex;flex-direction:column;gap:6px">
-    <span class="cond" style="font-size:14px;font-weight:800;letter-spacing:.8px;color:var(--text2)">${label}</span>
+    <span class="cond" style="font-size:14px;font-weight:800;letter-spacing:.8px;color:var(--text2);white-space:nowrap">${label}</span>
     <div style="display:flex;align-items:center;justify-content:space-between">
-      <button class="press" ${act('resStep', key + '|-1')} style="width:40px;height:40px;border-radius:20px;background:var(--card2);font-size:22px;font-weight:700" ${r[key] > 0 ? '' : 'disabled'}>−</button>
+      <button class="press" ${act('resStep', key + '|-1')} style="width:40px;height:40px;border-radius:20px;background:var(--card2);font-size:22px;font-weight:700" ${r[key] > (key === 'runs' && hr ? 1 : 0) ? '' : 'disabled'}>−</button>
       <span class="shoulders num" style="font-size:36px;font-weight:900">${r[key]}</span>
-      <button class="press" ${act('resStep', key + '|1')} style="width:40px;height:40px;border-radius:20px;background:var(--card2);font-size:22px;font-weight:700" ${r[key] < max ? '' : 'disabled'}>+</button></div></div>`;
+      <button class="press" ${act('resStep', key + '|1')} style="width:40px;height:40px;border-radius:20px;background:var(--card2);font-size:22px;font-weight:700" ${r[key] < max ? '' : 'disabled'}>+</button></div>${key === 'runs' && hr ? '<span data-hrnote class="courier" style="font-size:12px;font-weight:700;color:var(--gold);text-align:center">+1 for the batter</span>' : ''}</div>`;
   const label = r.outcome ? `SAVE · ${OC[r.outcome][1].toUpperCase()}${r.runs ? ` · ${r.runs} RUN${r.runs > 1 ? 'S' : ''}` : ''}` : 'SELECT WHAT HAPPENED';
   return `<div class="fixedpage" style="gap:12px">
   ${gameTop(backBtn('gBack'), halfName(s) + ' · AB ' + s.ab)}
@@ -3861,8 +3862,12 @@ Object.assign(ACT, {
   pickLock: () => { S.g.pending.picks[G.pickNext()] = { pick: S.g.sel.pick, conf: !!S.g.sel.conf }; S.g.sel = null; buzz(); render(); },
 
   // What happened
-  resSel: o => { S.g.res.outcome = o; buzz(); render(); },
-  resStep: arg => { const [k, d] = arg.split('|'); S.g.res[k] = Math.max(0, S.g.res[k] + (+d)); render(); },
+  resSel: o => { const r = S.g.res, was = r.outcome; r.outcome = o;
+    if (o === 'home_run' && r.runs < 1) { r.runs = 1; r.autoRun = true; }                  // the batter scores on a homer
+    else if (was === 'home_run' && o !== 'home_run' && r.autoRun && r.runs === 1) r.runs = 0; // changed their mind: take it back
+    if (o !== 'home_run') r.autoRun = false;
+    buzz(); render(); },
+  resStep: arg => { const [k, d] = arg.split('|'), r = S.g.res; r[k] = Math.max(k === 'runs' && r.outcome === 'home_run' ? 1 : 0, r[k] + (+d)); if (k === 'runs') r.autoRun = false; render(); },
   resSave: async () => {
     const r = S.g.res;
     const ev = { type: 'play', outcome: r.outcome, picks: S.g.pending.picks, runs: r.runs, extraOuts: r.extraOuts };
