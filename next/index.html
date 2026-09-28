@@ -812,8 +812,8 @@ const Statistician = (() => {
 
     A('rivalry', 'Rivalry', 'RIVALRIES', 'Play games vs the same opponent', { ...T([5, 10, 25, 50, 100, 200]), scope: 'all' }),
     A('dominant', 'Dominant', 'RIVALRIES', 'Win 70%+ vs one opponent (min 10)', { scope: 'all' }),
-    A('dynasty', 'Dynasty', 'RIVALRIES', 'Win in a row vs the same opponent', { ...T([5, 7, 10]), scope: 'all' }),
-    A('nemesis', 'Nemesis', 'RIVALRIES', 'Lose in a row to the same opponent', { ...T([5, 7, 10]), scope: 'all' }),
+    A('dynasty', 'Dynasty', 'RIVALRIES', 'Win in a row vs the same opponent', { ...T([3, 5, 10]), scope: 'all' }),
+    A('nemesis', 'Nemesis', 'RIVALRIES', 'Lose in a row to the same opponent', { ...T([3, 5, 10]), scope: 'all' }),
     A('revenge', 'Revenge', 'RIVALRIES', 'Beat whoever beat you last time', { scope: 'all' }),
 
     A('bold', 'Bold', 'BIG CALLS', 'Call confidence for the first time'),
@@ -2318,7 +2318,7 @@ SCREENS.home = () => {
       ${noClubs ? `<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:4px"><button class="press cond small-btn" style="height:42px;border-radius:21px" ${act('go', 'findClub')}>FIND A CLUB</button><button class="press cond small-btn" style="height:42px;border-radius:21px" ${act('go', 'createClub')}>CREATE A CLUB</button></div>` : ''}
     </div>`;
   else body = `
-    <div style="display:flex;align-items:baseline;justify-content:space-between;margin-top:8px"><h2 class="cond h2">STANDINGS</h2><a ${act('tab', 'stats')}>See all</a></div>
+    <div style="display:flex;align-items:baseline;justify-content:space-between;margin-top:8px"><h2 class="cond h2">STANDINGS</h2><a class="cond" ${act('tab', 'stats')} style="font-size:16px;font-weight:800;letter-spacing:.6px">SEE ALL ›</a></div>
     <div class="card" style="padding:0 16px">${h.rows.slice(0, 3).map((r, i) => `<div style="display:flex;align-items:center;gap:12px;height:46px;${i ? 'border-top:1px solid var(--line)' : ''}">
       <span class="shoulders num" style="width:16px;font-size:20px;font-weight:800;color:var(--text3)">${i + 1}</span>
       <span style="flex-grow:1;font-size:17px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(r.name)}</span>
@@ -2894,8 +2894,80 @@ async function afterJoin(code, msg) {
 }
 
 // ── Wire up taps and typing once ──
+// ── Swipes: from the left edge = back (any screen with a back arrow); sideways on Stats / Awards = next or previous tab ──
+// Safe by design: listeners are passive (they never block or take over iPhone's scrolling), the direction is decided in the
+// first few pixels (mostly up/down = a normal scroll, left alone), and sideways swipes are ignored in places that already
+// scroll sideways (chips, line scores), in text boxes, in sheets, and on every game screen.
+const SWIPE_TABS = {
+  stats: { list: () => STAT_TABS, cur: () => S.statTab || 'STANDINGS', go: t => ACT.statTab(t) },
+  awards: { list: () => ['ALL'].concat(AWARD_CATS.map(c => c[0])), cur: () => (S.aw && S.aw.cat) || 'ALL', go: t => { ACT.awCat(t); const pg = $app().querySelector('.screen .page'); if (pg) pg.scrollTop = 0; } },
+};
+function swipes(el) {
+  let t = null;
+  const pageOf = () => $app().querySelector('.screen .page, .screen .fixedpage');
+  const sideScroller = n => { for (; n && n !== el; n = n.parentElement) {
+    if (n.matches && n.matches('[data-keep], .chips, .field, input, textarea, select, .sheet-layer, .sheet')) return true;
+    if (n.scrollWidth > n.clientWidth + 2) { const ox = getComputedStyle(n).overflowX; if (ox === 'auto' || ox === 'scroll') return true; }
+  } return false; };
+  const reset = (pg, animate) => { if (!pg) return; pg.style.transition = animate ? 'transform .18s ease-out, opacity .18s' : ''; pg.style.transform = ''; pg.style.opacity = '';
+    if (animate) setTimeout(() => { pg.style.transition = ''; }, 200); };
+  el.addEventListener('touchstart', e => {
+    t = null;
+    if (e.touches.length !== 1 || S.sheet || S.screen === 'game' || S.screen === 'loading') return;
+    const x = e.touches[0].clientX, y = e.touches[0].clientY;
+    const backB = $app().querySelector('.screen .topbar button.back[aria-label="Back"][data-act]');
+    let mode = null;
+    if (x <= 24 && backB) mode = 'back';
+    else if (SWIPE_TABS[S.screen] && !sideScroller(e.target)) mode = 'tabs';
+    if (!mode) return;
+    t = { mode, x, y, t0: Date.now(), dir: null, dx: 0, backB, pg: pageOf() };
+  }, { passive: true });
+  el.addEventListener('touchmove', e => {
+    if (!t || e.touches.length !== 1) { t = null; return; }
+    const dx = e.touches[0].clientX - t.x, dy = e.touches[0].clientY - t.y;
+    if (!t.dir) {
+      if (Math.abs(dx) + Math.abs(dy) < 10) return;
+      t.dir = Math.abs(dx) > Math.abs(dy) * 1.4 ? 'h' : 'v';
+      if (t.dir === 'v' || (t.mode === 'back' && dx < 0)) { t = null; return; }       // a scroll: hands off
+    }
+    t.dx = dx;
+    const pg = t.pg; if (!pg) return;
+    if (t.mode === 'back') { pg.style.transform = `translate3d(${Math.max(0, dx)}px,0,0)`; return; }
+    const cfg = SWIPE_TABS[S.screen], list = cfg.list(), i = list.indexOf(cfg.cur());
+    const edge = (dx > 0 && i <= 0) || (dx < 0 && i >= list.length - 1);                 // nothing that way: resist
+    pg.style.transform = `translate3d(${edge ? dx * 0.2 : dx}px,0,0)`; pg.style.opacity = String(1 - Math.min(0.35, Math.abs(dx) / 900));
+  }, { passive: true });
+  const end = () => {
+    if (!t) return; const g = t; t = null;
+    const pg = g.pg; if (!pg || g.dir !== 'h') { reset(pg, false); return; }
+    const w = innerWidth, v = Math.abs(g.dx) / Math.max(1, Date.now() - g.t0), far = Math.abs(g.dx) > w * 0.33 || (v > 0.5 && Math.abs(g.dx) > 40);
+    if (g.mode === 'back') {
+      if (!(far && g.dx > 0)) return reset(pg, true);
+      pg.style.transition = 'transform .16s ease-out'; pg.style.transform = `translate3d(${w}px,0,0)`;
+      setTimeout(() => { reset(pg, false); Diag.add('tap', 'swipe back'); const a = g.backB.dataset.act; if (ACT[a]) ACT[a](g.backB.dataset.arg, g.backB); }, 150);
+      return;
+    }
+    const cfg = SWIPE_TABS[S.screen]; if (!cfg) return reset(pg, true);
+    const list = cfg.list(), i = list.indexOf(cfg.cur()), j = i + (g.dx < 0 ? 1 : -1);
+    if (!far || j < 0 || j >= list.length) return reset(pg, true);
+    const from = g.dx < 0 ? -1 : 1;
+    pg.style.transition = 'transform .14s ease-in, opacity .14s'; pg.style.transform = `translate3d(${from * w * 0.6}px,0,0)`; pg.style.opacity = '0';
+    setTimeout(() => {
+      Diag.add('tap', 'swipe to ' + list[j]); cfg.go(list[j]);
+      const np = pageOf(); if (!np) return;
+      np.style.transition = ''; np.style.transform = `translate3d(${-from * w * 0.35}px,0,0)`; np.style.opacity = '0';
+      requestAnimationFrame(() => requestAnimationFrame(() => { np.style.transition = 'transform .2s ease-out, opacity .2s'; np.style.transform = ''; np.style.opacity = '';
+        setTimeout(() => { np.style.transition = ''; }, 220); }));
+      const chip = $app().querySelector(`.screen [data-act="${S.screen === 'stats' ? 'statTab' : 'awCat'}"][data-arg="${list[j]}"]`);
+      if (chip && chip.scrollIntoView) chip.scrollIntoView({ block: 'nearest', inline: 'center', behavior: 'smooth' });
+    }, 140);
+  };
+  el.addEventListener('touchend', end, { passive: true });
+  el.addEventListener('touchcancel', () => { if (t) { reset(t.pg, true); t = null; } }, { passive: true });
+}
 function wire() {
   const el = $app();
+  swipes(el);
   el.addEventListener('click', e => {
     const b = e.target.closest('[data-act]');
     if (!b || b.disabled || !el.contains(b)) return;
