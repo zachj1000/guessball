@@ -4442,19 +4442,28 @@ SCREENS.awards = () => {
     const last = games.filter(g => g.players.some(p => p.id === pid)).sort(byTimeAw).pop();
     const fresh = last ? list.filter(a => a.earnedAt.some(e => e.gameId === last.id)) : [];
     const live = last && S.g && S.g.game && last.id === S.g.game.id;
-    const recent = cat === 'ALL' && fresh.length ? `<div style="display:flex;flex-direction:column;gap:6px">
+    // ALL tab: search by name, and "won only"
+    const q = cat === 'ALL' ? (S.awq || '').trim().toLowerCase() : '', wonOnly = cat === 'ALL' && !!S.awWon;
+    // match the start of any word ("king" finds Oaf King, not Home Cooking); a phrase with spaces matches anywhere
+    const nameHit = name => { const nm = name.toLowerCase(); return q.includes(' ') ? nm.includes(q) : nm.split(/[\s\-']+/).some(w => w.startsWith(q)); };
+    const keep = a => (!q || nameHit(a.name)) && (!wonOnly || a.tier > 0);
+    const recent = cat === 'ALL' && !q && fresh.length ? `<div style="display:flex;flex-direction:column;gap:6px">
         <div style="display:flex;align-items:baseline;justify-content:space-between;padding:4px 2px 0"><span class="cond sechead" style="font-size:20px;font-weight:800;letter-spacing:.6px;color:var(--gold)">RECENTLY WON</span>
           <span class="courier meta">${live ? 'This live game' : 'Last game · ' + niceDate(last.date)}</span></div>
         <div class="list" style="box-shadow:inset 0 0 0 1.5px rgba(242,193,78,.35)">${fresh.map(a => awardRow(a, last.id)).join('')}</div></div>` : '';
     const secs = AWARD_CATS.filter(([c]) => cat === 'ALL' || cat === c).map(([c]) => {
-      const items = list.filter(a => a.cat === c);
-      const n = items.filter(a => a.tier > 0).length;
+      const all = list.filter(a => a.cat === c), items = all.filter(keep);
+      const n = all.filter(a => a.tier > 0).length;
+      if (!items.length) return '';
       return `<div style="display:flex;flex-direction:column;gap:6px">
         <div style="display:flex;align-items:baseline;justify-content:space-between;padding:4px 2px 0"><span class="cond sechead" style="font-size:20px;font-weight:800;letter-spacing:.6px">${c}</span>
-          <span class="shoulders" style="font-size:18px;font-weight:800;color:var(--text2)">${n} / ${items.length}</span></div>
+          <span class="shoulders" style="font-size:18px;font-weight:800;color:var(--text2)">${n} / ${all.length}</span></div>
         <div class="list">${items.map(a => awardRow(a)).join('')}</div></div>`;
     }).join('');
-    body = `<span class="courier meta" style="padding:0 2px">${got} of ${list.length} earned · tap one for details</span>${recent}${secs}`;
+    const tools = cat === 'ALL' ? `<div style="display:flex;gap:8px;align-items:center">
+        <label class="field search" style="flex:1;min-width:0;height:40px;background:var(--card)">${ICON.search}<input data-model="awq" data-region="awlist" value="${attr(S.awq || '')}" placeholder="Search awards" autocomplete="off"></label>
+        <button class="press cond" ${act('awWon')} aria-pressed="${wonOnly}" style="flex-shrink:0;height:40px;padding:0 14px;border-radius:20px;font-size:14px;font-weight:800;letter-spacing:.6px;background:${wonOnly ? 'var(--gold)' : 'var(--card)'};color:${wonOnly ? '#1A1406' : 'var(--text3)'}">WON ONLY</button></div>` : '';
+    body = `${tools}<div data-region="awlist" style="display:flex;flex-direction:column;gap:14px"><span class="courier meta" style="padding:0 2px">${got} of ${list.length} earned · tap one for details</span>${recent}${secs || `<div class="card" style="padding:18px;font-size:15px;color:var(--text2)">${q ? `No awards${wonOnly ? ' you’ve won' : ''} match “${esc(S.awq.trim())}”` : 'No awards won yet'}.</div>`}</div>`;
   }
   const chips = [['ALL', 'ALL']].concat(AWARD_CATS).map(([c, label]) => `<button class="press cond" ${act('awCat', c)} style="flex-shrink:0;height:30px;padding:0 12px;border-radius:15px;font-size:14px;font-weight:800;letter-spacing:.6px;background:${c === cat ? 'var(--text)' : 'var(--card)'};color:${c === cat ? 'var(--bg)' : 'var(--text5)'}">${label}</button>`).join('');
   return `<div class="page tabbed">
@@ -4560,6 +4569,7 @@ function awPlayerSheet() {
 Object.assign(SHEETS, { award: awardSheet, awPlayer: awPlayerSheet });
 Object.assign(ACT, {
   awCat: c => { if (S.aw) S.aw.cat = c; render(); },
+  awWon: () => { S.awWon = !S.awWon; buzz(); render(); },
   awPick: id => { if (S.aw) S.aw.pid = id; S.sheet = null; buzz(); render(); },
   awGame: id => { S.sheet = null; ACT.openGame(id); },
 });
