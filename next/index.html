@@ -617,10 +617,10 @@ const Statistician = (() => {
       const r = result(g);
       const order = g.players.map((_, i) => i).sort((a, b) => r.scores[b] - r.scores[a]);
       (bySeason[season(g)] = bySeason[season(g)] || []).push({
-        id: g.id, date: g.date, era: g.era, tag: { preapp: 'PRE-APP', beta: 'BETA', hand: 'ADDED BY ' + (g.addedBy || '').toUpperCase(), app: '' }[g.era],
+        id: g.id, date: g.date, era: g.era, tag: g.tv ? 'HOME · TV' : { preapp: 'PRE-APP', beta: 'BETA', hand: 'ADDED BY ' + (g.addedBy || '').toUpperCase(), app: '' }[g.era],
         doubleheader: label.get(g) || '', tie: r.tie,
         players: order.map(i => ({ id: g.players[i].id, name: g.players[i].name, score: r.scores[i], outcome: outcomeFor(g, i) })),
-        away: g.away || '', home: g.home || '', park: g.park || '', mlb: g.mlb || null,
+        away: g.away || '', home: g.home || '', park: g.tv ? 'Watched at home' : (g.park || ''), mlb: g.mlb || null,
       });
     });
     return Object.keys(bySeason).sort((a, b) => b - a).map(y => ({ season: +y, games: bySeason[y] }));
@@ -964,7 +964,7 @@ const Statistician = (() => {
         p.games++; p.points += res.scores[i]; if (o === 'W') p.wins++;
         count(pl.id, g, 'wins', p.wins); count(pl.id, g, 'games', p.games);
         p.seasonGames[season(g)] = (p.seasonGames[season(g)] || 0) + 1; count(pl.id, g, 'season_ticket', Math.max(...Object.values(p.seasonGames))); count(pl.id, g, 'points', p.points);
-        if (g.park) { p.parks[g.park] = (p.parks[g.park] || 0) + 1;
+        if (g.park && !g.tv) { p.parks[g.park] = (p.parks[g.park] || 0) + 1;
           count(pl.id, g, 'road_trip', Object.keys(p.parks).length);
           count(pl.id, g, 'home_cooking', Math.max(...Object.values(p.parks))); }
         p.seasons.add(season(g)); count(pl.id, g, 'lifer', p.seasons.size);
@@ -1566,7 +1566,7 @@ const FilingCabinet = (() => {
     const localDate = t => { const d = new Date(t); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
 
     // Start a live game. players: [{ id, name }] in seat order.
-    async function startGame({ players, priority = 0, away = '', home = '', park = '', colors = null }) {
+    async function startGame({ players, priority = 0, away = '', home = '', park = '', colors = null, tv = false }) {
       need();
       for (const p of players) {                           // one live game per player
         const l = await get('live/' + p.id);
@@ -1582,7 +1582,7 @@ const FilingCabinet = (() => {
       const clubList = await clubsFor(players.map(p => p.id));
       const g = { id: db.newId(), host: uid, device: deviceId, era: 'app', date: localDate(t), seq: t, startedAt: t,
         players: players.map(p => ({ id: p.id, name: p.name })), setup: colors ? { priority, colors } : { priority }, events: [],
-        away, home, park, clubList, ended: false };
+        away, home, park, clubList, ended: false, ...(tv ? { tv: true } : {}) };
       const ch = { ['games/' + g.id]: g, ...indexChanges(g, { date: g.date, seq: g.seq }) };
       players.forEach(p => { ch['live/' + p.id] = { gameId: g.id, host: uid, at: t }; });
       save('gb_live', g);
@@ -1622,6 +1622,13 @@ const FilingCabinet = (() => {
     }
     // Another device of the same account takes over a live game
     function takeOver(g) { g.device = deviceId; save('gb_live', g); return queue({ ['games/' + g.id + '/device']: deviceId }); }
+    // Throw a live game away: nothing from it is saved (no history, stats or awards)
+    async function discardGame(g) {
+      const liveOff = {}; g.players.forEach(p => { liveOff['live/' + p.id] = null; });
+      storage.removeItem('gb_live');
+      await queue({ ...liveOff, ['games/' + g.id]: null });
+      return queue(indexChanges(g, null));
+    }
     // End the game. A game with no plays is thrown away instead of saved.
     async function endGame(g, { scores, mlb = null, note = '' } = {}) {
       const liveOff = {}; g.players.forEach(p => { liveOff['live/' + p.id] = null; });
@@ -1720,7 +1727,7 @@ const FilingCabinet = (() => {
       myAccount, saveProfile, unlinkAccount, profiles,
       createClub, findClubs, myClubs, clubInfo, roster, joinClub, requests, answerRequest, leaveClub, setCaptain, removeMember, updateClub,
       addGuest, renameGuest, claimGuest, answerClaim, myAliases, accounts, offerGuest, myOffers, dismissOffer, myClaims,
-      startGame, liveGame, findLiveGame, addEvent, undo, takeOver, updateGameInfo, endGame, addHandGame, editHandGame, deleteGame,
+      startGame, liveGame, findLiveGame, addEvent, undo, takeOver, updateGameInfo, endGame, discardGame, addHandGame, editHandGame, deleteGame,
       loadGames, historyOf, exportAll, isAdmin };
   }
 
@@ -2060,13 +2067,14 @@ const MONTHS = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', '
 
 const ICON = {
   back: '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3L5 8l5 5"/></svg>',
+  x: '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3.5 3.5l9 9M12.5 3.5l-9 9"/></svg>',
   chev: '<svg class="chev" width="8" height="14" viewBox="0 0 8 14" fill="none" stroke="var(--text4)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1.5 1.5L6.5 7l-5 5.5"/></svg>',
   down: '<svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="var(--text3)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 4.5l3 3 3-3"/></svg>',
   check: c => `<svg width="16" height="16" viewBox="0 0 14 14" fill="none" stroke="${c}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 7.5l3 3 6-7"/></svg>`,
   plus: '<svg width="16" height="16" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M9 3v12M3 9h12"/></svg>',
   search: '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="var(--text3)" stroke-width="2" stroke-linecap="round"><circle cx="7" cy="7" r="5"/><path d="M11 11l3.5 3.5"/></svg>',
   lock: '<svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="var(--text3)" stroke-width="1.8" stroke-linecap="round"><rect x="2.5" y="6" width="9" height="6.5" rx="1.5"/><path d="M4.5 6V4.5a2.5 2.5 0 015 0V6"/></svg>',
-  gear: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--text)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M6.5 9h11M6.5 15h11" stroke-width="1.6"/><circle cx="9.6" cy="9" r="1.9" fill="var(--text)"/><circle cx="14.6" cy="15" r="1.9" fill="var(--text)"/></svg>',
+  gear: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--text)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M7 9h10M7 15h10" stroke-width="1.05"/><circle cx="9.6" cy="9" r="1.45" fill="var(--text)" stroke="none"/><circle cx="14.6" cy="15" r="1.45" fill="var(--text)" stroke="none"/></svg>',
   google: '<svg width="18" height="18" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.5 12.2c0-.8-.1-1.5-.2-2.2H12v4.2h5.9a5 5 0 01-2.2 3.3v2.7h3.5c2.1-1.9 3.3-4.7 3.3-8z"/><path fill="#34A853" d="M12 23c3 0 5.5-1 7.3-2.7l-3.5-2.7c-1 .7-2.3 1.1-3.8 1.1-2.9 0-5.4-2-6.3-4.7H2.1v2.8A11 11 0 0012 23z"/><path fill="#FBBC05" d="M5.7 14c-.2-.7-.4-1.3-.4-2s.1-1.4.4-2V7.2H2.1a11 11 0 000 9.6z"/><path fill="#EA4335" d="M12 5.4c1.6 0 3.1.6 4.2 1.7l3.1-3.1A11 11 0 002.1 7.2L5.7 10c.9-2.7 3.4-4.6 6.3-4.6z"/></svg>',
   spinner: '<svg class="spin spinner" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="2.4" stroke-linecap="round"><path d="M12 3a9 9 0 019 9"/></svg>',
   appIcon: size => `<svg width="${size}" height="${size}" viewBox="0 0 180 180" fill="none"><rect width="180" height="180" fill="#E6EFFA"/>
@@ -2205,12 +2213,13 @@ SCREENS.tutorial = () => {
   const n = S.params.card || 0, last = TUTORIAL.length - 1;
   return `<div class="fixedpage">
   <div class="topbar" style="justify-content:space-between">
-    <button class="back press" aria-label="Back" ${act('tutPrev')} style="opacity:${n ? 1 : 0}">${ICON.back}</button>
+    ${S.params.from === 'settings' ? `<button class="back press" aria-label="Close" ${act('tutDone')}>${ICON.x}</button>` : `<button class="back press" aria-label="Back" ${act('tutPrev')} style="opacity:${n ? 1 : 0}">${ICON.back}</button>`}
     <div style="display:flex;gap:6px">${TUTORIAL.map((_, i) => `<span style="width:${i === n ? 22 : 6}px;height:6px;border-radius:3px;background:${i === n ? 'var(--text)' : 'var(--card3)'};transition:width .3s"></span>`).join('')}</div>
-    <button class="cond press" ${act('tutDone')} style="width:50px;color:var(--link);font-size:17px;font-weight:800;letter-spacing:.6px;text-align:right">SKIP</button></div>
+    ${S.params.from === 'settings' ? '<span style="width:44px"></span>' : `<button class="cond press" ${act('tutDone')} style="width:50px;color:var(--link);font-size:17px;font-weight:800;letter-spacing:.6px;text-align:right">SKIP</button>`}</div>
   <div class="slide" style="display:flex;flex-direction:column;gap:14px" data-key="card${n}">${TUTORIAL[n]()}</div>
   <div class="grow"></div>
-  <button class="big-btn cond press" ${act(n === last ? 'tutDone' : 'tutNext')}>${n === last ? 'PLAY BALL' : 'NEXT'}</button>
+  ${S.params.from === 'settings' && n ? `<div style="display:grid;grid-template-columns:1fr 2fr;gap:10px"><button class="press cond mid-btn" style="height:58px;border-radius:29px" ${act('tutPrev')}>BACK</button>` : ''}
+  <button class="big-btn cond press" ${act(n === last ? 'tutDone' : 'tutNext')}>${n === last ? (S.params.from === 'settings' ? 'DONE' : 'PLAY BALL') : 'NEXT'}</button>${S.params.from === 'settings' && n ? '</div>' : ''}
 </div>`;
 };
 
@@ -2424,7 +2433,7 @@ const DIAG_LABEL = { error: 'ERROR', stall: 'FROZE', tap: 'tap', touch: 'touch',
 SCREENS.diag = () => { const rows = Diag.get(); return `<div class="page">
   <div class="topbar">${backBtn()}<h1 class="cond h1">PROBLEM LOG</h1></div>
   <span class="courier meta" style="color:var(--text2)">What the app noticed on this phone, newest first. Something went wrong? Take a screenshot of this page (or tap COPY and paste it in a text) and send it to Zach.</span>
-  <div class="card courier" style="padding:10px 14px;font-size:12px;line-height:1.5;color:var(--text2)">Guess Ball ${esc(VERSION)} · ${esc((S.account && S.account.name) || 'not signed in')}<br>${esc(deviceLine())} · ${new Date().toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}</div>
+  <div class="card courier" style="padding:10px 14px;font-size:12px;line-height:1.5;color:var(--text2)">Guess Ball ${esc(VERSION)} · ${esc((S.account && S.account.name) || 'not signed in')}<br>${esc(deviceLine())} · ${new Date().toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}<br>screen ${screen.width}×${screen.height} · window ${innerWidth}×${innerHeight}${typeof shortBy === 'function' && shortBy() ? ' · fixed +' + shortBy() : ''}</div>
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><button class="press cond small-btn" ${act('diagCopy')}>COPY</button><button class="press cond small-btn" ${act('diagClear')}>CLEAR</button></div>
   <div class="card" style="padding:4px 14px">${rows.length ? rows.map((r, k) => `<div style="display:flex;gap:10px;padding:7px 0;${k ? 'border-top:1px solid var(--line)' : ''};font-size:13px">
     <span class="courier" style="width:84px;flex-shrink:0;font-size:12px;color:var(--text3)">${new Date(r.t).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', second: '2-digit' })}</span>
@@ -2943,10 +2952,11 @@ const G = {
     if (s.needsPick3) return 'pick3';
     return G.pickNext() !== undefined ? 'pick' : 'result';
   },
-  mlbLine: g => [g.away && `${shortTeam(g.away)} ${S.g.s.mlb.away}`, g.home && `${shortTeam(g.home)} ${S.g.s.mlb.home}`, g.park].filter(Boolean).join(' · '),
+  mlbLine: g => [g.away && `${shortTeam(g.away)} ${S.g.s.mlb.away}`, g.home && `${shortTeam(g.home)} ${S.g.s.mlb.home}`, whereAt(g)].filter(Boolean).join(' · '),
 };
 
 // Shared pieces
+const whereAt = g => (g && g.tv ? 'Watched at home' : (g && g.park) || '');   // a game watched on TV names no ballpark
 const outsDots = n => `<div style="display:flex;gap:4px" aria-label="${n} out">${[0, 1, 2].map(i => `<span style="width:9px;height:9px;border-radius:5px;${i < n ? 'background:var(--text)' : 'border:1.5px solid var(--dim)'}"></span>`).join('')}</div>`;
 const menuBtn = () => `<button class="press" aria-label="Game menu" ${act('openSheet', 'gameMenu')} style="width:36px;height:36px;border-radius:18px;background:var(--card);display:flex;align-items:center;justify-content:center;gap:3px">${'<span style="width:4px;height:4px;border-radius:2px;background:var(--text)"></span>'.repeat(3)}</button>`;
 const gameTop = (left, title) => `<div class="topbar" style="justify-content:space-between;min-height:36px">${left}
@@ -3006,9 +3016,10 @@ SCREENS.newGame = () => {
   <div class="topbar">${backBtn()}<h1 class="cond h1">NEW GAME</h1></div>
   <h2 class="cond label" style="margin:6px 0 0;font-size:18px">MATCHUP</h2>
   <div class="list">${team('away', 'AWAY')}${team('home', 'HOME')}</div>
+  <div class="seg cond"><button class="${n.tv ? '' : 'on'}" ${act('ngWhere', 'park')}>AT THE BALLPARK</button><button class="${n.tv ? 'on' : ''}" ${act('ngWhere', 'home')}>AT HOME</button></div>
   <div style="display:flex;justify-content:space-between;align-items:center;padding:0 4px">
-    <span class="courier meta" style="font-size:12px">${esc([park, today].filter(Boolean).join(' · '))}</span>
-    <a ${act('openSheet', 'park')} style="font-size:14px;font-weight:600">Different ballpark?</a></div>
+    <span class="courier meta" style="font-size:12px">${esc([n.tv ? 'Watching at home' : park, today].filter(Boolean).join(' · '))}</span>
+    ${n.tv ? '' : `<a ${act('openSheet', 'park')} style="font-size:14px;font-weight:600">Different ballpark?</a>`}</div>
   <h2 class="cond label" style="margin:6px 0 0;font-size:18px">PLAYERS</h2>
   <div class="list">${n.players.map((p, i) => { const c = PCOLOR[p.color || PCOLORS[i][0]]; return `<div class="row" style="min-height:62px">
       <button class="press" aria-label="Color for ${attr(p.name)}" ${act('openSheet', 'ngColor:' + i)} style="width:40px;height:40px;border-radius:20px;background:${c};color:${onColor(c)};display:flex;align-items:center;justify-content:center;font-weight:800;flex-shrink:0;position:relative">${esc(p.name[0].toUpperCase())}
@@ -3306,7 +3317,7 @@ SCREENS.final = () => {
   const f = S.final, g = f.game, sum = f.sum, r = sum.result, n = g.players.length;
   const order = g.players.map((_, i) => i).sort((a, b) => r.scores[b] - r.scores[a]);
   const names = i => esc(g.players[i].name.toUpperCase());
-  const meta = [g.away && `${shortTeam(g.away)} ${g.mlb ? g.mlb.away : ''}`.trim(), g.home && `${shortTeam(g.home)} ${g.mlb ? g.mlb.home : ''}`.trim(), g.park,
+  const meta = [g.away && `${shortTeam(g.away)} ${g.mlb ? g.mlb.away : ''}`.trim(), g.home && `${shortTeam(g.home)} ${g.mlb ? g.mlb.home : ''}`.trim(), whereAt(g),
     new Date(g.startedAt || Date.now()).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })].filter(Boolean).join(' · ');
   let headline, scoreRow, sub;
   if (r.tie) {
@@ -3381,6 +3392,7 @@ function gameMenuSheet() {
     ${row('openSheet', 'matchup', 'Edit matchup', esc(shortTeam(g.home) || 'Teams'))}
     ${s.needsPick3 && !G.plays() ? '' : row('openSheet', 'endHalf', 'End half-inning', `${halfName(s).toLowerCase().replace(/^\w/, c => c.toUpperCase())} · ${s.outs} out`)}
     ${row('openSheet', 'endGame', 'End game', 'Asks to confirm', 'var(--orange)')}
+    ${row('openSheet', 'discardGame', 'Throw out game', 'Nothing is saved', 'var(--orange)')}
   </div>`;
 }
 function rulesSheet() {
@@ -3428,6 +3440,14 @@ function endHalfSheet() {
   <span style="font-size:15px;line-height:1.45;color:var(--text2)">Use this if the half-inning ended and you missed an out. Picks not yet scored are dropped, and Pick 3 starts fresh next half.</span>
   <button class="big-btn cond press" ${act('endHalf')}>END HALF-INNING</button><button class="press cond mid-btn" ${act('closeSheet')}>KEEP PLAYING</button>`;
 }
+function discardGameSheet() {
+  const g = S.g.game, s = S.g.s;
+  return `<h2 class="cond" style="margin:0;font-size:28px;font-weight:800;letter-spacing:.4px">THROW OUT THIS GAME?</h2>
+  <span class="courier meta" style="color:var(--text2);line-height:1.5">${esc(g.players.map(p => p.name).join(' vs '))} · ${G.plays()} play${G.plays() === 1 ? '' : 's'} so far. Nothing from this game is saved — no history, stats or awards. This can't be undone.</span>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:6px">
+    <button class="press cond mid-btn" ${act('closeSheet')}>KEEP PLAYING</button>
+    <button class="press cond mid-btn" style="background:var(--orange);color:#fff" ${act('discardGame')} ${S.busy ? 'disabled' : ''}>THROW OUT</button></div>`;
+}
 function endGameSheet() {
   const s = S.g.s, g = S.g.game, plays = G.plays(), over = Umpire.mlbGameOver(s);
   const sub = !plays ? 'Nothing’s been played yet, so this game won’t be saved.' : over ? 'That’s the ballgame. Results save as they stand.' : `It’s only the ${halfWords(s)}. Results save as they stand.`;
@@ -3455,7 +3475,7 @@ function ngColorSheet() {
   <span class="courier meta">Just for this game. Faded colors are taken.</span>`;
 }
 Object.assign(SHEETS, { ngColor: ngColorSheet, gameMenu: gameMenuSheet, rules: rulesSheet, fixMlb: fixMlbSheet, matchup: matchupSheet, endHalf: endHalfSheet,
-  endGame: endGameSheet, addPlayer: addPlayerSheet, park: parkSheet, pickTeam: pickTeamSheet });
+  endGame: endGameSheet, discardGame: discardGameSheet, addPlayer: addPlayerSheet, park: parkSheet, pickTeam: pickTeamSheet });
 
 // The one "game" screen shows whichever step the scorebook is on
 SCREENS.game = () => {
@@ -3611,12 +3631,13 @@ Object.assign(ACT, {
     S.draft = {}; render();
   },
   ngParkReset: () => { S.ng.park = ''; S.sheet = null; render(); },
+  ngWhere: w => { S.ng.tv = w === 'home'; buzz(); render(); },
   startGame: async () => {
     const n = S.ng; S.busy = true; render();
     try {
       const game = await FCab.startGame({ players: n.players.map(p => ({ id: p.id, name: p.name })), priority: n.priority,
         colors: n.players.map((p, i) => p.color || PCOLORS[i][0]),
-        away: n.away, home: n.home, park: n.park || TEAMS[n.home] || '' });
+        away: n.away, home: n.home, park: n.park || TEAMS[n.home] || '', tv: !!n.tv });
       S.busy = false; openGame(game); S.stack = []; S.screen = 'game'; render(); Awake.on();
     } catch (e) {
       S.busy = false; render();
@@ -3713,6 +3734,12 @@ Object.assign(ACT, {
       S.final = { game: done, sum, awards: merged, open: false };
       S.g = null; S.stack = []; S.screen = 'final'; render(); Sound.play('award');
     } catch (e) { S.busy = false; render(); toast(e.message, true); }
+  },
+  discardGame: async () => {
+    const g = S.g.game; S.busy = true; render();
+    try { await FCab.discardGame(g); } catch (e) { S.busy = false; render(); return toast(e.message, true); }
+    Popup.clear(); S.busy = false; S.sheet = null; S.g = null; Awake.off(); S.stack = []; go('home', {}, false);
+    toast('Game thrown out — nothing was saved'); loadHome();
   },
   finalPlays: () => { S.final.open = !S.final.open; render(); },
   finalDone: () => { S.final = null; S.stack = []; go('home', {}, false); loadHome(); },
@@ -3831,7 +3858,7 @@ function statsHistory(games) {
   const card = g => {
     const d = g.date.split('-');
     const tag = g.tag ? `<span class="cond tag" style="font-size:10px">${esc(g.tag)}</span>` : '';
-    const meta = [g.doubleheader, g.away && g.home ? `${shortTeam(g.away)} at ${shortTeam(g.home)}` : '', g.park].filter(Boolean).join(' · ');
+    const meta = [g.doubleheader, g.away && g.home ? `${shortTeam(g.away)} at ${shortTeam(g.home)}` : '', g.park].filter(Boolean).join(' · ');   // history already says 'Watched at home' for TV games
     return `<button class="card press" ${act('openGame', g.id)} style="width:100%;border-radius:18px;padding:10px 16px;display:flex;align-items:center;gap:14px;text-align:left">
       <div style="width:40px;display:flex;flex-direction:column;align-items:center;flex-shrink:0"><span class="cond" style="font-size:14px;font-weight:800;color:var(--text3);letter-spacing:.6px">${MONTHS[+d[1] - 1]}</span><span class="shoulders num" style="font-size:26px;font-weight:900;line-height:1">${+d[2]}</span></div>
       <div style="flex-grow:1;min-width:0;display:flex;flex-direction:column;gap:1px">
@@ -3959,7 +3986,7 @@ SCREENS.pastGame = () => {
   const headline = r.tie ? r.leaders.map(nm).join(' & ') + ' TIE' : nm(r.winner) + ' WINS';
   const mlb = g.mlb ? `${shortTeam(g.away) || 'Away'} ${g.mlb.away} at ${shortTeam(g.home) || 'Home'} ${g.mlb.home}` : (g.away && g.home ? `${shortTeam(g.away)} at ${shortTeam(g.home)}` : '');
   const host = g.era === 'app' ? (g.players.find(p => p.id === g.host) || {}).name : '';
-  const meta = [mlb, g.park, host && 'hosted by ' + host, g.era === 'hand' && 'added by ' + g.addedBy].filter(Boolean).join(' · ');
+  const meta = [mlb, whereAt(g), host && 'hosted by ' + host, g.era === 'hand' && 'added by ' + g.addedBy].filter(Boolean).join(' · ');
   const mine = S.clubs.filter(c => c.captain).map(c => c.code);
   const canDelete = S.admin || (g.clubList || []).some(c => mine.includes(c)) || (g.era === 'hand' && g.host === S.user.uid);
   const canEdit = g.era === 'hand' && (g.host === S.user.uid || S.admin);
@@ -4059,7 +4086,7 @@ async function drawShareCard(g, sum, awards) {
   x.lineWidth = 7; x.stroke(new Path2D('M406 36L422 20 406 4')); x.restore();
   const r = sum.result, n = g.players.length, order = g.players.map((_, i) => i).sort((a, b) => r.scores[b] - r.scores[a]);
   text('FINAL', W - 36, 52, F(800, 16, COND), '#A1A1AA', 'right');
-  text([niceDate(g.date), g.park].filter(Boolean).join(' · '), W - 36, 72, F(700, 13, CO), '#A1A1AA', 'right');
+  text([niceDate(g.date), whereAt(g)].filter(Boolean).join(' · '), W - 36, 72, F(700, 13, CO), '#A1A1AA', 'right');
   if (g.mlb && (g.away || g.home)) text(`${shortTeam(g.away) || 'Away'} ${g.mlb.away} · ${shortTeam(g.home) || 'Home'} ${g.mlb.home}`, W - 36, 90, F(700, 13, CO), '#C7C7CC', 'right');
   // headline + score
   const nm = i => g.players[i].name.toUpperCase();
@@ -4585,7 +4612,7 @@ SCREENS.club = () => {
   const cap = amCaptain();
   // Club card
   const years = games.map(g => +g.date.slice(0, 4)), since = years.length ? Math.min(...years) : (c.createdAt ? new Date(c.createdAt).getFullYear() : null);
-  const parks = {}; games.forEach(g => { if (g.park) parks[g.park] = (parks[g.park] || 0) + 1; });
+  const parks = {}; games.forEach(g => { if (g.park && !g.tv) parks[g.park] = (parks[g.park] || 0) + 1; });
   const topPark = Object.entries(parks).sort((a, b) => b[1] - a[1])[0];
   const meta = [since && 'Since ' + since, plural(games.length, 'game'), years.length && plural(new Set(years).size, 'season'), topPark && topPark[0]].filter(Boolean).join(' · ');
   const card = `<div class="card" style="padding:16px;display:flex;flex-direction:column;gap:10px">
@@ -4985,7 +5012,7 @@ function parkPhotoFor(g, forShare) {
   if (forShare) { const p = team && photoById(PARKS[team].default); return p ? p.src : null; }
   const a = ap();
   if (a.bg === 'off') return null;
-  if (!a.gamePark) return favPhoto();
+  if (!a.gamePark || g.tv) return favPhoto();   // watching at home: your usual photo, not the ballpark
   const p = team && photoById(PARKS[team].default); return p ? p.src : favPhoto();   // a game always shows that park's default shot
 }
 const PHOTO_FAV = ['home', 'stats', 'awards', 'club', 'newGame'], PHOTO_GAME = ['game', 'final'];
@@ -5112,9 +5139,11 @@ applyTheme();
 const shortBy = () => {
   const portrait = innerHeight > innerWidth, standalone = navigator.standalone === true || (window.matchMedia && matchMedia('(display-mode: standalone)').matches);
   const probe = document.createElement('div'); probe.style.cssText = 'position:fixed;visibility:hidden;padding-top:env(safe-area-inset-top)';
-  document.body.appendChild(probe); const under = parseFloat(getComputedStyle(probe).paddingTop) > 0; probe.remove();   // app drawn under the clock?
+  document.body.appendChild(probe); const top = parseFloat(getComputedStyle(probe).paddingTop) || 0; probe.remove();   // app drawn under the clock?
   const d = screen.height - innerHeight;
-  return standalone && portrait && under && d > 0 && d <= 60 ? d : 0;   // only the status-bar-sized gap, never a keyboard
+  // Only a gap the size of the status bar (never a keyboard). It differs by phone: 47pt on older notched iPhones,
+  // 59pt on 14/15 Pro, 62pt on the iPhone 16 Pro (the old 60pt limit missed it, so Hailey's tab bar floated up).
+  return standalone && portrait && top > 0 && d > 0 && d <= Math.max(60, top + 4) ? d : 0;
 };
 function sizeApp() {
   const miss = shortBy();
