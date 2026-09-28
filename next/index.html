@@ -3154,8 +3154,12 @@ const G = {
 const whereAt = g => (g && g.tv ? 'Watched at home' : (g && g.park) || '');   // a game watched on TV names no ballpark
 const outsDots = n => `<div style="display:flex;gap:4px" aria-label="${n} out">${[0, 1, 2].map(i => `<span style="width:9px;height:9px;border-radius:5px;${i < n ? 'background:var(--text)' : 'border:1.5px solid var(--dim)'}"></span>`).join('')}</div>`;
 const menuBtn = () => `<button class="press" aria-label="Game menu" ${act('openSheet', 'gameMenu')} style="width:36px;height:36px;border-radius:18px;background:var(--card);display:flex;align-items:center;justify-content:center;gap:3px">${'<span style="width:4px;height:4px;border-radius:2px;background:var(--text)"></span>'.repeat(3)}</button>`;
+// The real game's score (from the runs entered on each play, or Fix MLB score), under the inning: leader in white
+const teamAbbr = (t, side) => (t && typeof TEAM_STYLE !== 'undefined' && TEAM_STYLE[t] ? TEAM_STYLE[t][0] : t ? shortTeam(t).slice(0, 3).toUpperCase() : side);
+const mlbScore = () => { const g = S.g.game, m = S.g.s.mlb, c = w => `color:var(--${w ? 'text' : 'text2'})`;
+  return `<span class="cond" data-mlbscore style="font-size:17px;font-weight:800;letter-spacing:.6px;white-space:nowrap"><span style="${c(m.away > m.home)}">${esc(teamAbbr(g.away, 'AWAY'))} ${m.away}</span><span style="color:var(--text3)"> &nbsp;·&nbsp; </span><span style="${c(m.home > m.away)}">${esc(teamAbbr(g.home, 'HOME'))} ${m.home}</span></span>`; };
 const gameTop = (left, title) => `<div class="topbar" style="justify-content:space-between;min-height:36px">${left}
-  <div class="onphoto" style="display:flex;align-items:center;gap:10px"><span class="cond" style="font-size:20px;font-weight:700;letter-spacing:.6px">${title}</span>${outsDots(S.g.s.outs)}</div>${menuBtn()}</div>`;
+  <div class="onphoto" style="display:flex;flex-direction:column;align-items:center;gap:1px;min-width:0"><div style="display:flex;align-items:center;gap:10px"><span class="cond" style="font-size:20px;font-weight:700;letter-spacing:.6px">${title}</span>${outsDots(S.g.s.outs)}</div>${mlbScore()}</div>${menuBtn()}</div>`;
 const badge = (t, color, border) => `<span class="cond tag" style="color:${color};border-color:${border}">${t}</span>`;
 const PRI = () => badge('PRIORITY', 'var(--link)', 'var(--link)');
 const CONFB = full => badge(full ? 'CONFIDENCE' : 'CONF', 'var(--gold)', 'rgba(242,193,78,.55)');
@@ -3182,7 +3186,7 @@ function scoreCard() {
     ${g.players.map((p, i) => `<div style="display:flex;align-items:center;justify-content:space-between;height:44px;${i ? 'border-top:1px solid var(--line)' : ''}">
       <div style="display:flex;align-items:center;gap:8px;min-width:0"><span style="font-size:18px;font-weight:700;color:${s.priority === i ? 'var(--text)' : 'var(--text2)'};overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(p.name)}</span>${s.priority === i ? PRI() : ''}${Umpire.p3Live(s, i) ? P3B() + `<span class="courier meta" style="white-space:nowrap">${s.p3.picks[i].map((x, k) => (k === s.ab - 1 ? '<b style="color:var(--text)">' + code(x) + '</b>' : code(x))).join(' · ')}</span>` : ''}</div>
       <span class="shoulders num" style="font-size:40px;font-weight:900;color:${s.priority === i ? 'var(--text)' : 'var(--text2)'}">${s.scores[i]}</span></div>`).join('')}
-    ${G.mlbLine(g) ? `<span class="courier meta" style="margin-top:4px;font-size:12px;color:var(--text2)">${esc(G.mlbLine(g))}</span>` : ''}</div>`;
+</div>`;
 }
 function lineScoreCard(big = true, game = null) {
   const gm = game || S.g.game;
@@ -3583,7 +3587,7 @@ function gameMenuSheet() {
   <div class="list">${row('gLeave', 'home', 'Home')}${row('gLeave', 'stats', 'Stats')}${row('gLeave', 'awards', 'Awards')}${row('gLeave', 'settings', 'Settings')}${row('openSheet', 'rules', 'Rules')}</div>
   ${info('liveWhy', '<span class="courier meta">Does leaving end the game?</span>', 'No — your game stays live. Tap the LIVE bar at the bottom of any screen, or Resume on Home, to jump back.', '')}
   <div class="list">
-    ${row('openSheet', 'fixMlb', 'Fix MLB score', esc(G.mlbLine(g).split(' · ').slice(0, 2).join(' · ') || `${s.mlb.away}–${s.mlb.home}`))}
+    ${row('openSheet', 'fixMlb', 'Fix MLB score', esc(`${teamAbbr(g.away, 'Away')} ${s.mlb.away} · ${teamAbbr(g.home, 'Home')} ${s.mlb.home}`))}
     ${row('openSheet', 'matchup', 'Edit matchup', esc(shortTeam(g.home) || 'Teams'))}
     ${s.needsPick3 && !G.plays() ? '' : row('openSheet', 'endHalf', 'End half-inning', `${halfName(s).toLowerCase().replace(/^\w/, c => c.toUpperCase())} · ${s.outs} out`)}
     ${row('openSheet', 'endGame', 'End game', 'Asks to confirm', 'var(--orange)')}
@@ -3699,7 +3703,6 @@ function resumeCard() {
     <div style="display:flex;align-items:center;justify-content:space-between"><div style="display:flex;align-items:center;gap:7px"><span class="live" style="width:8px;height:8px;border-radius:4px;background:var(--live)"></span><span class="cond" style="font-size:16px;font-weight:800;letter-spacing:.8px;color:var(--livetext)">LIVE</span></div>
       <span class="cond" style="font-size:16px;font-weight:700;letter-spacing:.6px;color:var(--text2)">${halfName(s)} · ${s.outs} OUT</span></div>
     ${g.players.map((p, i) => `<div style="display:flex;align-items:center;justify-content:space-between;height:44px"><span style="font-size:21px;font-weight:${s.scores[i] === lead ? 700 : 600};color:${s.scores[i] === lead ? 'var(--text)' : 'var(--text2)'}">${esc(p.name)}</span><span class="shoulders num" style="font-size:44px;font-weight:900;color:${s.scores[i] === lead ? 'var(--text)' : 'var(--text2)'}">${s.scores[i]}</span></div>`).join('')}
-    ${G.mlbLine(g) ? `<span class="courier" style="font-size:13px;font-weight:700;color:var(--text2)">${esc(G.mlbLine(g))}</span>` : ''}
     ${hrs >= 12 ? `<span class="courier" style="font-size:12px;font-weight:700;color:var(--gold)">Still going? Started ${Math.floor(hrs)} hours ago — end it from the game menu if it's over.</span>` : ''}
     <button class="press cond big-btn" style="margin-top:4px;height:50px;font-size:21px" ${act('resume')}>RESUME GAME</button></div>`;
 }
