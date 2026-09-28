@@ -2278,7 +2278,7 @@ SCREENS.settings = () => {
   <div class="list">
     <button class="row press" ${act('howToPlay')}><span style="flex-grow:1;font-size:16px;font-weight:500">How to play</span>${ICON.chev}</button>
     <button class="row press" ${act('openSheet', 'rules')}><span style="flex-grow:1;font-size:16px;font-weight:500">Rules cheat sheet</span>${ICON.chev}</button>
-    <button class="row press" ${act('go', 'diag')}><div style="flex-grow:1;display:flex;flex-direction:column;gap:2px;padding:8px 0"><span style="font-size:16px;font-weight:500">Problem log</span><span class="courier meta">Something went wrong? Screenshot this and send it to Xaq</span></div>${ICON.chev}</button>
+    <button class="row press" ${act('go', 'diag')}><div style="flex-grow:1;display:flex;flex-direction:column;gap:2px;padding:8px 0"><span style="font-size:16px;font-weight:500">Problem log</span><span class="courier meta">Something went wrong? Screenshot this and send it to Zach</span></div>${ICON.chev}</button>
   </div>
   ${S.admin ? `<span class="cond label" style="margin-top:6px">ADMIN</span><div class="list"><button class="row press" ${act('go', 'admin')}><span style="flex-grow:1;font-size:16px;font-weight:500">Admin tools</span><span class="courier meta">Only you</span>${ICON.chev}</button></div>` : ''}
   <button class="press cond mid-btn" style="margin-top:8px;font-size:18px;color:var(--orange)" ${act('signOut')}>SIGN OUT</button>
@@ -2335,7 +2335,7 @@ const deviceLine = () => { const u = navigator.userAgent, ios = /OS (\d+)_(\d+)/
 const DIAG_LABEL = { error: 'ERROR', stall: 'FROZE', tap: 'tap', touch: 'touch', app: 'app' };
 SCREENS.diag = () => { const rows = Diag.get(); return `<div class="page">
   <div class="topbar">${backBtn()}<h1 class="cond h1">PROBLEM LOG</h1></div>
-  <span class="courier meta" style="color:var(--text2)">What the app noticed on this phone, newest first. Something went wrong? Take a screenshot of this page (or tap COPY and paste it in a text) and send it to Xaq.</span>
+  <span class="courier meta" style="color:var(--text2)">What the app noticed on this phone, newest first. Something went wrong? Take a screenshot of this page (or tap COPY and paste it in a text) and send it to Zach.</span>
   <div class="card courier" style="padding:10px 14px;font-size:12px;line-height:1.5;color:var(--text2)">Guess Ball ${esc(VERSION)} · ${esc((S.account && S.account.name) || 'not signed in')}<br>${esc(deviceLine())} · ${new Date().toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}</div>
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><button class="press cond small-btn" ${act('diagCopy')}>COPY</button><button class="press cond small-btn" ${act('diagClear')}>CLEAR</button></div>
   <div class="card" style="padding:4px 14px">${rows.length ? rows.map((r, k) => `<div style="display:flex;gap:10px;padding:7px 0;${k ? 'border-top:1px solid var(--line)' : ''};font-size:13px">
@@ -2703,7 +2703,7 @@ const ACT = {
   },
   diagCopy: async () => {
     const txt = Diag.get().map(r => `${new Date(r.t).toISOString().slice(11, 19)} ${r.k} ${r.d} [${r.s}${r.sh ? '/' + r.sh : ''}]`).join('\n');
-    try { await navigator.clipboard.writeText('Guess Ball ' + VERSION + ' · ' + ((S.account && S.account.name) || '') + ' · ' + deviceLine() + '\n' + txt); toast('Copied — paste it in a text to Xaq'); } catch (e) { toast('Could not copy', true); }
+    try { await navigator.clipboard.writeText('Guess Ball ' + VERSION + ' · ' + ((S.account && S.account.name) || '') + ' · ' + deviceLine() + '\n' + txt); toast('Copied — paste it in a text to Zach'); } catch (e) { toast('Could not copy', true); }
   },
   diagClear: () => { Diag.clear(); render(); },
   exportAll: async () => {
