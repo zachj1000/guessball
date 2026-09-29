@@ -318,8 +318,9 @@ const Umpire = (() => {
   function applyPick3(s, ev) {
     if (!s.needsPick3) throw new Error('Pick 3 already made this half-inning');
     const firsts = new Set();
+    const picks = ev.picks || [];      // everyone skipped: Firebase doesn't keep an empty list
     s.players.forEach((_, i) => {
-      const p = ev.picks[i];
+      const p = picks[i];
       if (p == null) return; // skipped
       if (!Array.isArray(p) || p.length !== 3 || !p.every(x => PICKABLE.includes(x)))
         throw new Error('Pick 3 must be three valid outcomes');
@@ -327,8 +328,8 @@ const Umpire = (() => {
       firsts.add(p[0]);
     });
     s.p3 = {
-      picks: s.players.map((_, i) => ev.picks[i] || null),
-      alive: s.players.map((_, i) => !!ev.picks[i]),
+      picks: s.players.map((_, i) => picks[i] || null),
+      alive: s.players.map((_, i) => !!picks[i]),
       hits: s.players.map(() => 0),
     };
     s.needsPick3 = false;
@@ -1349,7 +1350,14 @@ const FilingCabinet = (() => {
     const emit = () => listeners.forEach(f => f(status()));
 
     const denied = new Map();                 // outbox item id → Firebase's refusal
+    const refusedFns = new Set();             // told about every refusal — including ones that happen later, after reconnecting
+    // A game whose scorebook change Firebase refused is "stale" on this phone until it reloads the real game (loadGame):
+    // until then any further scorebook change is stopped right here, so nothing is ever written on top of a wrong copy.
+    const staleGames = new Set();
+    const scorebookGame = ch => { for (const k of Object.keys(ch)) { const m = /(?:^|\/)games\/([^/]+)\/(events|closed|slots)\//.exec(k); if (m) return m[1]; } return null; };
     function queue(changes) {                 // changes: { 'path': value | null, … } — sent together, all or nothing
+      const sg = scorebookGame(changes);
+      if (sg && staleGames.has(sg)) return Promise.reject(Object.assign(new Error('This game changed on another phone — reloading it'), { code: 'STALE' }));
       const full = {};
       Object.entries(changes).forEach(([p, v]) => { full[R(p)] = v === undefined ? null : v; });
       const id = now() + '-' + Math.floor(random() * 1e9);
@@ -1362,12 +1370,20 @@ const FilingCabinet = (() => {
     function flush() {
       if (flushing) return flushing;
       flushing = (async () => {
+        const stale = staleGames;
+        const scorebookOf = ch => { const g = scorebookGame(ch); return g ? [null, g] : null; };
+        const refuse = (item, e) => { denied.set(item.id, e); console.warn('Firebase refused a change', item.changes); refusedFns.forEach(f => { try { f(item.changes, e); } catch (x) { /* ignore */ } }); };
         while (online && outbox.length) {
           const item = outbox[0];
-          try { await db.update(item.changes); }
-          catch (e) {
-            if (e && e.code === 'PERMISSION_DENIED') { denied.set(item.id, e); console.warn('Firebase refused a change', item.changes); }
-            else break;                          // network trouble — try again later
+          const sb = scorebookOf(item.changes);
+          if (sb && stale.has(sb[1])) {           // built on top of a refused save: drop it too, never leave a gap in the scorebook
+            refuse(item, Object.assign(new Error('Skipped: an earlier change to this game was refused'), { code: 'PERMISSION_DENIED' }));
+          } else {
+            try { await db.update(item.changes); }
+            catch (e) {
+              if (e && e.code === 'PERMISSION_DENIED') { refuse(item, e); const ev = Object.keys(item.changes).find(k => /\/games\/[^/]+\/events\//.test('/' + k.replace(/^\//, ''))); if (ev) stale.add(/games\/([^/]+)\//.exec(ev)[1]); }
+              else break;                        // network trouble — try again later
+            }
           }
           outbox.shift(); save('gb_outbox', outbox); emit();
         }
@@ -1673,15 +1689,60 @@ const FilingCabinet = (() => {
       save('gb_live', ready);
       return ready;
     }
+    // ── Rounds of picking (two-phone play) ──
+    // Picks for the next scorebook entry are made in round "e<n>" (n = how many entries the scorebook has).
+    // Saving the entry closes that round in the same instant, so a pick arriving late is refused.
+    const roundKey = g => 'e' + g.events.length;
     function addEvent(g, ev) {
-      g.events.push(ev); save('gb_live', g);
-      return queue({ ['games/' + g.id + '/events/' + (g.events.length - 1)]: ev, ['games/' + g.id + '/updatedAt']: now() });
+      const n = g.events.length, key = 'e' + n;
+      if (ev.type === 'play' || ev.type === 'pick3') ev = { ...ev, key };
+      g.events.push(ev); g.closed = { ...(g.closed || {}), [key]: true }; save('gb_live', g);
+      return queue({ ['games/' + g.id + '/events/' + n]: ev, ['games/' + g.id + '/closed/' + key]: true, ['games/' + g.id + '/updatedAt']: now() });
     }
     function undo(g) {
       if (!g.events.length) return Promise.resolve();
-      g.events.pop(); save('gb_live', g);
-      return queue({ ['games/' + g.id + '/events/' + g.events.length]: null, ['games/' + g.id + '/updatedAt']: now() });
+      g.events.pop(); const key = 'e' + g.events.length; if (g.closed) delete g.closed[key]; save('gb_live', g);
+      return queue({ ['games/' + g.id + '/events/' + g.events.length]: null, ['games/' + g.id + '/closed/' + key]: null, ['games/' + g.id + '/updatedAt']: now() });
     }
+    // A game straight from Firebase: events back in a list, and a skipped Pick 3 put back (Firebase drops empty values)
+    const tidyGame = g => { if (!g) return g;
+      g.events = g.events ? Object.values(g.events).map(ev => ev.type !== 'pick3' ? ev
+        : { ...ev, picks: Array.from({ length: g.players.length }, (_, i) => (ev.picks && ev.picks[i] ? Object.values(ev.picks[i]) : null)) }) : [];
+      return g; };
+    // One player's pick for one round: { pick, conf } or { p3: [a,b,c] } or { skip: true }. First to Firebase wins.
+    function setSlot(g, key, i, val) {
+      const v = { ...val, by: uid, at: now() };
+      g.slots = g.slots || {}; g.slots[key] = { ...(g.slots[key] || {}), [i]: v }; if (g.host === uid) save('gb_live', g);
+      return queue({ ['games/' + g.id + '/slots/' + key + '/' + i]: v });
+    }
+    function clearSlot(g, key, i) {
+      if (g.slots && g.slots[key]) { delete g.slots[key][i]; if (g.host === uid) save('gb_live', g); }
+      return queue({ ['games/' + g.id + '/slots/' + key + '/' + i]: null });
+    }
+    // "I'm picking on my own phone" (or not any more)
+    function setJoined(g, i, on) { return queue({ ['games/' + g.id + '/joined/' + i]: on ? true : null }); }
+    // Live updates of one game (both the host and joined players): calls back with the whole game each time it changes
+    function watchGame(id, cb) {
+      if (!db.watch) return () => {};
+      return db.watch(R('games/' + id), v => cb(v ? tidyGame(v) : null));
+    }
+    // Someone else started a live game you're in: { game, hostName } (so you can pick from your own phone)
+    async function myInvite() {
+      need();
+      const l = await get('live/' + uid);
+      if (!l || !l.gameId || l.host === uid) return null;
+      const g = await get('games/' + l.gameId);
+      if (!g || g.ended || g.host === uid) return null;
+      tidyGame(g);
+      const i = g.players.findIndex(p => p.id === uid); if (i < 0) return null;
+      const host = (await get('profiles/' + g.host)) || {};
+      return { game: g, me: i, hostName: host.name || 'Someone' };
+    }
+    async function loadGame(id) { const g = tidyGame(await get('games/' + id)); staleGames.delete(id); return g; }
+    const isStale = id => staleGames.has(id);
+    const adoptLive = g => { if (g && g.host === uid) save('gb_live', g); };   // the host's phone keeps the reloaded copy
+    // Your live-game marker (so a phone hears the moment someone starts a game you're in)
+    function watchLive(cb) { if (!db.watch || !uid) return () => {}; return db.watch(R('live/' + uid), cb); }
     // Fix the matchup mid-game (teams / ballpark)
     function updateGameInfo(g, fields) {
       const ch = {};
@@ -1814,6 +1875,7 @@ const FilingCabinet = (() => {
     const isAdmin = async () => { need(); await flush(); return (await db.get('v2/admins/' + uid)) === true; };   // one admin list for the real app and QA
 
     return { setUser, onStatus: f => { listeners.add(f); f(status()); return () => listeners.delete(f); }, status, flush,
+      onRefused: f => { refusedFns.add(f); return () => refusedFns.delete(f); }, roundKey, setSlot, clearSlot, setJoined, watchGame, watchLive, myInvite, loadGame, isStale, adoptLive,
       myAccount, saveProfile, unlinkAccount, profiles, tipSeen,
       createClub, findClubs, myClubs, clubInfo, roster, joinClub, requests, answerRequest, leaveClub, setCaptain, removeMember, updateClub,
       addGuest, renameGuest, claimGuest, answerClaim, myAliases, accounts, offerGuest, myOffers, dismissOffer, myClaims,
@@ -1827,6 +1889,7 @@ const FilingCabinet = (() => {
       get: async p => (await F.get(F.ref(database, p))).val(),
       update: changes => F.update(F.ref(database), changes),
       onConnected: cb => F.onValue(F.ref(database, '.info/connected'), s => cb(s.val() === true)),
+      watch: (p, cb) => F.onValue(F.ref(database, p), s => cb(s.val()), () => {}),   // returns the "stop watching" function
       newId: () => F.push(F.ref(database, root + '/games')).key,
     };
   }
@@ -1933,7 +1996,26 @@ const RULES_JSON = {
       "games": {
         "$gid": {
           ".read": "auth != null",
-          ".write": "((!data.exists()) && (newData.child('host').val() === auth.uid)) || ((data.child('host').val() === auth.uid) && (newData.exists()) && ((data.child('ended').val() !== true) || (data.child('era').val() === 'hand')) && (newData.child('host').val() === auth.uid)) || ((data.child('host').val() === auth.uid) && (!newData.exists()) && ((data.child('era').val() === 'hand') || (data.child('ended').val() !== true))) || ((!newData.exists()) && (((data.child('clubList/0').exists()) && (root.child('v2').child('clubs').child(data.child('clubList/0').val()).child('members').child(auth.uid).child('captain').val() === true)) || ((data.child('clubList/1').exists()) && (root.child('v2').child('clubs').child(data.child('clubList/1').val()).child('members').child(auth.uid).child('captain').val() === true)) || ((data.child('clubList/2').exists()) && (root.child('v2').child('clubs').child(data.child('clubList/2').val()).child('members').child(auth.uid).child('captain').val() === true)))) || (root.child('v2').child('admins').child(auth.uid).val() === true)"
+          ".write": "((!data.exists()) && (newData.child('host').val() === auth.uid)) || ((data.child('host').val() === auth.uid) && (newData.exists()) && ((data.child('ended').val() !== true) || (data.child('era').val() === 'hand')) && (newData.child('host').val() === auth.uid)) || ((data.child('host').val() === auth.uid) && (!newData.exists()) && ((data.child('era').val() === 'hand') || (data.child('ended').val() !== true))) || ((!newData.exists()) && (((data.child('clubList/0').exists()) && (root.child('v2').child('clubs').child(data.child('clubList/0').val()).child('members').child(auth.uid).child('captain').val() === true)) || ((data.child('clubList/1').exists()) && (root.child('v2').child('clubs').child(data.child('clubList/1').val()).child('members').child(auth.uid).child('captain').val() === true)) || ((data.child('clubList/2').exists()) && (root.child('v2').child('clubs').child(data.child('clubList/2').val()).child('members').child(auth.uid).child('captain').val() === true)))) || (root.child('v2').child('admins').child(auth.uid).val() === true)",
+          "slots": {
+            "$key": {
+              "$i": {
+                ".write": "(auth != null) && (root.child('v2').child('games').child($gid).child('players').child($i).child('id').val() === auth.uid) && (root.child('v2').child('games').child($gid).child('ended').val() === false) && (!root.child('v2').child('games').child($gid).child('closed').child($key).exists())",
+                ".validate": "(!data.exists()) && (newData.child('by').val() === auth.uid) && ((newData.child('pick').isString()) || (newData.child('p3').exists()) || (newData.child('skip').val() === true)) && (($i === '0') || (((!newData.child('pick').exists()) || (newData.child('pick').val() !== data.parent().child('0').child('pick').val())) && ((!newData.child('p3/0').exists()) || (newData.child('p3/0').val() !== data.parent().child('0').child('p3/0').val())))) && (($i === '1') || (((!newData.child('pick').exists()) || (newData.child('pick').val() !== data.parent().child('1').child('pick').val())) && ((!newData.child('p3/0').exists()) || (newData.child('p3/0').val() !== data.parent().child('1').child('p3/0').val())))) && (($i === '2') || (((!newData.child('pick').exists()) || (newData.child('pick').val() !== data.parent().child('2').child('pick').val())) && ((!newData.child('p3/0').exists()) || (newData.child('p3/0').val() !== data.parent().child('2').child('p3/0').val()))))"
+              }
+            }
+          },
+          "joined": {
+            "$i": {
+              ".write": "(auth != null) && (root.child('v2').child('games').child($gid).child('players').child($i).child('id').val() === auth.uid) && (root.child('v2').child('games').child($gid).child('ended').val() === false)",
+              ".validate": "newData.isBoolean()"
+            }
+          },
+          "events": {
+            "$n": {
+              ".validate": "(!data.exists()) && ((!newData.child('key').exists()) || (!root.child('v2').child('games').child($gid).child('slots').child(newData.child('key').val()).child('0').exists()) || (((newData.child('type').val() !== 'play') || ((newData.child('picks/0/pick').val() === root.child('v2').child('games').child($gid).child('slots').child(newData.child('key').val()).child('0').child('pick').val()) && (newData.child('picks/0/conf').val() === root.child('v2').child('games').child($gid).child('slots').child(newData.child('key').val()).child('0').child('conf').val()))) && ((newData.child('type').val() !== 'pick3') || ((root.child('v2').child('games').child($gid).child('slots').child(newData.child('key').val()).child('0').child('skip').val() === true) && (!newData.child('picks/0').exists())) || ((newData.child('picks/0/0').val() === root.child('v2').child('games').child($gid).child('slots').child(newData.child('key').val()).child('0').child('p3/0').val()) && (newData.child('picks/0/1').val() === root.child('v2').child('games').child($gid).child('slots').child(newData.child('key').val()).child('0').child('p3/1').val()) && (newData.child('picks/0/2').val() === root.child('v2').child('games').child($gid).child('slots').child(newData.child('key').val()).child('0').child('p3/2').val()))))) && ((!newData.child('key').exists()) || (!root.child('v2').child('games').child($gid).child('slots').child(newData.child('key').val()).child('1').exists()) || (((newData.child('type').val() !== 'play') || ((newData.child('picks/1/pick').val() === root.child('v2').child('games').child($gid).child('slots').child(newData.child('key').val()).child('1').child('pick').val()) && (newData.child('picks/1/conf').val() === root.child('v2').child('games').child($gid).child('slots').child(newData.child('key').val()).child('1').child('conf').val()))) && ((newData.child('type').val() !== 'pick3') || ((root.child('v2').child('games').child($gid).child('slots').child(newData.child('key').val()).child('1').child('skip').val() === true) && (!newData.child('picks/1').exists())) || ((newData.child('picks/1/0').val() === root.child('v2').child('games').child($gid).child('slots').child(newData.child('key').val()).child('1').child('p3/0').val()) && (newData.child('picks/1/1').val() === root.child('v2').child('games').child($gid).child('slots').child(newData.child('key').val()).child('1').child('p3/1').val()) && (newData.child('picks/1/2').val() === root.child('v2').child('games').child($gid).child('slots').child(newData.child('key').val()).child('1').child('p3/2').val()))))) && ((!newData.child('key').exists()) || (!root.child('v2').child('games').child($gid).child('slots').child(newData.child('key').val()).child('2').exists()) || (((newData.child('type').val() !== 'play') || ((newData.child('picks/2/pick').val() === root.child('v2').child('games').child($gid).child('slots').child(newData.child('key').val()).child('2').child('pick').val()) && (newData.child('picks/2/conf').val() === root.child('v2').child('games').child($gid).child('slots').child(newData.child('key').val()).child('2').child('conf').val()))) && ((newData.child('type').val() !== 'pick3') || ((root.child('v2').child('games').child($gid).child('slots').child(newData.child('key').val()).child('2').child('skip').val() === true) && (!newData.child('picks/2').exists())) || ((newData.child('picks/2/0').val() === root.child('v2').child('games').child($gid).child('slots').child(newData.child('key').val()).child('2').child('p3/0').val()) && (newData.child('picks/2/1').val() === root.child('v2').child('games').child($gid).child('slots').child(newData.child('key').val()).child('2').child('p3/1').val()) && (newData.child('picks/2/2').val() === root.child('v2').child('games').child($gid).child('slots').child(newData.child('key').val()).child('2').child('p3/2').val())))))"
+            }
+          }
         }
       },
       "playerGames": {
@@ -2042,7 +2124,26 @@ const RULES_JSON = {
       "games": {
         "$gid": {
           ".read": "auth != null",
-          ".write": "((!data.exists()) && (newData.child('host').val() === auth.uid)) || ((data.child('host').val() === auth.uid) && (newData.exists()) && ((data.child('ended').val() !== true) || (data.child('era').val() === 'hand')) && (newData.child('host').val() === auth.uid)) || ((data.child('host').val() === auth.uid) && (!newData.exists()) && ((data.child('era').val() === 'hand') || (data.child('ended').val() !== true))) || ((!newData.exists()) && (((data.child('clubList/0').exists()) && (root.child('qa').child('clubs').child(data.child('clubList/0').val()).child('members').child(auth.uid).child('captain').val() === true)) || ((data.child('clubList/1').exists()) && (root.child('qa').child('clubs').child(data.child('clubList/1').val()).child('members').child(auth.uid).child('captain').val() === true)) || ((data.child('clubList/2').exists()) && (root.child('qa').child('clubs').child(data.child('clubList/2').val()).child('members').child(auth.uid).child('captain').val() === true)))) || (root.child('v2').child('admins').child(auth.uid).val() === true)"
+          ".write": "((!data.exists()) && (newData.child('host').val() === auth.uid)) || ((data.child('host').val() === auth.uid) && (newData.exists()) && ((data.child('ended').val() !== true) || (data.child('era').val() === 'hand')) && (newData.child('host').val() === auth.uid)) || ((data.child('host').val() === auth.uid) && (!newData.exists()) && ((data.child('era').val() === 'hand') || (data.child('ended').val() !== true))) || ((!newData.exists()) && (((data.child('clubList/0').exists()) && (root.child('qa').child('clubs').child(data.child('clubList/0').val()).child('members').child(auth.uid).child('captain').val() === true)) || ((data.child('clubList/1').exists()) && (root.child('qa').child('clubs').child(data.child('clubList/1').val()).child('members').child(auth.uid).child('captain').val() === true)) || ((data.child('clubList/2').exists()) && (root.child('qa').child('clubs').child(data.child('clubList/2').val()).child('members').child(auth.uid).child('captain').val() === true)))) || (root.child('v2').child('admins').child(auth.uid).val() === true)",
+          "slots": {
+            "$key": {
+              "$i": {
+                ".write": "(auth != null) && (root.child('qa').child('games').child($gid).child('players').child($i).child('id').val() === auth.uid) && (root.child('qa').child('games').child($gid).child('ended').val() === false) && (!root.child('qa').child('games').child($gid).child('closed').child($key).exists())",
+                ".validate": "(!data.exists()) && (newData.child('by').val() === auth.uid) && ((newData.child('pick').isString()) || (newData.child('p3').exists()) || (newData.child('skip').val() === true)) && (($i === '0') || (((!newData.child('pick').exists()) || (newData.child('pick').val() !== data.parent().child('0').child('pick').val())) && ((!newData.child('p3/0').exists()) || (newData.child('p3/0').val() !== data.parent().child('0').child('p3/0').val())))) && (($i === '1') || (((!newData.child('pick').exists()) || (newData.child('pick').val() !== data.parent().child('1').child('pick').val())) && ((!newData.child('p3/0').exists()) || (newData.child('p3/0').val() !== data.parent().child('1').child('p3/0').val())))) && (($i === '2') || (((!newData.child('pick').exists()) || (newData.child('pick').val() !== data.parent().child('2').child('pick').val())) && ((!newData.child('p3/0').exists()) || (newData.child('p3/0').val() !== data.parent().child('2').child('p3/0').val()))))"
+              }
+            }
+          },
+          "joined": {
+            "$i": {
+              ".write": "(auth != null) && (root.child('qa').child('games').child($gid).child('players').child($i).child('id').val() === auth.uid) && (root.child('qa').child('games').child($gid).child('ended').val() === false)",
+              ".validate": "newData.isBoolean()"
+            }
+          },
+          "events": {
+            "$n": {
+              ".validate": "(!data.exists()) && ((!newData.child('key').exists()) || (!root.child('qa').child('games').child($gid).child('slots').child(newData.child('key').val()).child('0').exists()) || (((newData.child('type').val() !== 'play') || ((newData.child('picks/0/pick').val() === root.child('qa').child('games').child($gid).child('slots').child(newData.child('key').val()).child('0').child('pick').val()) && (newData.child('picks/0/conf').val() === root.child('qa').child('games').child($gid).child('slots').child(newData.child('key').val()).child('0').child('conf').val()))) && ((newData.child('type').val() !== 'pick3') || ((root.child('qa').child('games').child($gid).child('slots').child(newData.child('key').val()).child('0').child('skip').val() === true) && (!newData.child('picks/0').exists())) || ((newData.child('picks/0/0').val() === root.child('qa').child('games').child($gid).child('slots').child(newData.child('key').val()).child('0').child('p3/0').val()) && (newData.child('picks/0/1').val() === root.child('qa').child('games').child($gid).child('slots').child(newData.child('key').val()).child('0').child('p3/1').val()) && (newData.child('picks/0/2').val() === root.child('qa').child('games').child($gid).child('slots').child(newData.child('key').val()).child('0').child('p3/2').val()))))) && ((!newData.child('key').exists()) || (!root.child('qa').child('games').child($gid).child('slots').child(newData.child('key').val()).child('1').exists()) || (((newData.child('type').val() !== 'play') || ((newData.child('picks/1/pick').val() === root.child('qa').child('games').child($gid).child('slots').child(newData.child('key').val()).child('1').child('pick').val()) && (newData.child('picks/1/conf').val() === root.child('qa').child('games').child($gid).child('slots').child(newData.child('key').val()).child('1').child('conf').val()))) && ((newData.child('type').val() !== 'pick3') || ((root.child('qa').child('games').child($gid).child('slots').child(newData.child('key').val()).child('1').child('skip').val() === true) && (!newData.child('picks/1').exists())) || ((newData.child('picks/1/0').val() === root.child('qa').child('games').child($gid).child('slots').child(newData.child('key').val()).child('1').child('p3/0').val()) && (newData.child('picks/1/1').val() === root.child('qa').child('games').child($gid).child('slots').child(newData.child('key').val()).child('1').child('p3/1').val()) && (newData.child('picks/1/2').val() === root.child('qa').child('games').child($gid).child('slots').child(newData.child('key').val()).child('1').child('p3/2').val()))))) && ((!newData.child('key').exists()) || (!root.child('qa').child('games').child($gid).child('slots').child(newData.child('key').val()).child('2').exists()) || (((newData.child('type').val() !== 'play') || ((newData.child('picks/2/pick').val() === root.child('qa').child('games').child($gid).child('slots').child(newData.child('key').val()).child('2').child('pick').val()) && (newData.child('picks/2/conf').val() === root.child('qa').child('games').child($gid).child('slots').child(newData.child('key').val()).child('2').child('conf').val()))) && ((newData.child('type').val() !== 'pick3') || ((root.child('qa').child('games').child($gid).child('slots').child(newData.child('key').val()).child('2').child('skip').val() === true) && (!newData.child('picks/2').exists())) || ((newData.child('picks/2/0').val() === root.child('qa').child('games').child($gid).child('slots').child(newData.child('key').val()).child('2').child('p3/0').val()) && (newData.child('picks/2/1').val() === root.child('qa').child('games').child($gid).child('slots').child(newData.child('key').val()).child('2').child('p3/1').val()) && (newData.child('picks/2/2').val() === root.child('qa').child('games').child($gid).child('slots').child(newData.child('key').val()).child('2').child('p3/2').val())))))"
+            }
+          }
         }
       },
       "playerGames": {
@@ -2366,6 +2467,7 @@ SCREENS.home = () => {
     ${scopeChip()}
     ${claimCard()}
     ${S.clubs.filter(c => c.status === 'pending').map(c => `<div class="card" style="border-radius:16px;padding:12px 14px;background:rgba(242,193,78,.14);border:1px solid rgba(242,193,78,.45);display:flex;flex-direction:column;gap:3px"><span class="cond" style="font-size:14px;font-weight:800;letter-spacing:.8px;color:var(--gold)">WAITING ON A CAPTAIN</span><span style="font-size:14px;line-height:1.4">Your request to join ${esc(c.name || 'the club')} is in. You’ll get in as soon as a captain approves it.</span></div>`).join('')}
+    ${typeof inviteCard === 'function' ? inviteCard() : ''}
     ${typeof resumeCard === 'function' ? resumeCard() : ''}
     ${S.g && !S.g.s.ended ? '' : `<button class="press cond mid-btn" ${act('newGame')}>${ICON.plus} NEW GAME</button>`}
     ${body}
@@ -2789,6 +2891,7 @@ async function afterSignIn(user) {
   await loadClubs();
   if (!S.g) { const lg = FCab.liveGame(); if (lg && !lg.ended && lg.host === user.uid) openGame(lg); }
   if (!S.g) recoverLiveGame();          // app re-added or a new phone: Firebase may still have your live game
+  if (typeof Two !== 'undefined') { Two.listen(); Two.checkInvite(); }   // someone else's game you're in
   else if (!S.g.history) loadGameHistory();
   render();
   loadHome();
@@ -2860,6 +2963,7 @@ const ACT = {
       if (played === 'no') { S.screen = 'tutorial'; S.params = { card: 0, after: 'home' }; render(); }
       else { S.screen = 'home'; render(); }
       await loadClubs().catch(() => { S.scope = 'mine'; }); loadHome(); loadClaims();   // a guest may already be linked to this new account
+      if (typeof Two !== 'undefined') Two.listen();                                     // hear it when someone starts a game you're in
     } catch (e) { fail(e); }
   },
 
@@ -3122,6 +3226,8 @@ const App = {
   start(fb) {
     FCab = FilingCabinet.create({ db: fb.adapter, storage: Store, deviceId, root: ENV.data });
     FCab.onStatus(s => { S.online = s.online; S.pending = s.pending; });
+    // A change to the live game refused later (it was sent after being offline): catch up with what really happened
+    FCab.onRefused(ch => { if (S.g && typeof Two !== 'undefined' && Object.keys(ch).some(k => k.includes('/games/' + S.g.game.id + '/'))) Two.lost({ code: 'PERMISSION_DENIED' }); });
     fb.onUser(async user => {
       if (!user) Store.removeItem('gb_last_user');
             if (!user) { resetUserState(); S.user = null; S.stack = []; S.screen = 'signin'; render(); return; }
@@ -3181,8 +3287,10 @@ const G = {
     const s = S.g.s;
     if (s.ended) return 'final';
     if (S.g.view === 'after') return 'after';
-    if (s.needsPick3) return 'pick3';
-    return G.pickNext() !== undefined ? 'pick' : 'result';
+    if (s.needsPick3) { const n = G.p3Next(); return n === undefined || Two.elsewhere(n) ? 'wait' : 'pick3'; }   // wait: someone picks on their own phone
+    const n = G.pickNext();
+    if (n === undefined) return S.g.remote ? 'wait' : 'result';
+    return Two.elsewhere(n) ? 'wait' : 'pick';
   },
   mlbLine: g => [g.away && `${shortTeam(g.away)} ${S.g.s.mlb.away}`, g.home && `${shortTeam(g.home)} ${S.g.s.mlb.home}`, whereAt(g)].filter(Boolean).join(' · '),
 };
@@ -3361,7 +3469,7 @@ SCREENS.pick = () => {
   ${gameTop(backBtn('gBack'), halfName(s))}
   ${scoreCard()}
   <span class="courier onphoto" style="font-size:13px;font-weight:700;color:var(--text2)">At-bat ${s.ab}${holders ? ' · ' + holders : ''}</span>
-  <h1 class="cond onphoto" style="margin:-6px 0 0;font-size:36px;font-weight:800;line-height:1">${esc(p.name.toUpperCase())}, YOUR PICK</h1>
+  <h1 class="cond onphoto" style="margin:-6px 0 0;font-size:36px;font-weight:800;line-height:1">${S.g.pickFor === i ? 'PICKING FOR ' + esc(p.name.toUpperCase()) : esc(p.name.toUpperCase()) + ', YOUR PICK'}</h1>
   ${firstTip(['pick', 'conf'].concat(S.g.s.priority !== (S.g.game.setup || {}).priority ? ['priority'] : []), { name: (S.g.game.players[S.g.s.priority] || {}).name })}
   <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px">${PICK_GRID.map(o => {
     const who = taken[o], on = sel.pick === o;
@@ -3623,6 +3731,13 @@ SCREENS.final = () => {
 // ════════════ Game sheets ════════════
 function gameMenuSheet() {
   const s = S.g.s, g = S.g.game;
+  if (S.g.remote) {                                    // a joined player: get around, or hand your picks back to the host
+    const r = (a, arg, label, right = '', color = 'var(--text)') => `<button class="row press" ${act(a, arg)} style="min-height:52px"><span style="flex-grow:1;font-size:17px;font-weight:600;color:${color}">${label}</span>${right ? `<span class="courier meta">${right}</span>` : ICON.chev}</button>`;
+    return `<h2 class="cond" style="margin:0;font-size:28px;font-weight:800">${esc(Two.hostName().toUpperCase())}’S GAME</h2>
+    <div class="list">${r('gLeave', 'home', 'Home')}${r('gLeave', 'stats', 'Stats')}${r('gLeave', 'awards', 'Awards')}${r('openSheet', 'rules', 'Rules')}</div>
+    <span style="font-size:14px;line-height:1.45;color:var(--text2)">${esc(Two.hostName())} keeps score. You make your own picks here.</span>
+    <div class="list">${r('stopPicking', '', 'Stop picking on this phone', esc(Two.hostName()) + ' picks for you', 'var(--orange)')}</div>`;
+  }
   const dot = `<span role="img" aria-label="${S.pending ? 'Offline, will sync' : 'All saved'}" style="width:10px;height:10px;border-radius:5px;background:${S.pending ? 'var(--gold)' : 'var(--green)'}"></span>`;   // green = saved, gold = waiting to sync
   const row = (a, arg, label, right = '', color = 'var(--text)') => `<button class="row press" ${act(a, arg)} style="min-height:52px"><span style="flex-grow:1;font-size:17px;font-weight:600;color:${color}">${label}</span>${right ? `<span class="courier meta">${right}</span>` : ICON.chev}</button>`;
   return `<div style="display:flex;align-items:center;justify-content:space-between"><h2 class="cond" style="margin:0;font-size:28px;font-weight:800">GAME MENU</h2><div style="display:flex;align-items:center;gap:6px">${dot}</div></div>
@@ -3798,6 +3913,7 @@ function openGame(game) {
   const last = G.lastEvent();
   if (last && last.type === 'play') S.g.view = 'after';
   loadGameHistory();
+  setTimeout(() => { if (S.g && S.g.game === game) Two.watch(); }, 0);   // hear picks made on other phones
 }
 async function loadGameHistory() {
   const g = S.g && S.g.game; if (!g || !FCab) return;
@@ -3810,7 +3926,7 @@ async function saveEvent(ev) {
   S.g.undone = null;
   const p = FCab.addEvent(S.g.game, ev);
   G.replay();
-  p.catch(e => toast('Couldn’t save: ' + e.message, true));
+  p.catch(e => (e && (e.code === 'PERMISSION_DENIED' || e.code === 'STALE') ? Two.lost(e) : toast('Couldn’t save: ' + e.message, true)));
 }
 function afterPlayFx() {
   const idx = S.g.game.events.length - 1;
@@ -3985,7 +4101,7 @@ Object.assign(ACT, {
     S.busy = true; render();
     try {
       await FCab.endGame(g, { scores: s.scores.slice(), mlb: { away: s.mlb.away, home: s.mlb.home }, note: (S.draft.note || '').trim() });
-      S.busy = false; S.sheet = null; Awake.off();
+      S.busy = false; S.sheet = null; Awake.off(); Two.stop();
       if (!plays) { S.g = null; S.stack = []; go('home', {}, false); toast('Game thrown out — nothing was played'); loadHome(); return; }
       const done = { ...g, events: g.events.slice(), ended: true };
       const hist = S.g.history || [];
@@ -4001,7 +4117,7 @@ Object.assign(ACT, {
   discardGame: async () => {
     const g = S.g.game; S.busy = true; render();
     try { await FCab.discardGame(g); } catch (e) { S.busy = false; render(); return toast(e.message, true); }
-    Popup.clear(); S.busy = false; S.sheet = null; S.g = null; Awake.off(); S.stack = []; go('home', {}, false);
+    Popup.clear(); S.busy = false; S.sheet = null; S.g = null; Awake.off(); Two.stop(); S.stack = []; go('home', {}, false);
     toast('Game thrown out — nothing was saved'); loadHome();
   },
   finalPlays: () => { S.final.open = !S.final.open; render(); },
@@ -4017,6 +4133,7 @@ function describeAfterUndo(ev) {
   return { what: 'PLAY', detail: [code(ev.outcome) + (ev.runs ? `, ${ev.runs} run${ev.runs > 1 ? 's' : ''}` : ''), ...diffs, 'back to AB ' + before.ab].join(' · ') };
 }
 function afterP3Choice() {
+  if (S.g.remote) return render();                     // a joined player never saves — the host's phone does
   if (G.p3Next() === undefined) {
     const picks = S.g.game.players.map((_, i) => S.g.pending.p3[i] || null);
     saveEvent({ type: 'pick3', picks }).then(() => { S.g.pending.p3 = {}; render(); }).catch(e => { S.g.pending.p3 = {}; toast(e.message, true); render(); });
@@ -5433,6 +5550,226 @@ Object.assign(ACT, {
   apClearPhoto: () => { Store.removeItem('gb_myphoto'); render(); toast('Removed — using your stadium pick instead'); },
 });
 applyTheme();
+
+// ════════════ Two-phone play ════════════
+// The host still runs the game (results, undo, menu). A player with an account can JOIN the live game on their own
+// phone and make their own picks. Each pick goes into a shared slot for that round (first to Firebase wins — see
+// the security rules); every phone draws its screen from the shared game. With nobody joined, nothing here changes
+// how a one-phone game works (the host's picks still go into the slots, which is how late picks get refused).
+const Two = {
+  inflight: {},                                    // "<round>:<player>" → a pick this phone is still sending
+  stopWatch: null, stopLive: null,
+  isAccount: p => !!(p && p.id && !/^g_/.test(p.id) && !p.id.includes(':')),
+  // Could anyone else in this game pick on their own phone?
+  multi: () => !!(S.g && (S.g.remote || S.g.game.players.some(p => p.id !== S.user.uid && Two.isAccount(p)))),
+  me: () => (S.g.remote ? S.g.me : S.g.game.players.findIndex(p => p.id === S.user.uid)),
+  key: () => 'e' + S.g.game.events.length,
+  joined: i => !!(S.g.game.joined && S.g.game.joined[i]),
+  hostName: () => ((S.g.game.players.find(p => p.id === S.g.game.host) || {}).name || 'The host'),
+  // Should the phone in hand wait for player i to pick on their own phone?
+  elsewhere(i) {
+    if (i === undefined || !S.g) return false;
+    if (S.g.remote) return i !== S.g.me;
+    return i !== Two.me() && Two.joined(i) && S.g.pickFor !== i;
+  },
+  // Lock a pick into the shared slot for this round
+  send(i, val) {
+    if (!Two.multi() || i === undefined) return;
+    const g = S.g.game, key = Two.key(), k = key + ':' + i;
+    Two.inflight[k] = true;
+    FCab.setSlot(g, key, i, val).then(() => { delete Two.inflight[k]; })
+      .catch(e => { delete Two.inflight[k]; Two.lost(e); });
+  },
+  unsend(i) {
+    if (!Two.multi() || i === undefined) return;
+    FCab.clearSlot(S.g.game, Two.key(), i).catch(e => Two.lost(e));
+  },
+  // Firebase said no (someone else's pick got there first, or the round was already saved): show what really happened
+  async lost(e) {
+    if (!S.g || !e || (e.code !== 'PERMISSION_DENIED' && e.code !== 'STALE')) return toast(e && e.message ? e.message : 'Couldn’t save — try again', true);
+    Diag.add('app', 'two-phone: refused (' + e.code + ')');
+    await Two.reload(S.g.remote ? 'Too late — that round was already saved' : 'Another phone got there first — check the picks and try again');
+  },
+  async reload(msg) {
+    if (!S.g || Two.reloading) return;                  // one catch-up at a time (a refusal can be reported twice)
+    Two.reloading = true; setTimeout(() => { Two.reloading = false; }, 1500);
+    const id = S.g.game.id;
+    let fresh = null; try { fresh = await withTimeout(FCab.loadGame(id), 10000); } catch (e) { return toast('Offline — will catch up when you’re back online', true); }
+    if (!S.g || S.g.game.id !== id) return;
+    if (!fresh) return Two.gone('This game was thrown out');
+    if (S.g.remote && fresh.ended) return Two.gone('Game over');
+    const keep = S.g.game;
+    S.g.game = Object.assign(keep, fresh, { events: fresh.events });
+    FCab.adoptLive(S.g.game);
+    S.g.pending = { p3: {}, picks: {} }; S.g.sel = null; S.g.p3sel = []; S.g.pickFor = null;
+    if (!S.g.remote) { S.g.res = { outcome: null, runs: 0, extraOuts: 0 }; const l = G.lastEvent(); S.g.view = l && l.type === 'play' ? 'after' : null; }
+    G.replay(); Two.sync(fresh, true);
+    if (msg) toast(msg, true);
+  },
+  // A new copy of the game arrived from Firebase
+  sync(v, quiet) {
+    if (!S.g) return;
+    if (!v) { if (S.g.remote) Two.gone(Two.hostName() + ' threw out this game'); return; }
+    if (v.id && v.id !== S.g.game.id) return;
+    if (S.g.remote) {
+      if (v.ended) return Two.gone('Game over — see it in Stats → History');
+      const before = S.g.game.events.length;
+      S.g.game = Object.assign(S.g.game, v, { events: v.events || [] });
+      G.replay();
+      if (S.g.game.events.length > before && !quiet) { const l = G.lastEvent(); if (l && l.type === 'play') Sound.play(Two.rightFor(l) ? 'right' : 'miss'); }
+    } else {
+      S.g.game.joined = v.joined || null;
+    }
+    const s = S.g.s; if (!s || s.ended) return render();
+    const key = Two.key(), cur = (v.slots || {})[key] || {};
+    const settled = !FCab.status().pending;          // don't take away picks this phone hasn't finished sending
+    const wasP3 = s.needsPick3 ? G.p3Next() : null;
+    const own = i => Two.inflight[key + ':' + i];
+    if (s.needsPick3) {
+      const got = {}; Object.entries(cur).forEach(([i, x]) => { if (x) got[i] = x.skip ? null : (x.p3 ? Object.values(x.p3) : null); });
+      if (settled) Object.keys(S.g.pending.p3).forEach(i => { if (!(i in got) && !own(i)) delete S.g.pending.p3[i]; });
+      Object.assign(S.g.pending.p3, got);
+    } else {
+      const got = {}; Object.entries(cur).forEach(([i, x]) => { if (x && x.pick) got[i] = { pick: x.pick, conf: !!x.conf }; });
+      if (settled) Object.keys(S.g.pending.picks).forEach(i => { if (!got[i] && !own(i)) delete S.g.pending.picks[i]; });
+      Object.assign(S.g.pending.picks, got);
+    }
+    const pf = S.g.pickFor;
+    if (pf != null && (s.needsPick3 ? pf in S.g.pending.p3 : S.g.pending.picks[pf])) S.g.pickFor = null;
+    // Host: the last Pick 3 just arrived from another phone → save the round
+    if (!S.g.remote && s.needsPick3 && wasP3 !== undefined && G.p3Next() === undefined) { afterP3Choice(); return; }
+    render();
+  },
+  rightFor(ev) { const i = S.g.me; return ev.picks && ev.picks[i] && ev.picks[i].pick === ev.outcome; },
+  watch() {
+    Two.stop();
+    if (!S.g || !Two.multi()) return;
+    const id = S.g.game.id;
+    Two.stopWatch = FCab.watchGame(id, v => { if (S.g && S.g.game.id === id) Two.sync(v); });
+  },
+  stop() { if (Two.stopWatch) { Two.stopWatch(); Two.stopWatch = null; } },
+  gone(msg) {
+    Two.stop(); const was = S.g && S.g.remote; if (!was) return;
+    S.g = null; S.invite = null; Awake.off(); Popup.clear();
+    if (S.screen === 'game') { S.stack = []; go('home', {}, false); }
+    toast(msg); loadHome(); Two.checkInvite();
+  },
+  // Someone started a game you're in (heard live, the moment they tap PLAY BALL)
+  async checkInvite() {
+    if (!FCab || !S.user || (S.g && !S.g.remote)) return;
+    try { S.invite = await withTimeout(FCab.myInvite(), 8000); } catch (e) { return; }
+    render();
+  },
+  listen() { if (Two.stopLive) Two.stopLive(); Two.stopLive = FCab.watchLive(() => Two.checkInvite()); },
+};
+
+// ── Home: "Zach started a game — JOIN" ──
+function inviteCard() {
+  const inv = S.invite; if (!inv || (S.g && !S.g.remote)) return '';
+  if (S.g && S.g.remote) return '';                // already in it: the LIVE card / bar takes you back
+  const back = inv.game.joined && inv.game.joined[inv.me];
+  return `<div class="card" style="border-radius:22px;padding:14px 18px 16px;display:flex;flex-direction:column;gap:8px;border:1.5px solid rgba(255,90,80,.45)">
+    <div style="display:flex;align-items:center;gap:7px"><span class="live" style="width:8px;height:8px;border-radius:4px;background:var(--live)"></span>
+      <span class="cond" style="font-size:16px;font-weight:800;letter-spacing:.8px;color:var(--livetext)">${esc(inv.hostName.toUpperCase())} STARTED A GAME</span></div>
+    <span style="font-size:15px;line-height:1.4;color:var(--text2)">${back ? 'You’re picking in this game on this phone.' : 'You’re in it. Make your own picks from this phone — or ' + esc(inv.hostName) + ' can pick for you.'}</span>
+    <button class="press cond big-btn" style="margin-top:4px;height:50px;font-size:21px" ${act('joinGame')}>${back ? 'BACK TO THE GAME' : 'JOIN GAME'}</button></div>`;
+}
+
+// ── The "waiting" screen: someone else is picking, or the host is saving ──
+SCREENS.wait = () => {
+  const s = S.g.s, g = S.g.game, rem = !!S.g.remote;
+  const n = s.needsPick3 ? G.p3Next() : G.pickNext();
+  const nm = i => esc(g.players[i].name), NM = i => esc(g.players[i].name.toUpperCase());
+  const host = esc(Two.hostName()), HOST = host.toUpperCase();
+  const me = Two.me();
+  const myP3 = S.g.pending.p3[me], myPick = S.g.pending.picks[me];
+  const mine = s.needsPick3 ? (me in S.g.pending.p3 ? (myP3 ? 'Your Pick 3: ' + myP3.map(code).join(' · ') : 'You skipped Pick 3') : '')
+    : (myPick ? 'Your pick: ' + code(myPick.pick) + (myPick.conf ? ' · confident' : '') : '');
+  const taken = Object.entries(S.g.pending.picks).map(([j, v]) => `${code(v.pick)} (${nm(j)})`).join(', ');
+  let title, label, head, text, btns = '';
+  if (n === undefined) {
+    title = s.needsPick3 ? 'PICK 3 IS IN' : 'PICKS ARE IN'; label = 'LIVE';
+    head = rem ? `${HOST} IS ${s.needsPick3 ? 'SAVING PICK 3' : 'ENTERING WHAT HAPPENED'}` : 'SAVING…';
+    text = (mine ? mine + '. ' : '') + 'Your screen updates the moment it’s saved.';
+  } else if (rem) {
+    title = `${NM(n)} IS PICKING…`; label = n === s.priority ? 'PRIORITY PICKS FIRST' : 'WAITING';
+    head = `WAITING ON ${NM(n)}`; text = (mine ? mine + '. ' : '') + (n === s.priority ? `${nm(n)} has priority, so they pick first.` : 'Your turn comes after.');
+  } else {
+    title = `${NM(n)} IS PICKING…`; label = `ON ${NM(n)}’S PHONE`; head = `WAITING ON ${NM(n)}`;
+    text = `${nm(n)} is picking on their own phone.` + (taken ? ' Taken so far: ' + taken + '.' : '');
+    btns = `<button class="press cond mid-btn" style="margin-top:4px;height:46px;font-size:17px" ${act('pickFor', n)}>PICK FOR ${NM(n)}</button>`;
+  }
+  if (rem && (s.needsPick3 ? me in S.g.pending.p3 : myPick)) btns += `<button class="press cond mid-btn" style="margin-top:4px;height:42px;font-size:16px" ${act('changeMyPick')}>CHANGE MY PICK</button>`;
+  const lastPlay = [...g.events].reverse().find(e => e.type === 'play');
+  return `<div class="fixedpage" style="gap:12px">
+  ${gameTop(backBtn(rem ? 'twoLeave' : 'gBack'), halfName(s) + (s.needsPick3 ? ' · PICK 3' : ''))}
+  ${rem ? `<div style="align-self:center;display:flex;align-items:center;gap:7px;padding:5px 12px;border-radius:14px;background:var(--card);font-size:13px;font-weight:700;color:var(--text2)"><span style="width:7px;height:7px;border-radius:4px;background:var(--green)"></span>${host}’s game · you’re in</div>` : ''}
+  ${scoreCard()}
+  ${lastPlay ? `<span class="courier onphoto" style="font-size:13px;font-weight:700;color:var(--text2)">Last play: ${code(lastPlay.outcome)}${lastPlay.runs ? ' · ' + lastPlay.runs + ' run' + (lastPlay.runs > 1 ? 's' : '') : ''}</span>` : ''}
+  <h1 class="cond onphoto" style="margin:-2px 0 0;font-size:36px;font-weight:800;line-height:1">${title}</h1>
+  <div class="card" style="flex-shrink:0;border-radius:18px;padding:14px 16px;display:flex;flex-direction:column;gap:6px;border:1.5px solid rgba(122,171,255,.5)">
+    <span class="cond" style="font-size:13px;font-weight:800;letter-spacing:.9px;color:var(--link)">${label}</span>
+    <span class="cond" style="font-size:26px;font-weight:800;line-height:1.05">${head}</span>
+    <span style="font-size:14px;line-height:1.4;color:var(--text2)">${text}</span>${btns}</div>
+  <div class="grow"></div>
+</div>`;
+};
+
+Object.assign(ACT, {
+  joinGame: async () => {
+    const inv = S.invite; if (!inv) return;
+    if (S.g && !S.g.remote) return toast('You have your own live game going');
+    try { await FCab.setJoined(inv.game, inv.me, true); } catch (e) { S.invite = null; render(); return toast('That game has ended', true); }
+    let g = inv.game; try { g = (await withTimeout(FCab.loadGame(inv.game.id), 8000)) || g; } catch (e) { /* use what we have */ }
+    S.g = { game: g, remote: true, me: inv.me, s: null, pending: { p3: {}, picks: {} }, sel: null, p3sel: [], res: { outcome: null, runs: 0, extraOuts: 0 }, view: null, history: null, popup: null };
+    G.replay(); Two.sync(g, true); Two.watch();
+    S.stack = []; S.screen = 'game'; render(); Awake.on();
+    Diag.add('app', 'joined ' + inv.hostName + '’s game');
+  },
+  twoLeave: () => ACT.gLeave('home'),                 // the game keeps going; RETURN on Home / the LIVE bar brings you back
+  stopPicking: async () => {
+    const g = S.g; if (!g || !g.remote) return;
+    S.sheet = null;
+    try { await FCab.setJoined(g.game, g.me, false); } catch (e) { /* the game may have ended */ }
+    Two.gone(Two.hostName() + ' will pick for you from here');
+  },
+  pickFor: i => { S.g.pickFor = +i; buzz(); render(); },
+  changeMyPick: () => {
+    const g = S.g, me = g.me, s = g.s;
+    if (s.needsPick3) { delete g.pending.p3[me]; g.p3sel = []; } else { g.sel = g.pending.picks[me] || null; delete g.pending.picks[me]; }
+    Two.unsend(me); render();
+  },
+});
+
+// ── Hooks into the one-phone game (so every pick also lands in the shared slot) ──
+(() => {
+  const wrap = (name, f) => { const orig = ACT[name]; ACT[name] = function (...a) { return f(orig, ...a); }; };
+  wrap('p3Lock', orig => { const i = G.p3Next(), picks = (S.g.p3sel || []).slice(); Two.send(i, { p3: picks }); S.g.pickFor = null; return orig(); });
+  wrap('p3Skip', orig => { const i = G.p3Next(); Two.send(i, { skip: true }); S.g.pickFor = null; return orig(); });
+  wrap('pickLock', orig => { const i = G.pickNext(), sel = S.g.sel; if (sel) Two.send(i, { pick: sel.pick, conf: !!sel.conf }); S.g.pickFor = null; return orig(); });
+  wrap('gBack', orig => {
+    if (S.g && S.g.remote) {                                         // a joined player: Back only steps back through their own choices
+      if (G.view() === 'pick3' && S.g.p3sel.length) { S.g.p3sel = S.g.p3sel.slice(0, -1); return render(); }
+      return ACT.gLeave('home');
+    }
+    if (S.g && S.g.pickFor != null) { S.g.pickFor = null; return render(); }   // "Pick for her" → back to waiting
+    const before = { ...S.g.pending.p3 }, beforeP = { ...S.g.pending.picks };
+    const r = orig();
+    if (S.g) {
+      Object.keys(before).forEach(i => { if (!(i in S.g.pending.p3)) Two.unsend(+i); });
+      Object.keys(beforeP).forEach(i => { if (!S.g.pending.picks[i]) Two.unsend(+i); });
+    }
+    return r;
+  });
+  wrap('gUndo', async orig => {
+    const ev = G.lastEvent();
+    await orig();
+    // Undoing Pick 3 opens the round again with nobody's Pick 3 chosen: clear the shared slots too
+    if (S.g && ev && ev.type === 'pick3' && Two.multi()) S.g.game.players.forEach((_, i) => FCab.clearSlot(S.g.game, Two.key(), i).catch(() => {}));
+  });
+  wrap('resume', orig => { const r = orig(); Two.watch(); return r; });
+  wrap('startGame', async orig => { const r = await orig(); if (S.g && !S.g.remote) Two.watch(); return r; });
+})();
 
 // ════════════ Tips for first-timers ════════════
 // Every tip shows once per account, the first time that moment comes up (on the phone running the game).
