@@ -350,7 +350,7 @@ const Umpire = (() => {
     needed.forEach(i => {
       if (!manual[i] || !PICKABLE.includes(manual[i].pick)) throw new Error(s.players[i] + ' has no pick');
     });
-    Object.keys(manual).forEach(i => {
+    Object.keys(manual).filter(i => manual[i] != null).forEach(i => {   // (a list from Firebase can have empty spots for players who didn't pick)
       if (!needed.includes(+i)) throw new Error(s.players[i] + ' should not be picking now');
       picks[i] = { pick: manual[i].pick, conf: !!manual[i].conf, fromP3: false };
     });
@@ -1738,7 +1738,8 @@ const FilingCabinet = (() => {
       const host = (await get('profiles/' + g.host)) || {};
       return { game: g, me: i, hostName: host.name || 'Someone' };
     }
-    async function loadGame(id) { const g = tidyGame(await get('games/' + id)); staleGames.delete(id); return g; }
+    async function loadGame(id) { const g = tidyGame(await get('games/' + id)); staleGames.delete(id); return g; }   // the phone takes this copy as the truth
+    const peekGame = async id => tidyGame(await get('games/' + id));   // just a look (the phone keeps its own copy — so a stale game stays stale)
     const isStale = id => staleGames.has(id);
     const adoptLive = g => { if (g && g.host === uid) save('gb_live', g); };   // the host's phone keeps the reloaded copy
     // Your live-game marker (so a phone hears the moment someone starts a game you're in)
@@ -1875,7 +1876,7 @@ const FilingCabinet = (() => {
     const isAdmin = async () => { need(); await flush(); return (await db.get('v2/admins/' + uid)) === true; };   // one admin list for the real app and QA
 
     return { setUser, onStatus: f => { listeners.add(f); f(status()); return () => listeners.delete(f); }, status, flush,
-      onRefused: f => { refusedFns.add(f); return () => refusedFns.delete(f); }, roundKey, setSlot, clearSlot, setJoined, watchGame, watchLive, myInvite, loadGame, isStale, adoptLive,
+      onRefused: f => { refusedFns.add(f); return () => refusedFns.delete(f); }, roundKey, setSlot, clearSlot, setJoined, watchGame, watchLive, myInvite, loadGame, peekGame, isStale, adoptLive,
       myAccount, saveProfile, unlinkAccount, profiles, tipSeen,
       createClub, findClubs, myClubs, clubInfo, roster, joinClub, requests, answerRequest, leaveClub, setCaptain, removeMember, updateClub,
       addGuest, renameGuest, claimGuest, answerClaim, myAliases, accounts, offerGuest, myOffers, dismissOffer, myClaims,
@@ -1910,7 +1911,7 @@ const FilingCabinet = (() => {
 // ════════════════════════════════════════════════════════════════
 // Which copy of the app this is: the real app, or Guess Ball Next (QA, with its own test data)
 const ENV = {"name":"qa","data":"qa","store":"gbqa_"};
-const VERSION = ENV.name === 'qa' ? '2.0 · QA build 7' : '2.0';
+const VERSION = ENV.name === 'qa' ? '2.0 · QA build 8 · 09-29 08:41 UTC' : '2.0';
 const RULES_JSON = {
   "rules": {
     "v2": {
@@ -2891,7 +2892,7 @@ async function afterSignIn(user) {
   await loadClubs();
   if (!S.g) { const lg = FCab.liveGame(); if (lg && !lg.ended && lg.host === user.uid) openGame(lg); }
   if (!S.g) recoverLiveGame();          // app re-added or a new phone: Firebase may still have your live game
-  if (typeof Two !== 'undefined') { Two.listen(); Two.checkInvite(); }   // someone else's game you're in
+  if (typeof Two !== 'undefined') { Two.listen(); Two.checkInvite(); if (S.g && !S.g.remote) Two.watch(); }   // someone else's game you're in; and hear picks for your own
   else if (!S.g.history) loadGameHistory();
   render();
   loadHome();
@@ -3287,6 +3288,7 @@ const G = {
     const s = S.g.s;
     if (s.ended) return 'final';
     if (S.g.view === 'after') return 'after';
+    if (S.g.remote && (s.outs >= 3 || Umpire.mlbGameOver(s))) return 'wait';   // the host starts the next half / ends it
     if (s.needsPick3) { const n = G.p3Next(); return n === undefined || Two.elsewhere(n) ? 'wait' : 'pick3'; }   // wait: someone picks on their own phone
     const n = G.pickNext();
     if (n === undefined) return S.g.remote ? 'wait' : 'result';
@@ -3427,6 +3429,7 @@ function addPlayerSheet() {
 // ════════════ Pick 3 ════════════
 SCREENS.pick3 = () => {
   const s = S.g.s, g = S.g.game, i = G.p3Next(), p = g.players[i];
+  S.g.shownP3 = i;                                   // whose Pick 3 is on screen (a lock can't land on someone else)
   const mine = S.g.p3sel || [];
   const firsts = Object.values(S.g.pending.p3).filter(Boolean).map(x => x[0]);
   const done = G.order().filter(j => j in S.g.pending.p3);
@@ -3458,6 +3461,7 @@ SCREENS.pick3 = () => {
 // ════════════ Make a pick ════════════
 SCREENS.pick = () => {
   const s = S.g.s, g = S.g.game, i = G.pickNext(), p = g.players[i];
+  S.g.shownFor = i;
   const taken = {}, viaP3 = {};
   const owner = {};
   Object.entries(Umpire.lockedPicks(s)).forEach(([j, v]) => { taken[v.pick] = g.players[j].name; owner[v.pick] = +j; if (v.fromP3) viaP3[v.pick] = true; });
@@ -3540,6 +3544,7 @@ function lastPlayInfo() {
 SCREENS.after = () => {
   const s = S.g.s, g = S.g.game;
   const { last, entries } = lastPlayInfo();
+  if (!last) { S.g.view = null; setTimeout(render); return '<div class="page"></div>'; }   // the play was undone on another phone
   const o = last.outcome, runs = last.runs;
   const winner = entries.find(e => e.correct);
   let title = OC[o][1].toUpperCase() + (runs ? ` · ${runs} RUN${runs > 1 ? 'S' : ''}` : '');
@@ -3563,7 +3568,7 @@ SCREENS.after = () => {
   const mlb = s.mlb, gm = g;
   const finalLine = over ? `${esc(mlb.home > mlb.away ? shortTeam(gm.home) || 'Home' : shortTeam(gm.away) || 'Away')} win ${Math.max(mlb.home, mlb.away)}–${Math.min(mlb.home, mlb.away)}. That’s the ballgame.` : '';
   return `<div class="fixedpage" style="gap:14px">
-  ${gameTop(`<button class="press" ${act('gUndo')} style="height:36px;padding:0 14px;border-radius:18px;background:var(--card);font-size:15px;font-weight:600">Undo</button>`, halfName(s))}
+  ${gameTop(S.g.remote ? backBtn('twoLeave') : `<button class="press" ${act('gUndo')} style="height:36px;padding:0 14px;border-radius:18px;background:var(--card);font-size:15px;font-weight:600">Undo</button>`, halfName(s))}
   ${lineScoreCard()}
   <div class="card rise" style="padding:14px 16px;display:flex;align-items:center;gap:14px">
     ${diamond(code(o), winner ? 'var(--green)' : 'var(--text4)')}
@@ -3588,7 +3593,8 @@ SCREENS.after = () => {
     <span style="font-size:15px;font-weight:600;color:${p.who ? 'var(--green)' : 'var(--text3)'}">${p.who ? esc(p.who) + ' +' + p.gain : 'Nobody'}</span></div>`).join('')}</div>
   <div class="grow"></div>
   ${finalLine ? `<span class="courier" style="text-align:center;font-size:13px;font-weight:700;color:var(--text2)">${finalLine}</span>` : ''}
-  <button class="big-btn cond press" style="height:56px" ${act('gNext', next)}>${next}</button>
+  ${S.g.remote ? `<button class="big-btn cond press" style="height:56px" ${act('twoNext')}>${next === 'BACK TO THE AT-BAT' ? next : over || s.outs >= 3 ? 'CONTINUE' : 'NEXT AT-BAT'}</button>`
+    : `<button class="big-btn cond press" style="height:56px" ${act('gNext', next)}>${next}</button>`}
 </div>`;
 };
 // ── Award popup ──
@@ -3838,6 +3844,7 @@ Object.assign(SHEETS, { ngColor: ngColorSheet, gameMenu: gameMenuSheet, rules: r
 SCREENS.game = () => {
   if (!S.g) return SCREENS.home();
   const v = G.view();
+  if (!S.g.remote && (v === 'pick' || v === 'pick3')) Two.checkTurn(v === 'pick3' ? G.p3Next() : G.pickNext());
   return (SCREENS[v] || SCREENS.pick)() + (S.g.undone && v !== 'after' ? undoToast() : '');
 };
 
@@ -4026,13 +4033,13 @@ Object.assign(ACT, {
   // Pick 3
   p3Pick: o => { S.g.p3sel = (S.g.p3sel || []).concat([o]).slice(0, 3); buzz(); render(); },
   p3Unpick: k => { S.g.p3sel = S.g.p3sel.slice(0, +k); render(); },
-  p3Skip: () => { S.g.pending.p3[G.p3Next()] = null; S.g.p3sel = []; afterP3Choice(); },
-  p3Lock: () => { S.g.pending.p3[G.p3Next()] = S.g.p3sel; S.g.p3sel = []; buzz(); afterP3Choice(); },
+  p3Skip: () => { const i = G.p3Next(); if (i === undefined) return render(); S.g.pending.p3[i] = null; S.g.p3sel = []; afterP3Choice(); },
+  p3Lock: () => { const i = G.p3Next(); if (i === undefined) return render(); S.g.pending.p3[i] = S.g.p3sel; S.g.p3sel = []; buzz(); afterP3Choice(); },
 
   // Picks
   pickSel: o => { S.g.sel = { pick: o, conf: (S.g.sel || {}).conf || false }; buzz(); render(); },
   pickConf: () => { S.g.sel = { ...(S.g.sel || {}), conf: !(S.g.sel || {}).conf }; render(); },
-  pickLock: () => { S.g.pending.picks[G.pickNext()] = { pick: S.g.sel.pick, conf: !!S.g.sel.conf }; S.g.sel = null; buzz(); render(); },
+  pickLock: () => { const i = G.pickNext(); if (i === undefined || !S.g.sel) return render(); S.g.pending.picks[i] = { pick: S.g.sel.pick, conf: !!S.g.sel.conf }; S.g.sel = null; buzz(); render(); },
 
   // What happened
   resSel: o => { const r = S.g.res, was = r.outcome; r.outcome = o;
@@ -4043,7 +4050,9 @@ Object.assign(ACT, {
   resStep: arg => { const [k, d] = arg.split('|'), r = S.g.res; r[k] = Math.max(k === 'runs' && r.outcome === 'home_run' ? 1 : 0, r[k] + (+d)); if (k === 'runs') r.autoRun = false; render(); },
   resSave: async () => {
     const r = S.g.res;
-    const ev = { type: 'play', outcome: r.outcome, picks: S.g.pending.picks, runs: r.runs, extraOuts: r.extraOuts };
+    const need = Umpire.pickOrder(S.g.s), picks = {};
+    need.forEach(i => { if (S.g.pending.picks[i]) picks[i] = S.g.pending.picks[i]; });
+    const ev = { type: 'play', outcome: r.outcome, picks, runs: r.runs, extraOuts: r.extraOuts };
     try { await saveEvent(ev); } catch (e) { return toast(e.message, true); }
     S.g.pending.picks = {}; S.g.res = { outcome: null, runs: 0, extraOuts: 0 }; S.g.view = 'after';
     afterPlayFx(); render(); const p = $app().querySelector('.fixedpage'); if (p) p.scrollTop = 0;
@@ -5576,7 +5585,9 @@ const Two = {
   send(i, val) {
     if (!Two.multi() || i === undefined) return;
     const g = S.g.game, key = Two.key(), k = key + ':' + i;
-    Two.inflight[k] = true;
+    Two.inflight[k] = true; S.g.pendKey = key;
+    if (!S.g.remote && i !== Two.me() && Two.isAccount(g.players[i])) Diag.add('app', `2p host picking for ${g.players[i].name}: ${S.g.pickFor === i ? 'PICK FOR tapped' : Two.joined(i) ? 'JOINED?!' : 'not joined'}`);
+    Diag.add('app', `2p sent ${key}/${i} ${val.pick || (val.p3 ? 'p3 ' + val.p3.join(',') : 'skip')}`);
     FCab.setSlot(g, key, i, val).then(() => { delete Two.inflight[k]; })
       .catch(e => { delete Two.inflight[k]; Two.lost(e); });
   },
@@ -5587,14 +5598,21 @@ const Two = {
   // Firebase said no (someone else's pick got there first, or the round was already saved): show what really happened
   async lost(e) {
     if (!S.g || !e || (e.code !== 'PERMISSION_DENIED' && e.code !== 'STALE')) return toast(e && e.message ? e.message : 'Couldn’t save — try again', true);
-    Diag.add('app', 'two-phone: refused (' + e.code + ')');
+    const m = String(e.message || '').split('\n')[0];
+    if (m && !/^Skipped/.test(m)) Diag.add('app', '2p refused (' + e.code + '): ' + m.slice(0, 90));   // (the knock-on refusals just add noise to the Problem log)
     await Two.reload(S.g.remote ? 'Too late — that round was already saved' : 'Another phone got there first — check the picks and try again');
   },
   async reload(msg) {
-    if (!S.g || Two.reloading) return;                  // one catch-up at a time (a refusal can be reported twice)
-    Two.reloading = true; setTimeout(() => { Two.reloading = false; }, 1500);
+    if (!S.g) return;
+    if (Two.reloading) { Two.reloadAgain = true; return; }   // one catch-up at a time — and one more after it if another refusal came in meanwhile
+    Two.reloading = true;
+    try { await Two.reloadNow(msg); } finally { Two.reloading = false; if (Two.reloadAgain) { Two.reloadAgain = false; setTimeout(() => Two.reload(), 300); } }
+  },
+  retryReload() { clearTimeout(Two.retryT); Two.retryT = setTimeout(() => { if (S.g && FCab.isStale(S.g.game.id)) Two.reload(); }, 5000); },
+  async reloadNow(msg) {
     const id = S.g.game.id;
-    let fresh = null; try { fresh = await withTimeout(FCab.loadGame(id), 10000); } catch (e) { return toast('Offline — will catch up when you’re back online', true); }
+    Diag.add('app', '2p reloading the real game');
+    let fresh = null; try { fresh = await withTimeout(FCab.loadGame(id), 10000); } catch (e) { Diag.add('app', '2p reload failed: ' + (e && e.message)); Two.retryReload(); return toast('Offline — will catch up when you’re back online', true); }
     if (!S.g || S.g.game.id !== id) return;
     if (!fresh) return Two.gone('This game was thrown out');
     if (S.g.remote && fresh.ended) return Two.gone('Game over');
@@ -5608,6 +5626,10 @@ const Two = {
   },
   // A new copy of the game arrived from Firebase
   sync(v, quiet) {
+    try { Two.syncNow(v, quiet); }
+    catch (e) { Diag.add('error', '2p sync: ' + (e && e.message) + ' ' + String((e && e.stack) || '').split('\n').slice(1, 3).join(' ').replace(/\s+/g, ' ').slice(0, 120)); window.__syncErr = (window.__syncErr || 0) + 1; if (!window.__badEv) window.__badEv = JSON.stringify({ v: v && v.events, mine: S.g && S.g.game.events, setup: S.g && S.g.game.setup }); }
+  },
+  syncNow(v, quiet) {
     if (!S.g) return;
     if (!v) { if (S.g.remote) Two.gone(Two.hostName() + ' threw out this game'); return; }
     if (v.id && v.id !== S.g.game.id) return;
@@ -5616,21 +5638,29 @@ const Two = {
       const before = S.g.game.events.length;
       S.g.game = Object.assign(S.g.game, v, { events: v.events || [] });
       G.replay();
-      if (S.g.game.events.length > before && !quiet) { const l = G.lastEvent(); if (l && l.type === 'play') Sound.play(Two.rightFor(l) ? 'right' : 'miss'); }
+      const now = S.g.game.events.length, l = G.lastEvent();
+      if (now !== before) Diag.add('app', `2p new round e${now} (was e${before})`);
+      if (now !== before || (S.g.pendKey && S.g.pendKey !== Two.key())) { S.g.pending = { p3: {}, picks: {} }; S.g.sel = null; S.g.p3sel = []; S.g.pendKey = Two.key(); }   // a new round: last round's picks don't carry over
+      if (now > before && l && l.type === 'play') { S.g.view = 'after'; if (!quiet) Sound.play(Two.rightFor(l) ? 'right' : 'miss'); }   // everyone sees how the play went
+      else if (S.g.view === 'after' && !(l && l.type === 'play')) S.g.view = null;                                     // undone, or the half changed
     } else {
       S.g.game.joined = v.joined || null;
     }
     const s = S.g.s; if (!s || s.ended) return render();
     const key = Two.key(), cur = (v.slots || {})[key] || {};
+    const sig = `2p update: my round ${key}, server has ${(v.events || []).length} entries, slots ${Object.entries(cur).filter(([, x]) => x).map(([i, x]) => i + ':' + (x.pick || (x.skip ? 'skip' : 'p3'))).join(' ') || 'none'}${v.joined ? ', joined ' + Object.keys(v.joined).filter(i => v.joined[i]).join(',') : ''}`;
+    if (sig !== Two.lastSig) { Two.lastSig = sig; Diag.add('app', sig); }
     const settled = !FCab.status().pending;          // don't take away picks this phone hasn't finished sending
     const wasP3 = s.needsPick3 ? G.p3Next() : null;
     const own = i => Two.inflight[key + ':' + i];
     if (s.needsPick3) {
-      const got = {}; Object.entries(cur).forEach(([i, x]) => { if (x) got[i] = x.skip ? null : (x.p3 ? Object.values(x.p3) : null); });
+      const n = S.g.game.players.length, ok = i => /^\d+$/.test(i) && +i < n;   // only real player numbers
+      const got = {}; Object.entries(cur).forEach(([i, x]) => { if (x && ok(i)) got[i] = x.skip ? null : (x.p3 ? Object.values(x.p3) : null); });
       if (settled) Object.keys(S.g.pending.p3).forEach(i => { if (!(i in got) && !own(i)) delete S.g.pending.p3[i]; });
       Object.assign(S.g.pending.p3, got);
     } else {
-      const got = {}; Object.entries(cur).forEach(([i, x]) => { if (x && x.pick) got[i] = { pick: x.pick, conf: !!x.conf }; });
+      const n = S.g.game.players.length, ok = i => /^\d+$/.test(i) && +i < n;
+      const got = {}; Object.entries(cur).forEach(([i, x]) => { if (x && x.pick && ok(i)) got[i] = { pick: x.pick, conf: !!x.conf }; });
       if (settled) Object.keys(S.g.pending.picks).forEach(i => { if (!got[i] && !own(i)) delete S.g.pending.picks[i]; });
       Object.assign(S.g.pending.picks, got);
     }
@@ -5640,10 +5670,23 @@ const Two = {
     if (!S.g.remote && s.needsPick3 && wasP3 !== undefined && G.p3Next() === undefined) { afterP3Choice(); return; }
     render();
   },
+  // The host's phone is about to ask you to pick for another player with an account. Their phone may have joined a
+  // moment ago and the live update hasn't arrived yet (iPhones can lag after waking up) — so check the real game once.
+  checkTurn(i) {
+    if (S.g && !S.g.remote && FCab && !Two.stopWatch && Two.multi()) Two.watch();   // always listening in a two-phone game
+    if (i === undefined || !S.g || S.g.remote || !FCab || i === Two.me() || S.g.pickFor === i) return;
+    const p = S.g.game.players[i]; if (!Two.isAccount(p)) return;
+    const k = S.g.game.id + ':' + Two.key() + ':' + i; if (Two.checked === k) return; Two.checked = k;
+    withTimeout(FCab.peekGame(S.g.game.id), 6000).then(v => {
+      if (!v || !S.g || S.g.game.id !== v.id) return;
+      Diag.add('app', `2p check before picking for ${p.name}: joined ${!!(v.joined && v.joined[i])}`);
+      Two.sync(v, true);
+    }).catch(() => {});
+  },
   rightFor(ev) { const i = S.g.me; return ev.picks && ev.picks[i] && ev.picks[i].pick === ev.outcome; },
   watch() {
     Two.stop();
-    if (!S.g || !Two.multi()) return;
+    if (!S.g || !FCab || !S.user || !Two.multi()) return;   // (the app can open a saved live game before Firebase is ready — afterSignIn starts it then)
     const id = S.g.game.id;
     Two.stopWatch = FCab.watchGame(id, v => { if (S.g && S.g.game.id === id) Two.sync(v); });
   },
@@ -5663,6 +5706,23 @@ const Two = {
   listen() { if (Two.stopLive) Two.stopLive(); Two.stopLive = FCab.watchLive(() => Two.checkInvite()); },
 };
 
+// Backstop: while a screen is waiting on the other phone, re-check Firebase every few seconds. If the live connection went
+// quiet (iPhones can drop it in the background), the game still moves on — and the Problem log says the backstop was needed.
+setInterval(() => {
+  if (!S.g || !FCab || document.visibilityState !== 'visible' || !Two.multi()) return;
+  if (FCab.isStale(S.g.game.id) && !Two.reloading) { Diag.add('app', '2p backstop: this phone’s copy was out of date — reloading'); return Two.reload(); }
+  if (S.screen !== 'game') return;
+  let v; try { v = G.view(); } catch (e) { return; }
+  if (v !== 'wait' && !(S.g.remote && v === 'after')) return;
+  const id = S.g.game.id, before = Two.lastSig;
+  FCab.peekGame(id).then(g => {
+    if (!g || !S.g || S.g.game.id !== id) return;
+    Two.sync(g, true);
+    if (Two.lastSig !== before) Diag.add('app', '2p backstop caught an update the live connection missed');
+  }).catch(() => {});
+}, 4000);
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && S.g && FCab) { Two.watch(); if (S.g.remote) Two.reload(); } });
+
 // ── Home: "Zach started a game — JOIN" ──
 function inviteCard() {
   const inv = S.invite; if (!inv || (S.g && !S.g.remote)) return '';
@@ -5679,7 +5739,7 @@ function inviteCard() {
 SCREENS.wait = () => {
   const s = S.g.s, g = S.g.game, rem = !!S.g.remote;
   const n = s.needsPick3 ? G.p3Next() : G.pickNext();
-  const nm = i => esc(g.players[i].name), NM = i => esc(g.players[i].name.toUpperCase());
+  const nm = i => esc((g.players[i] || {}).name || '?'), NM = i => nm(i).toUpperCase();   // never trips over a bad player number
   const host = esc(Two.hostName()), HOST = host.toUpperCase();
   const me = Two.me();
   const myP3 = S.g.pending.p3[me], myPick = S.g.pending.picks[me];
@@ -5687,7 +5747,12 @@ SCREENS.wait = () => {
     : (myPick ? 'Your pick: ' + code(myPick.pick) + (myPick.conf ? ' · confident' : '') : '');
   const taken = Object.entries(S.g.pending.picks).map(([j, v]) => `${code(v.pick)} (${nm(j)})`).join(', ');
   let title, label, head, text, btns = '';
-  if (n === undefined) {
+  if (rem && (s.outs >= 3 || Umpire.mlbGameOver(s))) {
+    const over = Umpire.mlbGameOver(s);
+    title = over ? 'THAT’S THE GAME' : 'THREE OUTS'; label = 'LIVE';
+    head = over ? `${HOST} IS WRAPPING UP` : `${HOST} IS STARTING THE NEXT HALF-INNING`;
+    text = over ? 'You’ll see the final as soon as it’s saved.' : 'Pick 3 comes next — your screen moves on by itself.';
+  } else if (n === undefined) {
     title = s.needsPick3 ? 'PICK 3 IS IN' : 'PICKS ARE IN'; label = 'LIVE';
     head = rem ? `${HOST} IS ${s.needsPick3 ? 'SAVING PICK 3' : 'ENTERING WHAT HAPPENED'}` : 'SAVING…';
     text = (mine ? mine + '. ' : '') + 'Your screen updates the moment it’s saved.';
@@ -5726,7 +5791,8 @@ Object.assign(ACT, {
     S.stack = []; S.screen = 'game'; render(); Awake.on();
     Diag.add('app', 'joined ' + inv.hostName + '’s game');
   },
-  twoLeave: () => ACT.gLeave('home'),                 // the game keeps going; RETURN on Home / the LIVE bar brings you back
+  twoLeave: () => ACT.gLeave('home'),
+  twoNext: () => { S.g.view = null; Popup.clear(); render(); },   // a joined player moves on at their own pace                 // the game keeps going; RETURN on Home / the LIVE bar brings you back
   stopPicking: async () => {
     const g = S.g; if (!g || !g.remote) return;
     S.sheet = null;
@@ -5744,9 +5810,13 @@ Object.assign(ACT, {
 // ── Hooks into the one-phone game (so every pick also lands in the shared slot) ──
 (() => {
   const wrap = (name, f) => { const orig = ACT[name]; ACT[name] = function (...a) { return f(orig, ...a); }; };
-  wrap('p3Lock', orig => { const i = G.p3Next(), picks = (S.g.p3sel || []).slice(); Two.send(i, { p3: picks }); S.g.pickFor = null; return orig(); });
-  wrap('p3Skip', orig => { const i = G.p3Next(); Two.send(i, { skip: true }); S.g.pickFor = null; return orig(); });
-  wrap('pickLock', orig => { const i = G.pickNext(), sel = S.g.sel; if (sel) Two.send(i, { pick: sel.pick, conf: !!sel.conf }); S.g.pickFor = null; return orig(); });
+  const settle = () => { S.g.sel = null; S.g.p3sel = []; S.g.pickFor = null; render(); toast('Their pick just came in from their phone'); };
+  wrap('p3Lock', orig => { const i = G.p3Next(); if (i === undefined || (Two.elsewhere(i) && S.g.pickFor !== i) || (S.g.shownP3 != null && S.g.shownP3 !== i)) return settle();
+    const picks = (S.g.p3sel || []).slice(); Two.send(i, { p3: picks }); S.g.pickFor = null; return orig(); });
+  wrap('p3Skip', orig => { const i = G.p3Next(); if (i === undefined || (S.g.shownP3 != null && S.g.shownP3 !== i)) return settle(); Two.send(i, { skip: true }); S.g.pickFor = null; return orig(); });
+  wrap('pickLock', orig => { const i = G.pickNext(), sel = S.g.sel; if (i === undefined || !sel) return settle();
+    if (S.g.shownFor != null && S.g.shownFor !== i) { S.g.sel = null; render(); return toast('Their pick just came in — now it’s ' + S.g.game.players[i].name + '’s turn'); }
+    Two.send(i, { pick: sel.pick, conf: !!sel.conf }); S.g.pickFor = null; return orig(); });
   wrap('gBack', orig => {
     if (S.g && S.g.remote) {                                         // a joined player: Back only steps back through their own choices
       if (G.view() === 'pick3' && S.g.p3sel.length) { S.g.p3sel = S.g.p3sel.slice(0, -1); return render(); }
@@ -5798,6 +5868,7 @@ const Tips = {
   isNew() { const a = S.account; return !!a && (!a.createdAt || a.createdAt >= TIPS_SINCE); },
   seenMap() { const a = S.account || {}; return Object.assign({}, a.tips || {}, (S.user && Store.json('gb_tips_' + S.user.uid, {})) || {}); },
   want(id) {
+    if (S.g && S.g.remote && ['after', 'result', 'newGame'].includes(id)) return false;   // host-only tips
     if (window.__noTips || !S.user || !S.account || !TIP[id.split(':')[0]]) return false;   // __noTips: the automated tests
     if (S.settings.tipsAgain) { this.replay = this.replay || Store.json('gb_tipreplay', {}); return !this.replay[id]; }
     return this.isNew() && !this.seenMap()[id];
