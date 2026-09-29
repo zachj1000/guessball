@@ -69,6 +69,14 @@ html[data-theme="light"] body::after { content: ""; position: fixed; top: 0; lef
 html[data-theme="light"] #app.photo .screen .page h2, html[data-theme="light"] #app.photo .screen .page .sechead, html[data-theme="light"] #app.photo .screen .onphoto, html[data-theme="light"] #app.photo .screen .fixedpage h2, html[data-theme="light"] #app.photo .screen .page > div > a {
   align-self: flex-start; width: fit-content; padding: 2px 12px; border-radius: 14px; background: var(--glass);
   -webkit-backdrop-filter: blur(18px); backdrop-filter: blur(18px); }
+/* On a photo, text that sits straight on the picture (not on a card) gets a soft shadow and a brighter grey, so it reads on bright parks */
+#app.photo .screen .page, #app.photo .screen .fixedpage { text-shadow: 0 1px 2px rgba(0,0,0,.9), 0 0 10px rgba(0,0,0,.55); }
+html[data-theme="light"] #app.photo .screen .page, html[data-theme="light"] #app.photo .screen .fixedpage { text-shadow: 0 0 2px rgba(255,255,255,.95), 0 0 10px rgba(255,255,255,.8); }
+#app.photo .screen :is(.card, .list, .chips, .seg, .field, .tabbar, .livebar, .dock, .swipe-ghost .card, button:not(.info-btn)) { text-shadow: none; }
+#app.photo .screen :is(.meta, .info-btn):not(:is(.card, .list, .chips, .seg, .tabbar, .dock, .sheet, .swipe-ghost, button:not(.info-btn), .info-btn) *) {
+  align-self: flex-start; width: fit-content; padding: 3px 10px !important; border-radius: 10px; background: var(--glass); color: var(--text2); text-shadow: none; line-height: 1.5;
+  -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); }
+html[data-theme="light"] #app.photo .screen :is(.meta, .info-btn):not(:is(.card, .list, .chips, .seg, .tabbar, .dock, .sheet, .swipe-ghost, button:not(.info-btn), .info-btn) *) { color: var(--text); }
 * { box-sizing: border-box; }
 html, body { margin: 0; min-height: 100%; height: var(--apph, 100%); overflow: hidden; background: var(--bg); color: var(--text); color-scheme: dark; }
 html[data-theme="light"], html[data-theme="light"] body { color-scheme: light; }
@@ -1389,6 +1397,8 @@ const FilingCabinet = (() => {
       if (first) { ch['users/' + uid + '/createdAt'] = now(); ch['profiles/' + uid + '/createdAt'] = now(); }
       await queue(ch);
     }
+    // Tips this account has already seen (users/<uid>/tips/<id> = true)
+    async function tipSeen(id) { need(); await queue({ ['users/' + uid + '/tips/' + String(id).replace(/[.#$\[\]\/]/g, '_')]: true }); }
     // "Delete account": unlinks Google only. The profile turns back into a guest that can be claimed again.
     async function unlinkAccount() {
       need();
@@ -1799,7 +1809,7 @@ const FilingCabinet = (() => {
     const isAdmin = async () => { need(); await flush(); return (await db.get('v2/admins/' + uid)) === true; };   // one admin list for the real app and QA
 
     return { setUser, onStatus: f => { listeners.add(f); f(status()); return () => listeners.delete(f); }, status, flush,
-      myAccount, saveProfile, unlinkAccount, profiles,
+      myAccount, saveProfile, unlinkAccount, profiles, tipSeen,
       createClub, findClubs, myClubs, clubInfo, roster, joinClub, requests, answerRequest, leaveClub, setCaptain, removeMember, updateClub,
       addGuest, renameGuest, claimGuest, answerClaim, myAliases, accounts, offerGuest, myOffers, dismissOffer, myClaims,
       startGame, liveGame, findLiveGame, addEvent, undo, takeOver, updateGameInfo, endGame, discardGame, addHandGame, editHandGame, deleteGame,
@@ -2350,6 +2360,7 @@ SCREENS.home = () => {
     </div>
     ${scopeChip()}
     ${claimCard()}
+    ${S.clubs.filter(c => c.status === 'pending').map(c => `<div class="card" style="border-radius:16px;padding:12px 14px;background:rgba(242,193,78,.14);border:1px solid rgba(242,193,78,.45);display:flex;flex-direction:column;gap:3px"><span class="cond" style="font-size:14px;font-weight:800;letter-spacing:.8px;color:var(--gold)">WAITING ON A CAPTAIN</span><span style="font-size:14px;line-height:1.4">Your request to join ${esc(c.name || 'the club')} is in. You’ll get in as soon as a captain approves it.</span></div>`).join('')}
     ${typeof resumeCard === 'function' ? resumeCard() : ''}
     ${S.g && !S.g.s.ended ? '' : `<button class="press cond mid-btn" ${act('newGame')}>${ICON.plus} NEW GAME</button>`}
     ${body}
@@ -2465,6 +2476,7 @@ SCREENS.settings = () => {
   <div class="list">
     <button class="row press" ${act('howToPlay')}><span style="flex-grow:1;font-size:16px;font-weight:500">How to play</span>${ICON.chev}</button>
     <button class="row press" ${act('openSheet', 'rules')}><span style="flex-grow:1;font-size:16px;font-weight:500">Rules cheat sheet</span>${ICON.chev}</button>
+    <div class="row" style="min-height:52px"><div style="flex-grow:1;padding:6px 0">${info('t_tips', '<span style="font-size:16px;font-weight:500;color:var(--text)">Show all tips again</span>', 'New players get each tip once, the first time it comes up. Turn this on to see them all again — handy when you’re teaching someone on your phone.', '')}</div>${toggle(!!S.settings.tipsAgain, 'tipsAgain')}</div>
     <button class="row press" ${act('go', 'diag')}><div style="flex-grow:1;display:flex;flex-direction:column;gap:2px;padding:8px 0"><span style="font-size:16px;font-weight:500">Problem log</span><span class="courier meta">Something went wrong? Screenshot this and send it to Zach</span></div>${ICON.chev}</button>
   </div>
   ${S.admin ? `<span class="cond label" style="margin-top:6px">ADMIN</span><div class="list"><button class="row press" ${act('go', 'admin')}><span style="flex-grow:1;font-size:16px;font-weight:500">Admin tools</span><span class="courier meta">Only you</span>${ICON.chev}</button></div>` : ''}
@@ -2514,6 +2526,7 @@ SCREENS.admin = () => `<div class="page">
     <button class="row press" ${act('exportAll')}><div style="flex-grow:1;display:flex;flex-direction:column;gap:2px;padding:8px 0"><span style="font-size:16px;font-weight:600">Export all data</span><span class="courier meta">Downloads everything in Firebase as one file</span></div>${ICON.chev}</button>
     <button class="row press" ${act('copyRules')}><div style="flex-grow:1;display:flex;flex-direction:column;gap:2px;padding:8px 0"><span style="font-size:16px;font-weight:600">Copy security rules</span><span class="courier meta">Paste into Firebase → Realtime Database → Rules</span></div>${ICON.chev}</button>
     <button class="row press" ${act('adminDelete')}><div style="flex-grow:1;display:flex;flex-direction:column;gap:2px;padding:8px 0"><span style="font-size:16px;font-weight:600">Delete a game</span><span class="courier meta">Any club · stats and awards recalculate</span></div>${ICON.chev}</button>
+    <button class="row press" ${act('testSound')}><div style="flex-grow:1;display:flex;flex-direction:column;gap:2px;padding:8px 0"><span style="font-size:16px;font-weight:600">Test sound</span><span class="courier meta">${esc(S.soundCheck || 'Plays the award jingle and shows what the phone reports')}</span></div></button>
   </div></div>`;
 
 const deviceLine = () => { const u = navigator.userAgent, ios = /OS (\d+)_(\d+)/.exec(u);
@@ -2593,6 +2606,7 @@ function render() {
   if (fromSplash) introAnimation(scr, splashClone, splashRect);
   if (focus && !el.contains(focusEl)) { const i = el.querySelector(`[data-model="${focus}"]`); if (i) { i.focus(); try { i.setSelectionRange(caret, caret); } catch (e) { /* ok */ } } }
   syncEnables();
+  if (typeof Tips !== 'undefined') Tips.afterRender();
 }
 // Update a screen in place: the scrolling page element itself is kept (so a scroll or swipe in
 // progress on iPhone isn't cut off), and only the pieces whose content changed are replaced.
@@ -2917,7 +2931,7 @@ const ACT = {
 };
 async function afterJoin(code, msg) {
   S.busy = false; await loadClubs(); S.scope = code; Store.setItem('gb_scope_' + S.user.uid, code);
-  S.sheet = null; S.draft = {}; S.stack = []; go('home', {}, false); toast(msg); loadHome();
+  S.sheet = null; S.draft = {}; ACT.tab('club'); toast(msg); loadHome();   // land on the new club's page
 }
 
 // ── Wire up taps and typing once ──
@@ -3024,7 +3038,9 @@ function wire() {
   const el = $app();
   swipes(el);
   document.addEventListener('scroll', e => {                   // guard: a page scrolled sideways snaps straight back (chip rows are allowed)
-    const n = e.target; if (n && n.scrollLeft && n.nodeType === 1 && !n.closest('.chips, [data-keep]')) n.scrollLeft = 0;
+    const n = e.target; if (!n || n.nodeType !== 1 || !n.scrollLeft) return;
+    const ox = getComputedStyle(n).overflowX; if (ox === 'auto' || ox === 'scroll') return;   // rows built to scroll sideways (chips, color swatches…) are left alone
+    n.scrollLeft = 0;
   }, { capture: true, passive: true });
   el.addEventListener('click', e => {
     const b = e.target.closest('[data-act]');
@@ -3222,6 +3238,7 @@ SCREENS.newGame = () => {
     <span style="flex-grow:1;font-size:17px;font-weight:600;color:${n[side] ? 'var(--text)' : 'var(--text4)'}">${esc(n[side] || 'Choose team')}</span>${ICON.chev}</button>`;
   return `<div class="fixedpage" style="gap:12px">
   <div class="topbar">${backBtn()}<h1 class="cond h1">NEW GAME</h1></div>
+  ${tipCard('newGame')}
   <h2 class="cond label" style="margin:6px 0 0;font-size:18px">MATCHUP</h2>
   <div class="list">${team('away', 'AWAY')}${team('home', 'HOME')}</div>
   <div class="seg cond"><button class="${n.tv ? '' : 'on'}" ${act('ngWhere', 'park')}>AT THE BALLPARK</button><button class="${n.tv ? 'on' : ''}" ${act('ngWhere', 'home')}>AT HOME</button></div>
@@ -3301,6 +3318,7 @@ SCREENS.pick3 = () => {
     <span style="font-size:16px;font-weight:700">${esc(g.players[j].name)}</span><span class="shoulders" style="flex-grow:1;font-size:20px;font-weight:900">${x ? x.map(code).join(' · ') : '<span style="font-family:inherit;font-size:14px;font-weight:600;color:var(--text3)">Skipped</span>'}</span>
     <span class="cond" style="font-size:13px;font-weight:800;letter-spacing:.8px;color:${x ? 'var(--green)' : 'var(--text4)'}">${x ? 'LOCKED' : 'SKIP'}</span></div>`; }).join('')}
   <h1 class="cond onphoto" style="margin:4px 0 0;font-size:36px;font-weight:800;line-height:1">${esc(p.name.toUpperCase())}, PICK 3</h1>
+  ${tipCard('p3')}
   ${info('p3why', '<span class="courier" style="font-size:13px;font-weight:700;color:var(--text2)">First three at-bats, in order</span>', 'Call the first three at-bats in order. All three right = +7 bonus. Miss one and you pick one at a time for the rest of the half-inning. Only your first call has to be different from everyone else’s.', '')}
   <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px">${[0, 1, 2].map(k => `<button class="press" ${k < mine.length ? act('p3Unpick', k) : ''} style="height:76px;border-radius:16px;background:${mine[k] ? tint(pcol(i), .3) : 'var(--card)'};border:2px solid ${k === slot ? pcol(i) : mine[k] ? tint(pcol(i), .8) : 'transparent'};display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px">
     <span class="cond" style="font-size:13px;font-weight:800;letter-spacing:.8px;color:var(--text3)">AT-BAT ${k + 1}</span>
@@ -3333,6 +3351,7 @@ SCREENS.pick = () => {
   ${scoreCard()}
   <span class="courier onphoto" style="font-size:13px;font-weight:700;color:var(--text2)">At-bat ${s.ab}${holders ? ' · ' + holders : ''}</span>
   <h1 class="cond onphoto" style="margin:-6px 0 0;font-size:36px;font-weight:800;line-height:1">${esc(p.name.toUpperCase())}, YOUR PICK</h1>
+  ${firstTip(['pick', 'conf'].concat(S.g.s.priority !== (S.g.game.setup || {}).priority ? ['priority'] : []), { name: (S.g.game.players[S.g.s.priority] || {}).name })}
   <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px">${PICK_GRID.map(o => {
     const who = taken[o], on = sel.pick === o;
     const oc = who ? pcol(owner[o]) : null;          // a taken pick shows whose it is in their color
@@ -3376,6 +3395,7 @@ SCREENS.result = () => {
   ${gameTop(backBtn('gBack'), halfName(s) + ' · AB ' + s.ab)}
   <div style="display:grid;grid-template-columns:repeat(${g.players.length},minmax(0,1fr));gap:8px">${chips}</div>
   <h1 class="cond onphoto" style="margin:2px 0 0;font-size:36px;font-weight:800;line-height:1">WHAT HAPPENED?</h1>
+  ${tipCard('result')}
   <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px">${RESULT_GRID.map(o => {
     const on = r.outcome === o;
     return `<button class="press ${on ? 'picked' : ''}" ${act('resSel', o)} style="height:56px;border-radius:14px;padding:6px 10px;display:flex;flex-direction:column;justify-content:center;text-align:left;background:${on ? 'var(--card3)' : 'var(--card)'}">
@@ -3442,6 +3462,7 @@ SCREENS.after = () => {
     <div style="flex-grow:1;display:flex;flex-direction:column;gap:2px;min-width:0"><span class="cond" style="font-size:17px;font-weight:800;letter-spacing:.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(g.players[e.player].name.toUpperCase())}</span>
       <span class="courier" style="font-size:12px;font-weight:700;color:var(--orange)">Confidence · picked ${code(e.pick)}</span></div>
     <span class="shoulders num" style="font-size:22px;font-weight:900;color:var(--orange)">−2</span></div>`).join('')}
+  ${tipCard('after')}
   <h2 class="cond" style="margin:6px 0 0;font-size:22px;font-weight:800;letter-spacing:.5px">THIS HALF-INNING</h2>
   <div class="card" style="padding:0 16px">${half.map((p, k) => `<div style="display:flex;align-items:center;gap:12px;height:50px;${k ? 'border-top:1px solid var(--line)' : ''}">
     <span class="shoulders" style="width:44px;font-size:24px;font-weight:900">${p.code}</span><span class="courier" style="flex-grow:1;font-size:14px;font-weight:700;color:var(--text2)">Play ${p.n}</span>
@@ -3745,6 +3766,13 @@ const unlockSound = () => { if (!S.settings.sound) return; try {
   const b = Sound.ctx.createBuffer(1, 1, 22050), src = Sound.ctx.createBufferSource(); src.buffer = b; src.connect(Sound.ctx.destination); src.start(0);
 } catch (e) { /* no sound */ } };
 ['touchend', 'click'].forEach(t => document.addEventListener(t, () => { if (!Sound.ctx || Sound.ctx.state !== 'running') unlockSound(); }, { passive: true, capture: true }));
+// Settings → Game options → TEST SOUND: plays the award jingle and reports what the phone's sound system says
+ACT.testSound = () => {
+  const was = S.settings.sound; S.settings.sound = true; unlockSound(); Sound.play('award'); S.settings.sound = was;
+  setTimeout(() => { const st = Sound.ctx ? Sound.ctx.state : 'unavailable';
+    S.soundCheck = `Sound system: ${st}${Sound.ctx ? ' · ' + Math.round(Sound.ctx.sampleRate / 100) / 10 + 'kHz' : ''}${navigator.audioSession ? ' · session ' + navigator.audioSession.type : ''}. No sound? Check that silent mode is off and the volume is up.`;
+    render(); }, 600);
+};
 const Awake = {
   lock: null,
   async on() { if (!S.settings.awake || this.lock || !('wakeLock' in navigator)) return; try { this.lock = await navigator.wakeLock.request('screen'); this.lock.addEventListener('release', () => { this.lock = null; }); } catch (e) { /* not allowed */ } },
@@ -3912,6 +3940,7 @@ Object.assign(ACT, {
     }
     const last = G.lastEvent();
     if (last && last.type === 'play') { g.view = 'after'; return render(); }
+    if (last && last.type === 'nextHalf') { ACT.gUndo().then(() => toast('End of half-inning undone')); return; }     // just ended the half-inning (menu or NEXT HALF-INNING): Back puts it back
     ACT.gLeave('home');
   },
   gUndo: async () => {
@@ -3922,7 +3951,7 @@ Object.assign(ACT, {
     S.g.undone = { ev, ...describeAfterUndo(ev) };
     if (ev.type === 'play') { S.g.pending.picks = { ...(ev.picks || {}) }; S.g.res = { outcome: null, runs: 0, extraOuts: 0 }; S.g.view = null; }
     else if (ev.type === 'pick3') { S.g.pending.p3 = {}; S.g.view = null; }
-    else if (ev.type === 'nextHalf') { S.g.view = 'after'; }
+    else if (ev.type === 'nextHalf') { const l = G.lastEvent(); S.g.view = l && l.type === 'play' ? 'after' : null; }   // back to that half: its last play, or the pick if none yet
     else S.g.view = null;
     render();
     clearTimeout(ACT.gUndo.t); ACT.gUndo.t = setTimeout(() => { if (S.g && S.g.undone) { S.g.undone = null; render(); } }, 6000);
@@ -4873,13 +4902,13 @@ SCREENS.club = () => {
         <button class="press" aria-label="Decline" ${act('answerReq', arg + '|0')} style="width:34px;height:34px;border-radius:17px;background:var(--card2);color:var(--text2);font-size:15px;flex-shrink:0">✕</button>
         <button class="press" aria-label="Approve" ${act('answerReq', arg + '|1')} style="width:34px;height:34px;border-radius:17px;background:var(--goldfill);display:flex;align-items:center;justify-content:center;flex-shrink:0">${ICON.check('#1A1406')}</button></div>`;
     const reqs = cap && (R.joins.length || R.claims.length) ? `<div class="card" style="padding:12px 14px 4px;border:1.5px solid rgba(242,193,78,.55)">
-        <div style="display:flex;justify-content:space-between;align-items:baseline"><span class="cond" style="font-size:16px;font-weight:800;letter-spacing:.8px;color:var(--gold)">REQUESTS · ${R.joins.length + R.claims.length}</span><span class="courier meta">Captains only</span></div>
+        <div style="display:flex;justify-content:space-between;align-items:baseline"><span class="cond" data-tip="requests" style="font-size:16px;font-weight:800;letter-spacing:.8px;color:var(--gold)">REQUESTS · ${R.joins.length + R.claims.length}</span><span class="courier meta">Captains only</span></div>
         ${R.joins.map((j, k) => reqRow(j.name, `${esc(j.name)} wants to join`, j.note ? '“' + esc(j.note) + '”' : 'New member request', 'join|' + j.uid, k)).join('')}
         ${R.claims.map((c, k) => { const g = d.roster.find(m => m.pid === c.guest) || {}; const r = rows.find(x => x.id === c.guest) || { games: 0, w: 0 };
           return reqRow(c.name, `${esc(c.name)} says they’re guest “${esc(g.name || 'Guest')}”`, loaded ? `Claim · ${plural(r.games, 'game')}, ${plural(r.w, 'win')} move to them` : 'Guest claim', 'claim|' + c.guest, k + R.joins.length); }).join('')}
       </div>` : '';
     body = `${reqs}
-      <div style="display:flex;align-items:baseline;justify-content:space-between;margin-top:4px"><h2 class="cond h2">ROSTER</h2><span class="shoulders" style="font-size:20px;font-weight:800;color:var(--text2)">${people.length}</span></div>
+      <div style="display:flex;align-items:baseline;justify-content:space-between;margin-top:4px"><h2 class="cond h2" data-tip="roster">ROSTER</h2><span class="shoulders" style="font-size:20px;font-weight:800;color:var(--text2)">${people.length}</span></div>
       <div class="list">${people.map(m => `<button class="row press" ${act('openSheet', 'member:' + m.pid)} style="min-height:52px">
         ${initialDot(m.name, m.pid === S.user.uid ? 'var(--accent)' : 'var(--card3)')}
         <span style="flex-grow:1;min-width:0;font-size:17px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(m.name)}</span>
@@ -5393,6 +5422,128 @@ Object.assign(ACT, {
   apClearPhoto: () => { Store.removeItem('gb_myphoto'); render(); toast('Removed — using your stadium pick instead'); },
 });
 applyTheme();
+
+// ════════════ Tips for first-timers ════════════
+// Every tip shows once per account, the first time that moment comes up (on the phone running the game).
+// Accounts made before tips existed never see them. Settings → Help → "Show all tips again" (off by default) replays them all.
+// Two looks: in a game, a gold card on the page (tipCard); everywhere else, a popup pointing at the thing (Tips.afterRender).
+const TIPS_SINCE = Date.UTC(2026, 8, 28, 23, 0);
+const TIP = {
+  newGame: ['WHO’S PLAYING?', 'Add everyone at the game. Friends without the app go in as guests — they can claim their games later.'],
+  p3: ['PICK 3 COMES FIRST', 'At the start of each half-inning, call the first three at-bats in order. All three right = +7. Miss one and you’re back to one pick at a time. Not feeling it? Skip.'],
+  pick: ['YOUR CALL', 'The number in the corner is what it’s worth — rarer calls pay more. Greyed out means someone already took it. Whoever has PRIORITY picks first.'],
+  conf: ['FEELING IT?', 'Turn on confidence for +5 if you’re right, −2 if you’re wrong.'],
+  priority: ['PRIORITY MOVED', 'A correct call steals priority — {name} picks first now.'],
+  result: ['WHAT HAPPENED?', 'Tap what the batter did. Add runs if anyone scored (a home run already counts the batter). Extra outs are for bonus outs on the play, like a runner thrown out.'],
+  after: ['UNDO AND THE ••• MENU', 'Tapped the wrong thing? Undo is top left. The ••• menu fixes the score, edits the matchup, or ends the half-inning or game. Need to check stats mid-game? Leave anytime — the game stays live.'],
+  live: ['STILL LIVE', 'Your game is still going. Tap here any time to jump back in.'],
+  stats: ['SWIPE AROUND', 'Swipe left or right to switch tabs. Tap any record to see the top 5.'],
+  awards: ['LEVEL UP', 'Most awards have tiers, from Bronze up to Hall of Fame. Search by name, or tap WON ONLY to see just yours.'],
+  club: ['YOUR CLUB', 'Tap anyone to see their scouting report. Guests are friends without the app — send them a claim link when they sign up and their games move to their account.'],
+  switcher: ['SWITCH VIEWS', 'Flip between your clubs, or pick All my games to see every game you’ve played.'],
+  captain: ['YOU’RE A CAPTAIN', 'You approve join requests and game claims — they show up here under REQUESTS. The gear opens Club settings: rename the club, make it public or private, or name more captains. Captains can also rename guests and delete club games.'],
+  requests: ['SOMEONE WANTS IN', 'Tap to accept or decline. A claim means someone says a guest is them — approving gives them that guest’s games and stats.'],
+};
+const Tips = {
+  shown: {},                                              // tips on screen right now (so doing the thing can close them)
+  replay: null,
+  isNew() { const a = S.account; return !!a && (!a.createdAt || a.createdAt >= TIPS_SINCE); },
+  seenMap() { const a = S.account || {}; return Object.assign({}, a.tips || {}, (S.user && Store.json('gb_tips_' + S.user.uid, {})) || {}); },
+  want(id) {
+    if (window.__noTips || !S.user || !S.account || !TIP[id.split(':')[0]]) return false;   // __noTips: the automated tests
+    if (S.settings.tipsAgain) { this.replay = this.replay || Store.json('gb_tipreplay', {}); return !this.replay[id]; }
+    return this.isNew() && !this.seenMap()[id];
+  },
+  done(id) {
+    delete this.shown[id];
+    if (S.settings.tipsAgain) { this.replay = this.replay || Store.json('gb_tipreplay', {}); this.replay[id] = 1; Store.put('gb_tipreplay', this.replay); return; }
+    if (!S.user || this.seenMap()[id]) return;
+    const loc = Store.json('gb_tips_' + S.user.uid, {}); loc[id] = true; Store.put('gb_tips_' + S.user.uid, loc);
+    if (S.account) { S.account.tips = Object.assign({}, S.account.tips, { [id]: true }); Store.put('gb_acct_' + S.user.uid, S.account); }
+    if (FCab && FCab.tipSeen) FCab.tipSeen(id).catch(() => { /* saved on this phone; tries again next time */ });
+  },
+  doneIfShown(id) { if (this.shown[id]) this.done(id); },
+};
+// In-game tip: a gold card on the page. Returns '' when there's nothing to show.
+function tipCard(id, vars = {}) {
+  if (!Tips.want(id)) return '';
+  Tips.shown[id] = true;
+  const [title, text] = TIP[id.split(':')[0]];
+  const body = text.replace(/\{(\w+)\}/g, (_, k) => vars[k] || '');
+  return `<div class="card fade" data-tip="${attr(id)}" style="flex-shrink:0;border-radius:16px;padding:12px 14px;background:rgba(242,193,78,.14);border:1px solid rgba(242,193,78,.45);display:flex;gap:10px;align-items:flex-start;-webkit-backdrop-filter:none;backdrop-filter:none">
+    <div style="flex-grow:1;display:flex;flex-direction:column;gap:3px"><span class="cond" style="font-size:14px;font-weight:800;letter-spacing:.8px;color:var(--gold)">TIP · ${esc(title)}</span>
+      <span style="font-size:14px;line-height:1.4;color:var(--text)">${esc(body)}</span></div>
+    <button class="press" aria-label="Close tip" ${act('tipX', id)} style="flex-shrink:0;width:30px;height:30px;margin:-6px -8px 0 0;display:flex;align-items:center;justify-content:center;color:var(--text2)">${ICON.x}</button></div>`;
+}
+// The first tip on this screen that still wants showing (one at a time)
+const firstTip = (list, vars) => { for (const id of list) { const h = tipCard(id, vars); if (h) return h; } return ''; };
+
+// ── Popups pointing at something (outside games) ──
+Tips.pop = null;
+Tips.candidates = () => {
+  const out = [], q = s => $app().querySelector('.screen ' + s);
+  const c = S.scope && S.scope !== 'mine' && typeof clubOf === 'function' ? clubOf(S.scope) : null;
+  if (S.screen === 'stats') out.push(['stats', '[data-act=statTab]', true]);
+  if (S.screen === 'awards') out.push(['awards', '.chips']);
+  if (S.screen === 'club' && c && c.status === 'member') {
+    out.push(['club', '[data-tip=roster]']);
+    if (typeof amCaptain === 'function' && amCaptain()) {
+      const made = c.createdBy === S.user.uid;             // you started it: "You're a captain"; named later: "You're now a captain of …"
+      out.push(['captain:' + S.scope, '[data-act=clubSettings]', false, made ? null : `YOU’RE NOW A CAPTAIN OF ${(c.name || '').toUpperCase()}`]);
+      out.push(['requests', '[data-tip=requests]']);
+    }
+  }
+  if (['home', 'stats'].includes(S.screen)) out.push(['switcher', '[data-act=openSwitcher]']);
+  if (S.g && !S.g.s.ended && S.screen !== 'game') out.push(['live', '.livebar', false, null, true]);
+  return out.map(([id, sel, parent, title, outside]) => { let el = outside ? $app().querySelector(sel) : q(sel); if (el && parent) el = el.parentElement; return { id, el, title }; })
+    .filter(x => x.el && x.el.getBoundingClientRect().height > 0);
+};
+Tips.afterRender = () => {
+  const busy = S.sheet || render.swiping || !S.user || !S.account || ['game', 'final', 'loading', 'tutorial'].includes(S.screen) || S.screen.startsWith('setup') || document.querySelector('.gbpop');
+  const cand = busy ? null : Tips.candidates().find(x => Tips.want(x.id));
+  if (Tips.pop && (!cand || Tips.pop.id !== cand.id)) { Tips.pop.el.remove(); Tips.pop = null; }
+  if (!cand || Tips.pop) return;
+  clearTimeout(Tips.wait);
+  Tips.wait = setTimeout(() => {                      // let the screen settle (and data load) before pointing at things
+    const again = Tips.candidates().find(x => x.id === cand.id);
+    if (!again || Tips.pop || S.sheet || render.swiping || !Tips.want(cand.id)) return;
+    Tips.show(again);
+  }, 700);
+};
+Tips.show = ({ id, el, title }) => {
+  const [t0, text] = TIP[id.split(':')[0]];
+  const R = el.getBoundingClientRect(), vw = innerWidth, vh = innerHeight;
+  const wrap = document.createElement('div'); wrap.className = 'tippop';
+  wrap.style.cssText = 'position:fixed;inset:0;z-index:45';
+  const hole = `left:${R.left - 5}px;top:${R.top - 5}px;width:${R.width + 10}px;height:${R.height + 10}px`;
+  const below = R.top + R.height / 2 < vh / 2;
+  wrap.innerHTML = `<div style="position:absolute;${hole};border-radius:18px;box-shadow:0 0 0 3px var(--gold),0 0 0 9999px rgba(0,0,0,.62);pointer-events:none"></div>
+    <div class="tipbub" style="position:absolute;left:16px;right:16px;max-width:488px;margin:0 auto;background:#fff;color:#111;border-radius:18px;padding:14px 16px 10px;box-shadow:0 12px 30px rgba(0,0,0,.5);display:flex;flex-direction:column;gap:6px">
+      <span style="position:absolute;${below ? 'top:-7px' : 'bottom:-7px'};left:${Math.max(28, Math.min(vw - 60, R.left + R.width / 2 - 16))}px;width:16px;height:16px;background:#fff;transform:rotate(45deg)"></span>
+      <span class="cond" style="font-size:19px;font-weight:800;letter-spacing:.6px">${esc(title || t0)}</span>
+      <span style="font-size:15px;line-height:1.4">${esc(text)}</span>
+      <button class="cond press" data-tipok style="align-self:flex-end;padding:6px 2px;font-size:17px;font-weight:800;letter-spacing:.6px;color:#2F6FE4">GOT IT</button></div>`;
+  document.body.appendChild(wrap);
+  const bub = wrap.querySelector('.tipbub'), bh = bub.getBoundingClientRect().height;
+  bub.style.top = (below ? Math.min(vh - bh - 12, R.bottom + 18) : Math.max(12, R.top - bh - 18)) + 'px';
+  const close = e => { e.preventDefault(); e.stopPropagation(); wrap.remove(); if (Tips.pop && Tips.pop.el === wrap) Tips.pop = null; Tips.done(id); render(); };
+  wrap.addEventListener('click', close);
+  Tips.pop = { id, el: wrap };
+  Diag.add('app', 'tip ' + id);
+};
+
+ACT.tipX = id => { Tips.done(id); render(); };
+ACT.tipsAgain = () => {
+  S.settings.tipsAgain = !S.settings.tipsAgain; Store.put('gb_settings', S.settings);
+  Tips.replay = {}; Store.put('gb_tipreplay', {});
+  render(); if (S.settings.tipsAgain) toast('Tips will show again as you go');
+};
+// Doing the thing closes its tip
+[['p3Lock', 'p3'], ['p3Skip', 'p3'], ['pickLock', 'pick'], ['pickLock', 'conf'], ['pickLock', 'priority'], ['pickConf', 'conf'],
+ ['resSave', 'result'], ['gNext', 'after'], ['startGame', 'newGame'], ['resume', 'live']].forEach(([a, id]) => {
+  const f = ACT[a]; if (!f) return;
+  ACT[a] = function (...args) { Tips.doneIfShown(id); return f.apply(this, args); };
+});
 
 // ════════════ Start-up ════════════
 // Show the loading line immediately. If someone was signed in on this phone, open straight to
