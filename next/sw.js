@@ -1,7 +1,7 @@
 // Guess Ball service worker: keeps a copy of the app on the phone so it opens with no signal,
 // and swaps in new versions automatically. Bump VERSION on every release.
 const PREFIX = 'gb-qa';   // the real app and the QA copy (Guess Ball Next) keep separate saved copies
-const VERSION = PREFIX + '-28';
+const VERSION = PREFIX + '-29';
 const FB = 'https://www.gstatic.com/firebasejs/10.12.2/';
 const SHELL = ['./', './index.html'];
 const LIBS = [FB + 'firebase-app.js', FB + 'firebase-auth.js', FB + 'firebase-database.js',
