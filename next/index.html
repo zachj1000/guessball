@@ -69,6 +69,14 @@ html[data-theme="light"] body::after { content: ""; position: fixed; top: 0; lef
 html[data-theme="light"] #app.photo .screen .page h2, html[data-theme="light"] #app.photo .screen .page .sechead, html[data-theme="light"] #app.photo .screen .onphoto, html[data-theme="light"] #app.photo .screen .fixedpage h2, html[data-theme="light"] #app.photo .screen .page > div > a {
   align-self: flex-start; width: fit-content; padding: 2px 12px; border-radius: 14px; background: var(--glass);
   -webkit-backdrop-filter: blur(18px); backdrop-filter: blur(18px); }
+/* On a photo, text that sits straight on the picture (not on a card) gets a soft shadow and a brighter grey, so it reads on bright parks */
+#app.photo .screen .page, #app.photo .screen .fixedpage { text-shadow: 0 1px 2px rgba(0,0,0,.9), 0 0 10px rgba(0,0,0,.55); }
+html[data-theme="light"] #app.photo .screen .page, html[data-theme="light"] #app.photo .screen .fixedpage { text-shadow: 0 0 2px rgba(255,255,255,.95), 0 0 10px rgba(255,255,255,.8); }
+#app.photo .screen :is(.card, .list, .chips, .seg, .field, .tabbar, .livebar, .dock, .swipe-ghost .card, button:not(.info-btn)) { text-shadow: none; }
+#app.photo .screen :is(.meta, .info-btn):not(:is(.card, .list, .chips, .seg, .tabbar, .dock, .sheet, .swipe-ghost, button:not(.info-btn), .info-btn) *) {
+  align-self: flex-start; width: fit-content; padding: 3px 9px; border-radius: 10px; background: var(--glass); color: var(--text2); text-shadow: none;
+  -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); }
+html[data-theme="light"] #app.photo .screen :is(.meta, .info-btn):not(:is(.card, .list, .chips, .seg, .tabbar, .dock, .sheet, .swipe-ghost, button:not(.info-btn), .info-btn) *) { color: var(--text); }
 * { box-sizing: border-box; }
 html, body { margin: 0; min-height: 100%; height: var(--apph, 100%); overflow: hidden; background: var(--bg); color: var(--text); color-scheme: dark; }
 html[data-theme="light"], html[data-theme="light"] body { color-scheme: light; }
@@ -2923,7 +2931,7 @@ const ACT = {
 };
 async function afterJoin(code, msg) {
   S.busy = false; await loadClubs(); S.scope = code; Store.setItem('gb_scope_' + S.user.uid, code);
-  S.sheet = null; S.draft = {}; S.stack = []; go('home', {}, false); toast(msg); loadHome();
+  S.sheet = null; S.draft = {}; ACT.tab('club'); toast(msg); loadHome();   // land on the new club's page
 }
 
 // ── Wire up taps and typing once ──
@@ -3030,7 +3038,9 @@ function wire() {
   const el = $app();
   swipes(el);
   document.addEventListener('scroll', e => {                   // guard: a page scrolled sideways snaps straight back (chip rows are allowed)
-    const n = e.target; if (n && n.scrollLeft && n.nodeType === 1 && !n.closest('.chips, [data-keep]')) n.scrollLeft = 0;
+    const n = e.target; if (!n || n.nodeType !== 1 || !n.scrollLeft) return;
+    const ox = getComputedStyle(n).overflowX; if (ox === 'auto' || ox === 'scroll') return;   // rows built to scroll sideways (chips, color swatches…) are left alone
+    n.scrollLeft = 0;
   }, { capture: true, passive: true });
   el.addEventListener('click', e => {
     const b = e.target.closest('[data-act]');
@@ -3930,6 +3940,7 @@ Object.assign(ACT, {
     }
     const last = G.lastEvent();
     if (last && last.type === 'play') { g.view = 'after'; return render(); }
+    if (last && last.type === 'nextHalf') { ACT.gUndo().then(() => toast('End of half-inning undone')); return; }     // just ended the half-inning (menu or NEXT HALF-INNING): Back puts it back
     ACT.gLeave('home');
   },
   gUndo: async () => {
@@ -3940,7 +3951,7 @@ Object.assign(ACT, {
     S.g.undone = { ev, ...describeAfterUndo(ev) };
     if (ev.type === 'play') { S.g.pending.picks = { ...(ev.picks || {}) }; S.g.res = { outcome: null, runs: 0, extraOuts: 0 }; S.g.view = null; }
     else if (ev.type === 'pick3') { S.g.pending.p3 = {}; S.g.view = null; }
-    else if (ev.type === 'nextHalf') { S.g.view = 'after'; }
+    else if (ev.type === 'nextHalf') { const l = G.lastEvent(); S.g.view = l && l.type === 'play' ? 'after' : null; }   // back to that half: its last play, or the pick if none yet
     else S.g.view = null;
     render();
     clearTimeout(ACT.gUndo.t); ACT.gUndo.t = setTimeout(() => { if (S.g && S.g.undone) { S.g.undone = null; render(); } }, 6000);
