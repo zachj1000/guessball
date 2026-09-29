@@ -2999,11 +2999,15 @@ function swipes(el) {
     if (!t || e.touches.length !== 1) { if (t) { clearGhosts(t); move(t.pg, 0, .18); } t = null; return; }
     const dx = e.touches[0].clientX - t.x, dy = e.touches[0].clientY - t.y;
     if (!t.dir) {
-      if (Math.abs(dx) + Math.abs(dy) < 10) return;
-      t.dir = Math.abs(dx) > Math.abs(dy) * 1.4 ? 'h' : 'v';
+      const ax = Math.abs(dx), ay = Math.abs(dy);
+      if (ax >= 6 && ax > ay * 1.4) t.dir = 'h';                // clearly sideways: decide early, before the page starts scrolling
+      else if (ax + ay < 10) return;
+      else t.dir = ax > ay * 1.4 ? 'h' : 'v';
       if (t.dir === 'v' || (t.mode === 'back' && dx < 0)) { t = null; return; }       // a scroll: hands off
       if (t.mode === 'tabs') makeGhosts(t);
+      const sc = t.pg && (t.pg.closest('[data-scroll]') || t.pg.closest('.page, .fixedpage')); t.sc = sc; t.top = sc ? sc.scrollTop : 0;
     }
+    if (t.sc && t.sc.scrollTop !== t.top) t.sc.scrollTop = t.top;                        // sideways swipe: the page stays where it was
     t.dx = dx;
     if (t.mode === 'back') { move(t.pg, Math.max(0, dx)); return; }
     const k = dx < 0 ? 1 : -1, x = t.ghosts[k] ? dx : dx * 0.2;                          // nothing that way: resist
@@ -3036,6 +3040,9 @@ function swipes(el) {
       unshift();
     }, 185);
   };
+  // Once a swipe is locked sideways, stop the page from also scrolling up and down. This is the only listener that
+  // isn't passive, and it does nothing at all unless a sideways swipe is already under way.
+  el.addEventListener('touchmove', e => { if (t && t.dir === 'h' && e.cancelable) e.preventDefault(); }, { passive: false });
   el.addEventListener('touchend', end, { passive: true });
   el.addEventListener('touchcancel', () => { if (t) { clearGhosts(t); move(t.pg, 0, .18); t = null; } }, { passive: true });
 }
