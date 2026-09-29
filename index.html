@@ -634,10 +634,10 @@ const Statistician = (() => {
       const r = result(g);
       const order = g.players.map((_, i) => i).sort((a, b) => r.scores[b] - r.scores[a]);
       (bySeason[season(g)] = bySeason[season(g)] || []).push({
-        id: g.id, date: g.date, era: g.era, tag: g.tv ? 'HOME · TV' : { preapp: 'PRE-APP', beta: 'BETA', hand: 'ADDED BY ' + (g.addedBy || '').toUpperCase(), app: '' }[g.era],
+        id: g.id, date: g.date, era: g.era, tag: g.tv ? 'COUCH GAME' : { preapp: 'PRE-APP', beta: 'BETA', hand: 'ADDED BY ' + (g.addedBy || '').toUpperCase(), app: '' }[g.era],
         doubleheader: label.get(g) || '', tie: r.tie,
         players: order.map(i => ({ id: g.players[i].id, name: g.players[i].name, score: r.scores[i], outcome: outcomeFor(g, i) })),
-        away: g.away || '', home: g.home || '', park: g.tv ? 'Watched at home' : (g.park || ''), mlb: g.mlb || null,
+        away: g.away || '', home: g.home || '', park: g.tv ? 'Couch game' : (g.park || ''), mlb: g.mlb || null,
       });
     });
     return Object.keys(bySeason).sort((a, b) => b - a).map(y => ({ season: +y, games: bySeason[y] }));
@@ -1724,6 +1724,11 @@ const FilingCabinet = (() => {
       await queue({ ['games/' + g.id]: g, ...indexChanges(g, { date, seq: g.seq }) });
       return g;
     }
+    // At the ballpark / at home on any game (host, club captain or admin — even after it ended)
+    async function setWhere(g, tv) {
+      need(); g.tv = tv ? true : undefined; if (!tv) delete g.tv; gameCache.delete(g.id);
+      await queue({ ['games/' + g.id + '/tv']: tv ? true : null });
+    }
     async function editHandGame(g, fields) {
       const allowed = ['scores', 'date', 'away', 'home', 'park', 'mlb', 'note', 'tv'];
       const ch = {};
@@ -1812,7 +1817,7 @@ const FilingCabinet = (() => {
       myAccount, saveProfile, unlinkAccount, profiles, tipSeen,
       createClub, findClubs, myClubs, clubInfo, roster, joinClub, requests, answerRequest, leaveClub, setCaptain, removeMember, updateClub,
       addGuest, renameGuest, claimGuest, answerClaim, myAliases, accounts, offerGuest, myOffers, dismissOffer, myClaims,
-      startGame, liveGame, findLiveGame, addEvent, undo, takeOver, updateGameInfo, endGame, discardGame, addHandGame, editHandGame, deleteGame,
+      startGame, liveGame, findLiveGame, addEvent, undo, takeOver, updateGameInfo, endGame, discardGame, addHandGame, editHandGame, deleteGame, setWhere,
       loadGames, historyOf, exportAll, monthlyBackup, isAdmin };
   }
 
@@ -3176,7 +3181,7 @@ const G = {
 };
 
 // Shared pieces
-const whereAt = g => (g && g.tv ? 'Watched at home' : (g && g.park) || '');   // a game watched on TV names no ballpark
+const whereAt = g => (g && g.tv ? 'Couch game' : (g && g.park) || '');   // a game watched on TV names no ballpark
 const outsDots = n => `<div style="display:flex;gap:4px" aria-label="${n} out">${[0, 1, 2].map(i => `<span style="width:9px;height:9px;border-radius:5px;${i < n ? 'background:var(--text)' : 'border:1.5px solid var(--dim)'}"></span>`).join('')}</div>`;
 const menuBtn = () => `<button class="press" aria-label="Game menu" ${act('openSheet', 'gameMenu')} style="width:36px;height:36px;border-radius:18px;background:var(--card);display:flex;align-items:center;justify-content:center;gap:3px">${'<span style="width:4px;height:4px;border-radius:2px;background:var(--text)"></span>'.repeat(3)}</button>`;
 // The real game's score (from the runs entered on each play, or Fix MLB score), under the inning: leader in white
@@ -3239,12 +3244,11 @@ SCREENS.newGame = () => {
   return `<div class="fixedpage" style="gap:12px">
   <div class="topbar">${backBtn()}<h1 class="cond h1">NEW GAME</h1></div>
   ${tipCard('newGame')}
-  <h2 class="cond label" style="margin:6px 0 0;font-size:18px">MATCHUP</h2>
-  <div class="list">${team('away', 'AWAY')}${team('home', 'HOME')}</div>
-  <div class="seg cond"><button class="${n.tv ? '' : 'on'}" ${act('ngWhere', 'park')}>AT THE BALLPARK</button><button class="${n.tv ? 'on' : ''}" ${act('ngWhere', 'home')}>AT HOME</button></div>
-  <div style="display:flex;justify-content:space-between;align-items:center;padding:0 4px">
-    <span class="courier meta" style="font-size:12px">${esc([n.tv ? 'Watching at home' : park, today].filter(Boolean).join(' · '))}</span>
-    ${n.tv ? '' : `<a ${act('openSheet', 'park')} style="font-size:14px;font-weight:600">Different ballpark?</a>`}</div>
+  <div style="display:flex;justify-content:space-between;align-items:baseline;margin:6px 0 0"><h2 class="cond label" style="margin:0;font-size:18px">MATCHUP</h2><span class="cond label" style="font-size:15px">${esc(today.toUpperCase())}</span></div>
+  <div class="seg cond"><button class="${n.tv ? '' : 'on'}" ${act('ngWhere', 'park')}>AT THE BALLPARK</button><button class="${n.tv ? 'on' : ''}" ${act('ngWhere', 'home')}>COUCH GAME</button></div>
+  <div class="list">${team('away', 'AWAY')}${team('home', 'HOME')}${n.tv ? '' : `<button class="row press" ${act('openSheet', 'park')} style="min-height:54px">
+    <span class="cond" style="width:48px;font-size:15px;font-weight:800;letter-spacing:.8px;color:var(--text3)">PARK</span>
+    <span style="flex-grow:1;font-size:17px;font-weight:600;color:${park ? 'var(--text)' : 'var(--text4)'}">${esc(park || 'Choose ballpark')}</span>${ICON.chev}</button>`}</div>
   <h2 class="cond label" style="margin:6px 0 0;font-size:18px">PLAYERS</h2>
   <div class="list">${n.players.map((p, i) => { const c = PCOLOR[p.color || PCOLORS[i][0]]; return `<div class="row" style="min-height:62px">
       <button class="press" aria-label="Color for ${attr(p.name)}" ${act('openSheet', 'ngColor:' + i)} style="width:40px;height:40px;border-radius:20px;background:${c};color:${onColor(c)};display:flex;align-items:center;justify-content:center;font-weight:800;flex-shrink:0;position:relative">${esc(p.name[0].toUpperCase())}
@@ -3663,7 +3667,7 @@ function matchupSheet() {
     <button class="row press" ${act('openSheet', 'pickTeam:home')}><span class="cond" style="width:48px;font-size:15px;font-weight:800;color:var(--text3)">HOME</span><span style="flex-grow:1;font-size:17px;font-weight:600">${esc(g.home || 'Choose team')}</span>${ICON.chev}</button>
     ${g.tv ? '' : `<button class="row press" ${act('openSheet', 'park')}><span class="cond" style="width:48px;font-size:15px;font-weight:800;color:var(--text3)">PARK</span><span style="flex-grow:1;font-size:17px;font-weight:600">${esc(g.park || 'Choose park')}</span>${ICON.chev}</button>`}
   </div>
-  <div class="seg cond"><button class="${g.tv ? '' : 'on'}" ${act('mWhere', 'park')}>AT THE BALLPARK</button><button class="${g.tv ? 'on' : ''}" ${act('mWhere', 'home')}>AT HOME</button></div>`;
+  <div class="seg cond"><button class="${g.tv ? '' : 'on'}" ${act('mWhere', 'park')}>AT THE BALLPARK</button><button class="${g.tv ? 'on' : ''}" ${act('mWhere', 'home')}>COUCH GAME</button></div>`;
 }
 function endHalfSheet() {
   const s = S.g.s;
@@ -4110,7 +4114,7 @@ function statsHistory(games) {
   const card = g => {
     const d = g.date.split('-');
     const tag = g.tag ? `<span class="cond tag" style="font-size:10px">${esc(g.tag)}</span>` : '';
-    const meta = [g.doubleheader, g.away && g.home ? `${shortTeam(g.away)} at ${shortTeam(g.home)}` : '', g.park].filter(Boolean).join(' · ');   // history already says 'Watched at home' for TV games
+    const meta = [g.doubleheader, g.away && g.home ? `${shortTeam(g.away)} at ${shortTeam(g.home)}` : '', g.park].filter(Boolean).join(' · ');   // history already says 'Couch game' for TV games
     return `<button class="card press" ${act('openGame', g.id)} style="width:100%;border-radius:18px;padding:10px 16px;display:flex;align-items:center;gap:14px;text-align:left">
       <div style="width:40px;display:flex;flex-direction:column;align-items:center;flex-shrink:0"><span class="cond" style="font-size:14px;font-weight:800;color:var(--text3);letter-spacing:.6px">${MONTHS[+d[1] - 1]}</span><span class="shoulders num" style="font-size:26px;font-weight:900;line-height:1">${+d[2]}</span></div>
       <div style="flex-grow:1;min-width:0;display:flex;flex-direction:column;gap:1px">
@@ -4298,7 +4302,7 @@ SCREENS.addGame = () => {
     <button class="row press" ${act('openSheet', 'pickTeam:away')}><span class="cond" style="width:48px;font-size:15px;font-weight:800;color:var(--text3)">AWAY</span><span style="flex-grow:1;font-size:16px;color:${d.away ? 'var(--text)' : 'var(--text4)'}">${esc(d.away || 'Choose team')}</span>${ICON.chev}</button>
     <button class="row press" ${act('openSheet', 'pickTeam:home')}><span class="cond" style="width:48px;font-size:15px;font-weight:800;color:var(--text3)">HOME</span><span style="flex-grow:1;font-size:16px;color:${d.home ? 'var(--text)' : 'var(--text4)'}">${esc(d.home || 'Choose team')}</span>${ICON.chev}</button>
     <button class="row press" ${act('openSheet', 'park')}><span class="cond" style="width:48px;font-size:15px;font-weight:800;color:var(--text3)">PARK</span><span style="flex-grow:1;font-size:16px;color:${d.park || TEAMS[d.home] ? 'var(--text)' : 'var(--text4)'}">${esc(d.park || TEAMS[d.home] || 'Ballpark')}</span>${ICON.chev}</button></div>
-  <div class="seg cond"><button class="${d.tv ? '' : 'on'}" ${act('agWhere', 'park')}>AT THE BALLPARK</button><button class="${d.tv ? 'on' : ''}" ${act('agWhere', 'home')}>AT HOME</button></div>
+  <div class="seg cond"><button class="${d.tv ? '' : 'on'}" ${act('agWhere', 'park')}>AT THE BALLPARK</button><button class="${d.tv ? 'on' : ''}" ${act('agWhere', 'home')}>COUCH GAME</button></div>
   <span class="cond label">NOTE · OPTIONAL</span>
   <label class="field"><input data-model="ag.note" value="${attr(d.note)}" maxlength="280" placeholder="Anything worth remembering"></label>
   <button class="big-btn cond press" style="margin-top:6px" ${act('agSave')} data-check="addGame" data-ok="${ok ? 1 : 0}" ${ok && !S.busy ? '' : 'disabled'}>${editing ? 'SAVE CHANGES' : 'ADD GAME'}</button>
@@ -5364,7 +5368,7 @@ SCREENS.appearance = () => {
   <span class="cond label">BACKGROUND</span>
   ${seg('bg', [['off', 'OFF'], ['stadium', 'STADIUM'], ['mine', 'MY PHOTO']])}
   ${parkRow}${mineRow}
-  ${a.bg !== 'off' ? `<span class="courier meta" style="line-height:1.5">Games at a ballpark show that park’s own photo. Games at home show yours.</span>` : ''}
+  ${a.bg !== 'off' ? `<span class="courier meta" style="line-height:1.5">Games at a ballpark show that park’s own photo. Couch games show yours.</span>` : ''}
   <span class="cond label">THEME</span>
   ${seg('theme', [['dark', 'DARK'], ['light', 'LIGHT'], ['auto', 'AUTO']])}
   <div class="list"><div class="row" style="min-height:52px"><div style="flex-grow:1;padding:6px 0">${info('apFrost', '<span style="font-size:16px;font-weight:500;color:var(--text)">Frosted cards</span>', 'Blurs the stadium photo behind each card (you can see it in the preview above). Only shows when a background photo is on. If the app ever feels sticky, turn this off.', '')}</div>${toggle(a.frost, 'apToggleFrost')}</div></div>
