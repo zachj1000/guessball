@@ -139,6 +139,12 @@ html[data-theme="light"] .picked { box-shadow: inset 0 0 0 1.5px rgba(0,0,0,.35)
 html[data-theme="light"] .dock button { border-color: rgba(0,0,0,.06); box-shadow: 0 8px 24px rgba(0,0,0,.12); }
 .fixedpage { overscroll-behavior: contain; position: absolute; inset: 0; padding: calc(var(--safe-top) + 14px) 20px calc(var(--safe-bot) + 20px); display: flex; flex-direction: column; gap: 14px; overflow-y: auto; }
 .fixedpage > * { flex-shrink: 0; }
+/* Game screens: the list scrolls, the bottom buttons stay put */
+.fixedpage.gamepage { overflow: hidden; }
+.fixedpage.gamepage > .gscroll { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; display: flex; flex-direction: column; gap: inherit; margin: 0 -20px; padding: 0 20px 10px;
+  -webkit-mask-image: linear-gradient(#000 calc(100% - 12px), transparent); mask-image: linear-gradient(#000 calc(100% - 12px), transparent); }
+.gscroll > * { flex-shrink: 0; }
+.fixedpage.gamepage > .gfoot { flex-shrink: 0; display: flex; flex-direction: column; gap: inherit; }
 .grow { flex-grow: 1 !important; flex-shrink: 1 !important; }
 
 .card { background: var(--card); border-radius: 18px; }
@@ -1919,7 +1925,7 @@ const FilingCabinet = (() => {
 // ════════════════════════════════════════════════════════════════
 // Which copy of the app this is: the real app, or Guess Ball Next (QA, with its own test data)
 const ENV = {"name":"qa","data":"qa","store":"gbqa_"};
-const VERSION = ENV.name === 'qa' ? '2.0 · QA build 9 · 09-29 17:50 UTC' : '2.0';
+const VERSION = ENV.name === 'qa' ? '2.0 · QA build 10 · 09-30 00:50 UTC' : '2.0';
 const RULES_JSON = {
   "rules": {
     "v2": {
@@ -2243,7 +2249,7 @@ const Diag = (() => {
     if (prev && prev.k === kind && prev.d.replace(/ ×\d+$/, '') === d && prev.s === sc && kind === 'touch') {   // a run of touches on the same layer: one line
       prev.n = (prev.n || 1) + 1; prev.d = d + ' ×' + prev.n; prev.t = Date.now();
     } else log.push({ t: Date.now(), k: kind, s: sc, sh, d });
-    if (log.length > 150) log = log.slice(-150);
+    if (log.length > 400) log = log.slice(-400);
     try { LiveLog.poke(); } catch (e) { /* not set up yet */ }
     clearTimeout(save); save = setTimeout(() => Store.put('gb_diag', log), 400);
   };
@@ -2657,12 +2663,12 @@ const deviceLine = () => { const u = navigator.userAgent, ios = /OS (\d+)_(\d+)/
   const standalone = navigator.standalone === true || (window.matchMedia && matchMedia('(display-mode: standalone)').matches);
   return (/iPhone/.test(u) ? 'iPhone' : /iPad/.test(u) ? 'iPad' : /Android/.test(u) ? 'Android' : 'Computer') + (ios ? ' iOS ' + ios[1] + '.' + ios[2] : '') + (standalone ? ' · home-screen app' : ' · browser'); };
 const DIAG_LABEL = { error: 'ERROR', stall: 'FROZE', tap: 'tap', touch: 'touch', app: 'app' };
-const diagText = () => 'Guess Ball ' + VERSION + ' · ' + ((S.account && S.account.name) || '') + ' · ' + deviceLine() + '\n'
-  + Diag.get().map(r => `${new Date(r.t).toISOString().slice(11, 19)} ${r.k} ${r.d} [${r.s}${r.sh ? '/' + r.sh : ''}]`).join('\n');
+const diagText = (noTouches) => 'Guess Ball ' + VERSION + ' · ' + ((S.account && S.account.name) || '') + ' · ' + deviceLine() + '\n'
+  + Diag.get().filter(r => !noTouches || r.k !== 'touch').map(r => `${new Date(r.t).toISOString().slice(11, 19)} ${r.k} ${r.d} [${r.s}${r.sh ? '/' + r.sh : ''}]`).join('\n');
 // Guess Ball Next only: send the Problem log to Firebase a few seconds after anything new happens, so Claude can watch a test live
 const LiveLog = { t: null, last: '',
   poke() { if (ENV.name !== 'qa' || LiveLog.t) return; LiveLog.t = setTimeout(LiveLog.send, 3000); },
-  send() { LiveLog.t = null; if (!FCab || !S.user || !FCab.saveDiag) return; const txt = diagText().slice(0, 39000);
+  send() { LiveLog.t = null; if (!FCab || !S.user || !FCab.saveDiag) return; const txt = diagText(true).slice(0, 39000);   // (no raw touches: the taps themselves are logged)
     if (txt !== LiveLog.last) { LiveLog.last = txt; FCab.saveDiag(txt); } } };
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden' && LiveLog.t) { clearTimeout(LiveLog.t); LiveLog.send(); } });
 SCREENS.diag = () => { const rows = Diag.get(); return `<div class="page">
@@ -3868,8 +3874,17 @@ SCREENS.game = () => {
   if (!S.g) return SCREENS.home();
   const v = G.view();
   if (!S.g.remote && (v === 'pick' || v === 'pick3')) Two.checkTurn(v === 'pick3' ? G.p3Next() : G.pickNext());
-  return (SCREENS[v] || SCREENS.pick)() + (S.g.undone && v !== 'after' ? undoToast() : '');
+  return pinFooter((SCREENS[v] || SCREENS.pick)()) + (S.g.undone && v !== 'after' ? undoToast() : '');
 };
+// Every game screen: the buttons at the bottom (everything after its <div class="grow">) stay put, and the rest scrolls above them
+function pinFooter(html) {
+  const GROW = '<div class="grow"></div>', t = html.trimEnd();
+  const open = t.indexOf('>'), cut = t.lastIndexOf(GROW);
+  if (!t.startsWith('<div class="fixedpage"') || cut < 0 || !t.endsWith('</div>')) return html;
+  return t.slice(0, open).replace('class="fixedpage"', 'class="fixedpage gamepage"') + '>'
+    + '<div class="gscroll" data-scroll>' + t.slice(open + 1, cut) + '</div>'
+    + '<div class="gfoot">' + t.slice(cut + GROW.length, -6) + '</div></div>';
+}
 
 // ── Live bar (above the tab bar while a game is live) + Home's resume card ──
 function liveBar() {
@@ -3967,10 +3982,11 @@ function afterPlayFx() {
   showAwardsAt(idx);
 }
 // Pop up any awards earned on scorebook event `idx` (after a play, or after REDO puts one back)
-function showAwardsAt(idx) {
+// (upTo: a joined phone catching up on several plays at once)
+function showAwardsAt(idx, upTo = idx) {
   if (!S.g.history) return;
   const cp = G.copy();
-  const got = Statistician.awardsInGame(S.g.history.concat([cp]), cp).filter(a => a.at === idx);
+  const got = Statistician.awardsInGame(S.g.history.concat([cp]), cp).filter(a => a.at >= idx && a.at <= upTo && Two.awardHere(a.playerId));
   if (got.length) { Popup.show(got); Sound.play('award'); buzz(); }
 }
 function describeEvent(ev) {
@@ -4079,7 +4095,7 @@ Object.assign(ACT, {
     const ev = { type: 'play', outcome: r.outcome, picks, runs: r.runs, extraOuts: r.extraOuts };
     try { await saveEvent(ev); } catch (e) { return toast(e.message, true); }
     S.g.pending.picks = {}; S.g.res = { outcome: null, runs: 0, extraOuts: 0 }; S.g.view = 'after';
-    afterPlayFx(); render(); const p = $app().querySelector('.fixedpage'); if (p) p.scrollTop = 0;
+    afterPlayFx(); render(); const p = $app().querySelector('.gscroll') || $app().querySelector('.fixedpage'); if (p) p.scrollTop = 0;
   },
   gNext: async next => {
     Popup.clear();
@@ -4092,10 +4108,12 @@ Object.assign(ACT, {
     if (g.view === 'after') return;
     const v = G.view();
     if (v === 'pick3' && g.p3sel.length) { g.p3sel = g.p3sel.slice(0, -1); return render(); }
-    if (v === 'pick3') { const done = G.order().filter(j => j in g.pending.p3); if (done.length) { delete g.pending.p3[done.pop()]; return render(); } }
-    if ((v === 'pick' || v === 'result') && Object.keys(g.pending.picks).length) {
+    // Back steps back through the picks made on this phone (never one someone made on their own phone)
+    if (v === 'pick3' || (v === 'wait' && g.s.needsPick3)) { const done = G.order().filter(j => j in g.pending.p3 && Two.mayTakeBack(j)); if (done.length) { delete g.pending.p3[done.pop()]; return render(); } }
+    const order = Umpire.pickOrder(g.s).filter(j => g.pending.picks[j] && Two.mayTakeBack(j));
+    if (['pick', 'result', 'wait'].includes(v) && !g.s.needsPick3 && order.length) {
       if (v === 'result' && g.res.outcome) { g.res = { outcome: null, runs: 0, extraOuts: 0 }; }
-      const order = Umpire.pickOrder(g.s).filter(j => g.pending.picks[j]); const j = order.pop();
+      const j = order.pop();
       g.sel = g.pending.picks[j]; delete g.pending.picks[j]; return render();
     }
     const last = G.lastEvent();
@@ -5591,12 +5609,25 @@ applyTheme();
 // the security rules); every phone draws its screen from the shared game. With nobody joined, nothing here changes
 // how a one-phone game works (the host's picks still go into the slots, which is how late picks get refused).
 const Two = {
-  inflight: {}, mine: {},                        // "<round>:<player>": picks this phone is still sending / has put in (an out-of-date copy of the game never takes those away)
+  inflight: {}, mine: {}, seen: {},                        // "<round>:<player>": picks this phone is still sending / has put in (an out-of-date copy of the game never takes those away)
   stopWatch: null, stopLive: null,
   isAccount: p => !!(p && p.id && !/^g_/.test(p.id) && !p.id.includes(':')),
   // Could anyone else in this game pick on their own phone?
   multi: () => !!(S.g && (S.g.remote || S.g.game.players.some(p => p.id !== S.user.uid && Two.isAccount(p)))),
   me: () => (S.g.remote ? S.g.me : S.g.game.players.findIndex(p => p.id === S.user.uid)),
+  // Can Back on this phone take back player j's pick? Only one made on this phone (yours, a PICK FOR, or a player who isn't on their own phone)
+  mayTakeBack(j) {
+    if (!S.g || S.g.remote || !Two.multi()) return true;
+    const k = Two.key() + ':' + j, slot = ((S.g.game.slots || {})[Two.key()] || {})[j];
+    return !!(Two.mine[k] || (slot && slot.by === S.user.uid));
+  },
+  // Which phone shows a player's award popup: the one they pick on
+  awardHere(pid) {
+    if (!S.g) return false;
+    const i = S.g.game.players.findIndex(p => p.id === pid);
+    if (S.g.remote) return i === S.g.me;
+    return !(i !== Two.me() && Two.joined(i));
+  },
   key: () => 'e' + S.g.game.events.length,
   joined: i => !!(S.g.game.joined && S.g.game.joined[i]),
   hostName: () => ((S.g.game.players.find(p => p.id === S.g.game.host) || {}).name || 'The host'),
@@ -5618,7 +5649,7 @@ const Two = {
   },
   unsend(i) {
     if (!Two.multi() || i === undefined) return;
-    delete Two.mine[Two.key() + ':' + i];
+    delete Two.mine[Two.key() + ':' + i]; delete Two.seen[Two.key() + ':' + i];
     FCab.clearSlot(S.g.game, Two.key(), i).catch(e => Two.lost(e));
   },
   // Firebase said no (someone else's pick got there first, or the round was already saved): show what really happened
@@ -5643,13 +5674,14 @@ const Two = {
     if (!S.g.remote && (S.g.game.events.length !== startedWith || FCab.status().pending)) { Two.reloadAgain = true; return; }   // saved something while this was loading: that copy is already old
     if (!fresh) return Two.gone('This game was thrown out');
     if (S.g.remote && fresh.ended) return Two.gone('Game over');
-    const keep = S.g.game, shownLast = JSON.stringify(G.lastEvent() || null);
+    const keep = S.g.game, shownLast = JSON.stringify(G.lastEvent() || null), had = keep.events.length;
     S.g.game = Object.assign(keep, fresh, { events: fresh.events });
     FCab.adoptLive(S.g.game);
-    S.g.pending = { p3: {}, picks: {} }; S.g.sel = null; S.g.p3sel = []; S.g.pickFor = null; Two.mine = {};
+    S.g.pending = { p3: {}, picks: {} }; S.g.sel = null; S.g.p3sel = []; S.g.pickFor = null; Two.mine = {}; Two.seen = {};
     if (!S.g.remote) { S.g.res = { outcome: null, runs: 0, extraOuts: 0 }; const l = G.lastEvent();   // stay on the outcome screen only if it still shows the real last play
       S.g.view = S.g.view === 'after' && l && l.type === 'play' && JSON.stringify(l) === shownLast ? 'after' : null; }
     G.replay(); Two.sync(fresh, true);
+    if (S.g && S.g.remote && S.g.game.events.length > had) { const l = G.lastEvent(); if (l && l.type === 'play') { S.g.view = 'after'; showAwardsAt(had, S.g.game.events.length - 1); render(); } }   // woke up to plays it missed
     if (msg) toast(msg, true);
   },
   // A new copy of the game arrived from Firebase
@@ -5669,7 +5701,7 @@ const Two = {
       const now = S.g.game.events.length, l = G.lastEvent();
       if (now !== before) Diag.add('app', `2p new round e${now} (was e${before})`);
       if (now !== before || (S.g.pendKey && S.g.pendKey !== Two.key())) { S.g.pending = { p3: {}, picks: {} }; S.g.sel = null; S.g.p3sel = []; S.g.pendKey = Two.key(); }   // a new round: last round's picks don't carry over
-      if (now > before && l && l.type === 'play') { S.g.view = 'after'; if (!quiet) Sound.play(Two.rightFor(l) ? 'right' : 'miss'); }   // everyone sees how the play went
+      if (now > before && l && l.type === 'play') { S.g.view = 'after'; if (!quiet) { Sound.play(Two.rightFor(l) ? 'right' : 'miss'); showAwardsAt(before, now - 1); } }   // everyone sees how the play went (and their own awards)
       else if (S.g.view === 'after' && !(l && l.type === 'play')) S.g.view = null;                                     // undone, or the half changed
     } else {
       S.g.game.joined = v.joined || null;
@@ -5683,7 +5715,10 @@ const Two = {
     if (sig !== Two.lastSig) { Two.lastSig = sig; Diag.add('app', sig); }
     const settled = !FCab.status().pending;          // don't take away picks this phone hasn't finished sending
     const wasP3 = s.needsPick3 ? G.p3Next() : null;
-    const own = i => Two.inflight[key + ':' + i] || Two.mine[key + ':' + i];
+    // A pick this phone put in stays until Firebase has confirmed it at least once (so an out-of-date copy can't take it away);
+    // after that, if it's gone, someone really took it back (e.g. the host undid Pick 3)
+    Object.keys(cur).forEach(i => { if (cur[i] && Two.mine[key + ':' + i]) Two.seen[key + ':' + i] = true; });
+    const own = i => Two.inflight[key + ':' + i] || (Two.mine[key + ':' + i] && !Two.seen[key + ':' + i]);
     if (s.needsPick3) {
       const n = S.g.game.players.length, ok = i => /^\d+$/.test(i) && +i < n;   // only real player numbers
       const got = {}; Object.entries(cur).forEach(([i, x]) => { if (x && ok(i)) got[i] = x.skip ? null : (x.p3 ? Object.values(x.p3) : null); });
@@ -5719,6 +5754,7 @@ const Two = {
     Two.stop();
     if (!S.g || !FCab || !S.user || !Two.multi()) return;   // (the app can open a saved live game before Firebase is ready — afterSignIn starts it then)
     const id = S.g.game.id;
+    if (Two.mineFor !== id) { Two.mine = {}; Two.seen = {}; Two.mineFor = id; }   // (round names start over in every game)
     // Firebase hands news over instantly — even in the middle of this phone saving its own pick, or inside this very call.
     // So news is handled a moment later, once whatever the phone was doing has finished (only the latest copy counts).
     let latest, due = false;
@@ -5755,7 +5791,7 @@ setInterval(() => {
   const id = S.g.game.id, before = Two.lastSig;
   FCab.peekGame(id).then(g => {
     if (!g || !S.g || S.g.game.id !== id) return;
-    Two.sync(g, true);
+    Two.sync(g);
     if (Two.lastSig !== before) Diag.add('app', '2p backstop caught an update the live connection missed');
   }).catch(() => {});
 }, 4000);
@@ -5827,6 +5863,7 @@ Object.assign(ACT, {
     S.g = { game: g, remote: true, me: inv.me, s: null, pending: { p3: {}, picks: {} }, sel: null, p3sel: [], res: { outcome: null, runs: 0, extraOuts: 0 }, view: null, history: null, popup: null };
     G.replay(); Two.sync(g, true); Two.watch();
     S.stack = []; S.screen = 'game'; render(); Awake.on();
+    loadGameHistory();                                   // (for award popups on this phone)
     Diag.add('app', 'joined ' + inv.hostName + '’s game');
   },
   twoLeave: () => ACT.gLeave('home'),
