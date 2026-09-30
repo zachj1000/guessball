@@ -1702,22 +1702,29 @@ const FilingCabinet = (() => {
     // Saving the entry closes that round in the same instant, so a pick arriving late is refused.
     const roundKey = g => 'e' + g.events.length;
     const staleErr = () => Promise.reject(Object.assign(new Error('Catching up with the other phone — try again in a moment'), { code: 'STALE' }));
+    // The scorebook's head (see the security rules): where the next entry goes, which one is last, and that entry's id
+    const headOf = g => { const n = g.events.length, l = g.events[n - 1]; return { next: '' + n, last: '' + (n - 1), id: (l && l.id) || null }; };
+    const entryId = () => now().toString(36) + Math.floor(random() * 1e9).toString(36);
     function addEvent(g, ev) {
       if (staleGames.has(g.id)) return staleErr();   // never build on a copy Firebase already said is wrong (not even on this phone)
       const n = g.events.length, key = 'e' + n;
-      if (ev.type === 'play' || ev.type === 'pick3') ev = { ...ev, key };
-      g.events.push(ev); g.closed = { ...(g.closed || {}), [key]: true }; save('gb_live', g);
-      return queue({ ['games/' + g.id + '/events/' + n]: ev, ['games/' + g.id + '/closed/' + key]: true, ['games/' + g.id + '/updatedAt']: now() });
+      ev = { ...ev, id: entryId(), by: uid };
+      if (ev.type === 'play' || ev.type === 'pick3') ev.key = key;
+      g.events.push(ev); g.closed = { ...(g.closed || {}), [key]: true }; g.head = headOf(g); if (g.host === uid) save('gb_live', g);
+      return queue({ ['games/' + g.id + '/events/' + n]: ev, ['games/' + g.id + '/closed/' + key]: true, ['games/' + g.id + '/head']: g.head, ['games/' + g.id + '/updatedAt']: now() });
     }
     function undo(g) {
       if (!g.events.length) return Promise.resolve();
       if (staleGames.has(g.id)) return staleErr();
-      g.events.pop(); const key = 'e' + g.events.length; if (g.closed) delete g.closed[key]; save('gb_live', g);
-      return queue({ ['games/' + g.id + '/events/' + g.events.length]: null, ['games/' + g.id + '/closed/' + key]: null, ['games/' + g.id + '/updatedAt']: now() });
+      const gone = g.events.pop(), n = g.events.length, key = 'e' + n; if (g.closed) delete g.closed[key];
+      g.head = { ...headOf(g), undid: (gone && gone.id) || null, by: uid }; if (g.host === uid) save('gb_live', g);
+      const ch = { ['games/' + g.id + '/events/' + n]: null, ['games/' + g.id + '/closed/' + key]: null, ['games/' + g.id + '/head']: g.head, ['games/' + g.id + '/updatedAt']: now() };
+      if (gone && gone.type === 'pick3') { ch['games/' + g.id + '/slots/' + key] = null; if (g.slots) delete g.slots[key]; }   // Pick 3 opens again with nobody's picks in
+      return queue(ch);
     }
     // A game straight from Firebase: events back in a list, and a skipped Pick 3 put back (Firebase drops empty values)
     const tidyGame = g => { if (!g) return g;
-      g.events = g.events ? Object.values(g.events).map(ev => ev.type !== 'pick3' ? ev
+      g.events = g.events ? Object.values(g.events).filter(Boolean).map(ev => ev.type !== 'pick3' ? ev
         : { ...ev, picks: Array.from({ length: g.players.length }, (_, i) => (ev.picks && ev.picks[i] ? Object.values(ev.picks[i]) : null)) }) : [];
       return g; };
     // One player's pick for one round: { pick, conf } or { p3: [a,b,c] } or { skip: true }. First to Firebase wins.
@@ -1784,9 +1791,10 @@ const FilingCabinet = (() => {
         await queue({ ...liveOff, ['games/' + g.id]: null });
         return queue(indexChanges(g, null));
       }
-      g.events.push({ type: 'end' });
+      const endEv = { type: 'end', id: entryId(), by: uid };
+      g.events.push(endEv); g.head = headOf(g);
       Object.assign(g, { ended: true, endedAt: now(), scores, mlb, note: note.slice(0, 280) });
-      return queue({ ['games/' + g.id + '/events/' + (g.events.length - 1)]: { type: 'end' },
+      return queue({ ['games/' + g.id + '/events/' + (g.events.length - 1)]: endEv, ['games/' + g.id + '/head']: g.head,
         ['games/' + g.id + '/ended']: true, ['games/' + g.id + '/endedAt']: g.endedAt,
         ['games/' + g.id + '/scores']: scores, ['games/' + g.id + '/mlb']: mlb, ['games/' + g.id + '/note']: g.note, ...liveOff });
     }
@@ -1925,7 +1933,7 @@ const FilingCabinet = (() => {
 // ════════════════════════════════════════════════════════════════
 // Which copy of the app this is: the real app, or Guess Ball Next (QA, with its own test data)
 const ENV = {"name":"qa","data":"qa","store":"gbqa_"};
-const VERSION = ENV.name === 'qa' ? '2.0 · QA build 10 · 09-30 00:50 UTC' : '2.0';
+const VERSION = ENV.name === 'qa' ? '2.0 · QA build 11 · 09-30 02:32 UTC' : '2.0';
 const RULES_JSON = {
   "rules": {
     "v2": {
@@ -2014,11 +2022,25 @@ const RULES_JSON = {
           ".write": "((!data.exists()) && (newData.child('host').val() === auth.uid)) || ((data.child('host').val() === auth.uid) && (newData.exists()) && ((data.child('ended').val() !== true) || (data.child('era').val() === 'hand')) && (newData.child('host').val() === auth.uid)) || ((data.child('host').val() === auth.uid) && (!newData.exists()) && ((data.child('era').val() === 'hand') || (data.child('ended').val() !== true))) || ((!newData.exists()) && (((data.child('clubList/0').exists()) && (root.child('v2').child('clubs').child(data.child('clubList/0').val()).child('members').child(auth.uid).child('captain').val() === true)) || ((data.child('clubList/1').exists()) && (root.child('v2').child('clubs').child(data.child('clubList/1').val()).child('members').child(auth.uid).child('captain').val() === true)) || ((data.child('clubList/2').exists()) && (root.child('v2').child('clubs').child(data.child('clubList/2').val()).child('members').child(auth.uid).child('captain').val() === true)))) || (root.child('v2').child('admins').child(auth.uid).val() === true)",
           "slots": {
             "$key": {
+              ".write": "(((root.child('v2').child('games').child($gid).child('players/0/id').val() === auth.uid) && (root.child('v2').child('games').child($gid).child('joined/0').val() === true)) || ((root.child('v2').child('games').child($gid).child('players/1/id').val() === auth.uid) && (root.child('v2').child('games').child($gid).child('joined/1').val() === true)) || ((root.child('v2').child('games').child($gid).child('players/2/id').val() === auth.uid) && (root.child('v2').child('games').child($gid).child('joined/2').val() === true)) || ((root.child('v2').child('games').child($gid).child('players/3/id').val() === auth.uid) && (root.child('v2').child('games').child($gid).child('joined/3').val() === true))) && (root.child('v2').child('games').child($gid).child('ended').val() === false) && (!newData.exists())",
               "$i": {
                 ".write": "(auth != null) && (root.child('v2').child('games').child($gid).child('players').child($i).child('id').val() === auth.uid) && (root.child('v2').child('games').child($gid).child('ended').val() === false) && (!root.child('v2').child('games').child($gid).child('closed').child($key).exists())",
                 ".validate": "(!data.exists()) && (newData.child('by').val() === auth.uid) && ((newData.child('pick').isString()) || (newData.child('p3').exists()) || (newData.child('skip').val() === true)) && (($i === '0') || (((!newData.child('pick').exists()) || (newData.child('pick').val() !== data.parent().child('0').child('pick').val())) && ((!newData.child('p3/0').exists()) || (newData.child('p3/0').val() !== data.parent().child('0').child('p3/0').val())))) && (($i === '1') || (((!newData.child('pick').exists()) || (newData.child('pick').val() !== data.parent().child('1').child('pick').val())) && ((!newData.child('p3/0').exists()) || (newData.child('p3/0').val() !== data.parent().child('1').child('p3/0').val())))) && (($i === '2') || (((!newData.child('pick').exists()) || (newData.child('pick').val() !== data.parent().child('2').child('pick').val())) && ((!newData.child('p3/0').exists()) || (newData.child('p3/0').val() !== data.parent().child('2').child('p3/0').val()))))"
               }
             }
+          },
+          "closed": {
+            "$key": {
+              ".write": "(((root.child('v2').child('games').child($gid).child('players/0/id').val() === auth.uid) && (root.child('v2').child('games').child($gid).child('joined/0').val() === true)) || ((root.child('v2').child('games').child($gid).child('players/1/id').val() === auth.uid) && (root.child('v2').child('games').child($gid).child('joined/1').val() === true)) || ((root.child('v2').child('games').child($gid).child('players/2/id').val() === auth.uid) && (root.child('v2').child('games').child($gid).child('joined/2').val() === true)) || ((root.child('v2').child('games').child($gid).child('players/3/id').val() === auth.uid) && (root.child('v2').child('games').child($gid).child('joined/3').val() === true))) && (root.child('v2').child('games').child($gid).child('ended').val() === false)",
+              ".validate": "(!root.child('v2').child('games').child($gid).child('head').exists()) || ('e' + newData.parent().parent().child('head/last').val() === $key)"
+            }
+          },
+          "updatedAt": {
+            ".write": "((root.child('v2').child('games').child($gid).child('players/0/id').val() === auth.uid) && (root.child('v2').child('games').child($gid).child('joined/0').val() === true)) || ((root.child('v2').child('games').child($gid).child('players/1/id').val() === auth.uid) && (root.child('v2').child('games').child($gid).child('joined/1').val() === true)) || ((root.child('v2').child('games').child($gid).child('players/2/id').val() === auth.uid) && (root.child('v2').child('games').child($gid).child('joined/2').val() === true)) || ((root.child('v2').child('games').child($gid).child('players/3/id').val() === auth.uid) && (root.child('v2').child('games').child($gid).child('joined/3').val() === true))"
+          },
+          "head": {
+            ".write": "(((root.child('v2').child('games').child($gid).child('players/0/id').val() === auth.uid) && (root.child('v2').child('games').child($gid).child('joined/0').val() === true)) || ((root.child('v2').child('games').child($gid).child('players/1/id').val() === auth.uid) && (root.child('v2').child('games').child($gid).child('joined/1').val() === true)) || ((root.child('v2').child('games').child($gid).child('players/2/id').val() === auth.uid) && (root.child('v2').child('games').child($gid).child('joined/2').val() === true)) || ((root.child('v2').child('games').child($gid).child('players/3/id').val() === auth.uid) && (root.child('v2').child('games').child($gid).child('joined/3').val() === true))) && (root.child('v2').child('games').child($gid).child('ended').val() === false)",
+            ".validate": "(!data.exists()) || ((newData.child('last').val() === data.child('next').val()) && (!data.parent().child('events').child(data.child('next').val()).exists()) && (newData.parent().child('events').child(data.child('next').val()).exists()) && (newData.parent().child('events').child(data.child('next').val()).child('id').val() === newData.child('id').val())) || ((newData.child('undid').val() === data.child('id').val()) && (!newData.parent().child('events').child(data.child('last').val()).exists()) && (newData.child('next').val() === data.child('last').val()) && ((newData.child('last').val() === '-1') || (newData.parent().child('events').child(newData.child('last').val()).child('id').val() === newData.child('id').val())))"
           },
           "joined": {
             "$i": {
@@ -2028,7 +2050,8 @@ const RULES_JSON = {
           },
           "events": {
             "$n": {
-              ".validate": "(!data.exists()) && ((!newData.child('key').exists()) || (!root.child('v2').child('games').child($gid).child('slots').child(newData.child('key').val()).child('0').exists()) || (((newData.child('type').val() !== 'play') || ((newData.child('picks/0/pick').val() === root.child('v2').child('games').child($gid).child('slots').child(newData.child('key').val()).child('0').child('pick').val()) && (newData.child('picks/0/conf').val() === root.child('v2').child('games').child($gid).child('slots').child(newData.child('key').val()).child('0').child('conf').val()))) && ((newData.child('type').val() !== 'pick3') || ((root.child('v2').child('games').child($gid).child('slots').child(newData.child('key').val()).child('0').child('skip').val() === true) && (!newData.child('picks/0').exists())) || ((newData.child('picks/0/0').val() === root.child('v2').child('games').child($gid).child('slots').child(newData.child('key').val()).child('0').child('p3/0').val()) && (newData.child('picks/0/1').val() === root.child('v2').child('games').child($gid).child('slots').child(newData.child('key').val()).child('0').child('p3/1').val()) && (newData.child('picks/0/2').val() === root.child('v2').child('games').child($gid).child('slots').child(newData.child('key').val()).child('0').child('p3/2').val()))))) && ((!newData.child('key').exists()) || (!root.child('v2').child('games').child($gid).child('slots').child(newData.child('key').val()).child('1').exists()) || (((newData.child('type').val() !== 'play') || ((newData.child('picks/1/pick').val() === root.child('v2').child('games').child($gid).child('slots').child(newData.child('key').val()).child('1').child('pick').val()) && (newData.child('picks/1/conf').val() === root.child('v2').child('games').child($gid).child('slots').child(newData.child('key').val()).child('1').child('conf').val()))) && ((newData.child('type').val() !== 'pick3') || ((root.child('v2').child('games').child($gid).child('slots').child(newData.child('key').val()).child('1').child('skip').val() === true) && (!newData.child('picks/1').exists())) || ((newData.child('picks/1/0').val() === root.child('v2').child('games').child($gid).child('slots').child(newData.child('key').val()).child('1').child('p3/0').val()) && (newData.child('picks/1/1').val() === root.child('v2').child('games').child($gid).child('slots').child(newData.child('key').val()).child('1').child('p3/1').val()) && (newData.child('picks/1/2').val() === root.child('v2').child('games').child($gid).child('slots').child(newData.child('key').val()).child('1').child('p3/2').val()))))) && ((!newData.child('key').exists()) || (!root.child('v2').child('games').child($gid).child('slots').child(newData.child('key').val()).child('2').exists()) || (((newData.child('type').val() !== 'play') || ((newData.child('picks/2/pick').val() === root.child('v2').child('games').child($gid).child('slots').child(newData.child('key').val()).child('2').child('pick').val()) && (newData.child('picks/2/conf').val() === root.child('v2').child('games').child($gid).child('slots').child(newData.child('key').val()).child('2').child('conf').val()))) && ((newData.child('type').val() !== 'pick3') || ((root.child('v2').child('games').child($gid).child('slots').child(newData.child('key').val()).child('2').child('skip').val() === true) && (!newData.child('picks/2').exists())) || ((newData.child('picks/2/0').val() === root.child('v2').child('games').child($gid).child('slots').child(newData.child('key').val()).child('2').child('p3/0').val()) && (newData.child('picks/2/1').val() === root.child('v2').child('games').child($gid).child('slots').child(newData.child('key').val()).child('2').child('p3/1').val()) && (newData.child('picks/2/2').val() === root.child('v2').child('games').child($gid).child('slots').child(newData.child('key').val()).child('2').child('p3/2').val())))))"
+              ".write": "(((root.child('v2').child('games').child($gid).child('players/0/id').val() === auth.uid) && (root.child('v2').child('games').child($gid).child('joined/0').val() === true)) || ((root.child('v2').child('games').child($gid).child('players/1/id').val() === auth.uid) && (root.child('v2').child('games').child($gid).child('joined/1').val() === true)) || ((root.child('v2').child('games').child($gid).child('players/2/id').val() === auth.uid) && (root.child('v2').child('games').child($gid).child('joined/2').val() === true)) || ((root.child('v2').child('games').child($gid).child('players/3/id').val() === auth.uid) && (root.child('v2').child('games').child($gid).child('joined/3').val() === true))) && (root.child('v2').child('games').child($gid).child('ended').val() === false) && ((newData.exists()) || (root.child('v2').child('games').child($gid).child('head/last').val() === $n))",
+              ".validate": "(!data.exists()) && ((!root.child('v2').child('games').child($gid).child('head').exists()) || (root.child('v2').child('games').child($gid).child('head/next').val() === $n)) && ((!root.child('v2').child('games').child($gid).child('head').exists()) || (newData.parent().parent().child('head/last').val() === $n)) && ((!newData.child('key').exists()) || (!root.child('v2').child('games').child($gid).child('slots').child(newData.child('key').val()).child('0').exists()) || (((newData.child('type').val() !== 'play') || ((newData.child('picks/0/pick').val() === root.child('v2').child('games').child($gid).child('slots').child(newData.child('key').val()).child('0').child('pick').val()) && (newData.child('picks/0/conf').val() === root.child('v2').child('games').child($gid).child('slots').child(newData.child('key').val()).child('0').child('conf').val()))) && ((newData.child('type').val() !== 'pick3') || ((root.child('v2').child('games').child($gid).child('slots').child(newData.child('key').val()).child('0').child('skip').val() === true) && (!newData.child('picks/0').exists())) || ((newData.child('picks/0/0').val() === root.child('v2').child('games').child($gid).child('slots').child(newData.child('key').val()).child('0').child('p3/0').val()) && (newData.child('picks/0/1').val() === root.child('v2').child('games').child($gid).child('slots').child(newData.child('key').val()).child('0').child('p3/1').val()) && (newData.child('picks/0/2').val() === root.child('v2').child('games').child($gid).child('slots').child(newData.child('key').val()).child('0').child('p3/2').val()))))) && ((!newData.child('key').exists()) || (!root.child('v2').child('games').child($gid).child('slots').child(newData.child('key').val()).child('1').exists()) || (((newData.child('type').val() !== 'play') || ((newData.child('picks/1/pick').val() === root.child('v2').child('games').child($gid).child('slots').child(newData.child('key').val()).child('1').child('pick').val()) && (newData.child('picks/1/conf').val() === root.child('v2').child('games').child($gid).child('slots').child(newData.child('key').val()).child('1').child('conf').val()))) && ((newData.child('type').val() !== 'pick3') || ((root.child('v2').child('games').child($gid).child('slots').child(newData.child('key').val()).child('1').child('skip').val() === true) && (!newData.child('picks/1').exists())) || ((newData.child('picks/1/0').val() === root.child('v2').child('games').child($gid).child('slots').child(newData.child('key').val()).child('1').child('p3/0').val()) && (newData.child('picks/1/1').val() === root.child('v2').child('games').child($gid).child('slots').child(newData.child('key').val()).child('1').child('p3/1').val()) && (newData.child('picks/1/2').val() === root.child('v2').child('games').child($gid).child('slots').child(newData.child('key').val()).child('1').child('p3/2').val()))))) && ((!newData.child('key').exists()) || (!root.child('v2').child('games').child($gid).child('slots').child(newData.child('key').val()).child('2').exists()) || (((newData.child('type').val() !== 'play') || ((newData.child('picks/2/pick').val() === root.child('v2').child('games').child($gid).child('slots').child(newData.child('key').val()).child('2').child('pick').val()) && (newData.child('picks/2/conf').val() === root.child('v2').child('games').child($gid).child('slots').child(newData.child('key').val()).child('2').child('conf').val()))) && ((newData.child('type').val() !== 'pick3') || ((root.child('v2').child('games').child($gid).child('slots').child(newData.child('key').val()).child('2').child('skip').val() === true) && (!newData.child('picks/2').exists())) || ((newData.child('picks/2/0').val() === root.child('v2').child('games').child($gid).child('slots').child(newData.child('key').val()).child('2').child('p3/0').val()) && (newData.child('picks/2/1').val() === root.child('v2').child('games').child($gid).child('slots').child(newData.child('key').val()).child('2').child('p3/1').val()) && (newData.child('picks/2/2').val() === root.child('v2').child('games').child($gid).child('slots').child(newData.child('key').val()).child('2').child('p3/2').val())))))"
             }
           }
         }
@@ -2142,11 +2165,25 @@ const RULES_JSON = {
           ".write": "((!data.exists()) && (newData.child('host').val() === auth.uid)) || ((data.child('host').val() === auth.uid) && (newData.exists()) && ((data.child('ended').val() !== true) || (data.child('era').val() === 'hand')) && (newData.child('host').val() === auth.uid)) || ((data.child('host').val() === auth.uid) && (!newData.exists()) && ((data.child('era').val() === 'hand') || (data.child('ended').val() !== true))) || ((!newData.exists()) && (((data.child('clubList/0').exists()) && (root.child('qa').child('clubs').child(data.child('clubList/0').val()).child('members').child(auth.uid).child('captain').val() === true)) || ((data.child('clubList/1').exists()) && (root.child('qa').child('clubs').child(data.child('clubList/1').val()).child('members').child(auth.uid).child('captain').val() === true)) || ((data.child('clubList/2').exists()) && (root.child('qa').child('clubs').child(data.child('clubList/2').val()).child('members').child(auth.uid).child('captain').val() === true)))) || (root.child('v2').child('admins').child(auth.uid).val() === true)",
           "slots": {
             "$key": {
+              ".write": "(((root.child('qa').child('games').child($gid).child('players/0/id').val() === auth.uid) && (root.child('qa').child('games').child($gid).child('joined/0').val() === true)) || ((root.child('qa').child('games').child($gid).child('players/1/id').val() === auth.uid) && (root.child('qa').child('games').child($gid).child('joined/1').val() === true)) || ((root.child('qa').child('games').child($gid).child('players/2/id').val() === auth.uid) && (root.child('qa').child('games').child($gid).child('joined/2').val() === true)) || ((root.child('qa').child('games').child($gid).child('players/3/id').val() === auth.uid) && (root.child('qa').child('games').child($gid).child('joined/3').val() === true))) && (root.child('qa').child('games').child($gid).child('ended').val() === false) && (!newData.exists())",
               "$i": {
                 ".write": "(auth != null) && (root.child('qa').child('games').child($gid).child('players').child($i).child('id').val() === auth.uid) && (root.child('qa').child('games').child($gid).child('ended').val() === false) && (!root.child('qa').child('games').child($gid).child('closed').child($key).exists())",
                 ".validate": "(!data.exists()) && (newData.child('by').val() === auth.uid) && ((newData.child('pick').isString()) || (newData.child('p3').exists()) || (newData.child('skip').val() === true)) && (($i === '0') || (((!newData.child('pick').exists()) || (newData.child('pick').val() !== data.parent().child('0').child('pick').val())) && ((!newData.child('p3/0').exists()) || (newData.child('p3/0').val() !== data.parent().child('0').child('p3/0').val())))) && (($i === '1') || (((!newData.child('pick').exists()) || (newData.child('pick').val() !== data.parent().child('1').child('pick').val())) && ((!newData.child('p3/0').exists()) || (newData.child('p3/0').val() !== data.parent().child('1').child('p3/0').val())))) && (($i === '2') || (((!newData.child('pick').exists()) || (newData.child('pick').val() !== data.parent().child('2').child('pick').val())) && ((!newData.child('p3/0').exists()) || (newData.child('p3/0').val() !== data.parent().child('2').child('p3/0').val()))))"
               }
             }
+          },
+          "closed": {
+            "$key": {
+              ".write": "(((root.child('qa').child('games').child($gid).child('players/0/id').val() === auth.uid) && (root.child('qa').child('games').child($gid).child('joined/0').val() === true)) || ((root.child('qa').child('games').child($gid).child('players/1/id').val() === auth.uid) && (root.child('qa').child('games').child($gid).child('joined/1').val() === true)) || ((root.child('qa').child('games').child($gid).child('players/2/id').val() === auth.uid) && (root.child('qa').child('games').child($gid).child('joined/2').val() === true)) || ((root.child('qa').child('games').child($gid).child('players/3/id').val() === auth.uid) && (root.child('qa').child('games').child($gid).child('joined/3').val() === true))) && (root.child('qa').child('games').child($gid).child('ended').val() === false)",
+              ".validate": "(!root.child('qa').child('games').child($gid).child('head').exists()) || ('e' + newData.parent().parent().child('head/last').val() === $key)"
+            }
+          },
+          "updatedAt": {
+            ".write": "((root.child('qa').child('games').child($gid).child('players/0/id').val() === auth.uid) && (root.child('qa').child('games').child($gid).child('joined/0').val() === true)) || ((root.child('qa').child('games').child($gid).child('players/1/id').val() === auth.uid) && (root.child('qa').child('games').child($gid).child('joined/1').val() === true)) || ((root.child('qa').child('games').child($gid).child('players/2/id').val() === auth.uid) && (root.child('qa').child('games').child($gid).child('joined/2').val() === true)) || ((root.child('qa').child('games').child($gid).child('players/3/id').val() === auth.uid) && (root.child('qa').child('games').child($gid).child('joined/3').val() === true))"
+          },
+          "head": {
+            ".write": "(((root.child('qa').child('games').child($gid).child('players/0/id').val() === auth.uid) && (root.child('qa').child('games').child($gid).child('joined/0').val() === true)) || ((root.child('qa').child('games').child($gid).child('players/1/id').val() === auth.uid) && (root.child('qa').child('games').child($gid).child('joined/1').val() === true)) || ((root.child('qa').child('games').child($gid).child('players/2/id').val() === auth.uid) && (root.child('qa').child('games').child($gid).child('joined/2').val() === true)) || ((root.child('qa').child('games').child($gid).child('players/3/id').val() === auth.uid) && (root.child('qa').child('games').child($gid).child('joined/3').val() === true))) && (root.child('qa').child('games').child($gid).child('ended').val() === false)",
+            ".validate": "(!data.exists()) || ((newData.child('last').val() === data.child('next').val()) && (!data.parent().child('events').child(data.child('next').val()).exists()) && (newData.parent().child('events').child(data.child('next').val()).exists()) && (newData.parent().child('events').child(data.child('next').val()).child('id').val() === newData.child('id').val())) || ((newData.child('undid').val() === data.child('id').val()) && (!newData.parent().child('events').child(data.child('last').val()).exists()) && (newData.child('next').val() === data.child('last').val()) && ((newData.child('last').val() === '-1') || (newData.parent().child('events').child(newData.child('last').val()).child('id').val() === newData.child('id').val())))"
           },
           "joined": {
             "$i": {
@@ -2156,7 +2193,8 @@ const RULES_JSON = {
           },
           "events": {
             "$n": {
-              ".validate": "(!data.exists()) && ((!newData.child('key').exists()) || (!root.child('qa').child('games').child($gid).child('slots').child(newData.child('key').val()).child('0').exists()) || (((newData.child('type').val() !== 'play') || ((newData.child('picks/0/pick').val() === root.child('qa').child('games').child($gid).child('slots').child(newData.child('key').val()).child('0').child('pick').val()) && (newData.child('picks/0/conf').val() === root.child('qa').child('games').child($gid).child('slots').child(newData.child('key').val()).child('0').child('conf').val()))) && ((newData.child('type').val() !== 'pick3') || ((root.child('qa').child('games').child($gid).child('slots').child(newData.child('key').val()).child('0').child('skip').val() === true) && (!newData.child('picks/0').exists())) || ((newData.child('picks/0/0').val() === root.child('qa').child('games').child($gid).child('slots').child(newData.child('key').val()).child('0').child('p3/0').val()) && (newData.child('picks/0/1').val() === root.child('qa').child('games').child($gid).child('slots').child(newData.child('key').val()).child('0').child('p3/1').val()) && (newData.child('picks/0/2').val() === root.child('qa').child('games').child($gid).child('slots').child(newData.child('key').val()).child('0').child('p3/2').val()))))) && ((!newData.child('key').exists()) || (!root.child('qa').child('games').child($gid).child('slots').child(newData.child('key').val()).child('1').exists()) || (((newData.child('type').val() !== 'play') || ((newData.child('picks/1/pick').val() === root.child('qa').child('games').child($gid).child('slots').child(newData.child('key').val()).child('1').child('pick').val()) && (newData.child('picks/1/conf').val() === root.child('qa').child('games').child($gid).child('slots').child(newData.child('key').val()).child('1').child('conf').val()))) && ((newData.child('type').val() !== 'pick3') || ((root.child('qa').child('games').child($gid).child('slots').child(newData.child('key').val()).child('1').child('skip').val() === true) && (!newData.child('picks/1').exists())) || ((newData.child('picks/1/0').val() === root.child('qa').child('games').child($gid).child('slots').child(newData.child('key').val()).child('1').child('p3/0').val()) && (newData.child('picks/1/1').val() === root.child('qa').child('games').child($gid).child('slots').child(newData.child('key').val()).child('1').child('p3/1').val()) && (newData.child('picks/1/2').val() === root.child('qa').child('games').child($gid).child('slots').child(newData.child('key').val()).child('1').child('p3/2').val()))))) && ((!newData.child('key').exists()) || (!root.child('qa').child('games').child($gid).child('slots').child(newData.child('key').val()).child('2').exists()) || (((newData.child('type').val() !== 'play') || ((newData.child('picks/2/pick').val() === root.child('qa').child('games').child($gid).child('slots').child(newData.child('key').val()).child('2').child('pick').val()) && (newData.child('picks/2/conf').val() === root.child('qa').child('games').child($gid).child('slots').child(newData.child('key').val()).child('2').child('conf').val()))) && ((newData.child('type').val() !== 'pick3') || ((root.child('qa').child('games').child($gid).child('slots').child(newData.child('key').val()).child('2').child('skip').val() === true) && (!newData.child('picks/2').exists())) || ((newData.child('picks/2/0').val() === root.child('qa').child('games').child($gid).child('slots').child(newData.child('key').val()).child('2').child('p3/0').val()) && (newData.child('picks/2/1').val() === root.child('qa').child('games').child($gid).child('slots').child(newData.child('key').val()).child('2').child('p3/1').val()) && (newData.child('picks/2/2').val() === root.child('qa').child('games').child($gid).child('slots').child(newData.child('key').val()).child('2').child('p3/2').val())))))"
+              ".write": "(((root.child('qa').child('games').child($gid).child('players/0/id').val() === auth.uid) && (root.child('qa').child('games').child($gid).child('joined/0').val() === true)) || ((root.child('qa').child('games').child($gid).child('players/1/id').val() === auth.uid) && (root.child('qa').child('games').child($gid).child('joined/1').val() === true)) || ((root.child('qa').child('games').child($gid).child('players/2/id').val() === auth.uid) && (root.child('qa').child('games').child($gid).child('joined/2').val() === true)) || ((root.child('qa').child('games').child($gid).child('players/3/id').val() === auth.uid) && (root.child('qa').child('games').child($gid).child('joined/3').val() === true))) && (root.child('qa').child('games').child($gid).child('ended').val() === false) && ((newData.exists()) || (root.child('qa').child('games').child($gid).child('head/last').val() === $n))",
+              ".validate": "(!data.exists()) && ((!root.child('qa').child('games').child($gid).child('head').exists()) || (root.child('qa').child('games').child($gid).child('head/next').val() === $n)) && ((!root.child('qa').child('games').child($gid).child('head').exists()) || (newData.parent().parent().child('head/last').val() === $n)) && ((!newData.child('key').exists()) || (!root.child('qa').child('games').child($gid).child('slots').child(newData.child('key').val()).child('0').exists()) || (((newData.child('type').val() !== 'play') || ((newData.child('picks/0/pick').val() === root.child('qa').child('games').child($gid).child('slots').child(newData.child('key').val()).child('0').child('pick').val()) && (newData.child('picks/0/conf').val() === root.child('qa').child('games').child($gid).child('slots').child(newData.child('key').val()).child('0').child('conf').val()))) && ((newData.child('type').val() !== 'pick3') || ((root.child('qa').child('games').child($gid).child('slots').child(newData.child('key').val()).child('0').child('skip').val() === true) && (!newData.child('picks/0').exists())) || ((newData.child('picks/0/0').val() === root.child('qa').child('games').child($gid).child('slots').child(newData.child('key').val()).child('0').child('p3/0').val()) && (newData.child('picks/0/1').val() === root.child('qa').child('games').child($gid).child('slots').child(newData.child('key').val()).child('0').child('p3/1').val()) && (newData.child('picks/0/2').val() === root.child('qa').child('games').child($gid).child('slots').child(newData.child('key').val()).child('0').child('p3/2').val()))))) && ((!newData.child('key').exists()) || (!root.child('qa').child('games').child($gid).child('slots').child(newData.child('key').val()).child('1').exists()) || (((newData.child('type').val() !== 'play') || ((newData.child('picks/1/pick').val() === root.child('qa').child('games').child($gid).child('slots').child(newData.child('key').val()).child('1').child('pick').val()) && (newData.child('picks/1/conf').val() === root.child('qa').child('games').child($gid).child('slots').child(newData.child('key').val()).child('1').child('conf').val()))) && ((newData.child('type').val() !== 'pick3') || ((root.child('qa').child('games').child($gid).child('slots').child(newData.child('key').val()).child('1').child('skip').val() === true) && (!newData.child('picks/1').exists())) || ((newData.child('picks/1/0').val() === root.child('qa').child('games').child($gid).child('slots').child(newData.child('key').val()).child('1').child('p3/0').val()) && (newData.child('picks/1/1').val() === root.child('qa').child('games').child($gid).child('slots').child(newData.child('key').val()).child('1').child('p3/1').val()) && (newData.child('picks/1/2').val() === root.child('qa').child('games').child($gid).child('slots').child(newData.child('key').val()).child('1').child('p3/2').val()))))) && ((!newData.child('key').exists()) || (!root.child('qa').child('games').child($gid).child('slots').child(newData.child('key').val()).child('2').exists()) || (((newData.child('type').val() !== 'play') || ((newData.child('picks/2/pick').val() === root.child('qa').child('games').child($gid).child('slots').child(newData.child('key').val()).child('2').child('pick').val()) && (newData.child('picks/2/conf').val() === root.child('qa').child('games').child($gid).child('slots').child(newData.child('key').val()).child('2').child('conf').val()))) && ((newData.child('type').val() !== 'pick3') || ((root.child('qa').child('games').child($gid).child('slots').child(newData.child('key').val()).child('2').child('skip').val() === true) && (!newData.child('picks/2').exists())) || ((newData.child('picks/2/0').val() === root.child('qa').child('games').child($gid).child('slots').child(newData.child('key').val()).child('2').child('p3/0').val()) && (newData.child('picks/2/1').val() === root.child('qa').child('games').child($gid).child('slots').child(newData.child('key').val()).child('2').child('p3/1').val()) && (newData.child('picks/2/2').val() === root.child('qa').child('games').child($gid).child('slots').child(newData.child('key').val()).child('2').child('p3/2').val())))))"
             }
           }
         }
@@ -3317,10 +3355,11 @@ const G = {
     const s = S.g.s;
     if (s.ended) return 'final';
     if (S.g.view === 'after') return 'after';
-    if (S.g.remote && (s.outs >= 3 || Umpire.mlbGameOver(s))) return 'wait';   // the host starts the next half / ends it
+    if (S.g.remote && Umpire.mlbGameOver(s)) return 'wait';   // only the host ends the game
+    if (s.outs >= 3) { const l = G.lastEvent(); if (l && l.type === 'play') return 'after'; }   // three outs: the NEXT HALF-INNING button lives there
     if (s.needsPick3) { const n = G.p3Next(); return n === undefined || Two.elsewhere(n) ? 'wait' : 'pick3'; }   // wait: someone picks on their own phone
     const n = G.pickNext();
-    if (n === undefined) return S.g.remote ? 'wait' : 'result';
+    if (n === undefined) return 'result';                 // (online games: every phone can enter what happened)
     return Two.elsewhere(n) ? 'wait' : 'pick';
   },
   mlbLine: g => [g.away && `${shortTeam(g.away)} ${S.g.s.mlb.away}`, g.home && `${shortTeam(g.home)} ${S.g.s.mlb.home}`, whereAt(g)].filter(Boolean).join(' · '),
@@ -3597,7 +3636,7 @@ SCREENS.after = () => {
   const mlb = s.mlb, gm = g;
   const finalLine = over ? `${esc(mlb.home > mlb.away ? shortTeam(gm.home) || 'Home' : shortTeam(gm.away) || 'Away')} win ${Math.max(mlb.home, mlb.away)}–${Math.min(mlb.home, mlb.away)}. That’s the ballgame.` : '';
   return `<div class="fixedpage" style="gap:14px">
-  ${gameTop(S.g.remote ? backBtn('twoLeave') : `<button class="press" ${act('gUndo')} style="height:36px;padding:0 14px;border-radius:18px;background:var(--card);font-size:15px;font-weight:600">Undo</button>`, halfName(s))}
+  ${gameTop(`<button class="press" ${act('gUndo')} style="height:36px;padding:0 14px;border-radius:18px;background:var(--card);font-size:15px;font-weight:600">Undo</button>`, halfName(s))}
   ${lineScoreCard()}
   <div class="card rise" style="padding:14px 16px;display:flex;align-items:center;gap:14px">
     ${diamond(code(o), winner ? 'var(--green)' : 'var(--text4)')}
@@ -3622,7 +3661,7 @@ SCREENS.after = () => {
     <span style="font-size:15px;font-weight:600;color:${p.who ? 'var(--green)' : 'var(--text3)'}">${p.who ? esc(p.who) + ' +' + p.gain : 'Nobody'}</span></div>`).join('')}</div>
   <div class="grow"></div>
   ${finalLine ? `<span class="courier" style="text-align:center;font-size:13px;font-weight:700;color:var(--text2)">${finalLine}</span>` : ''}
-  ${S.g.remote ? `<button class="big-btn cond press" style="height:56px" ${act('twoNext')}>${next === 'BACK TO THE AT-BAT' ? next : over || s.outs >= 3 ? 'CONTINUE' : 'NEXT AT-BAT'}</button>`
+  ${S.g.remote && next === 'END GAME' ? `<button class="big-btn cond press" style="height:56px" ${act('twoNext')}>CONTINUE</button>`   // (only the host ends the game)
     : `<button class="big-btn cond press" style="height:56px" ${act('gNext', next)}>${next}</button>`}
 </div>`;
 };
@@ -3965,14 +4004,15 @@ async function loadGameHistory() {
   try { const h = await withTimeout(FCab.historyOf(g.players.map(p => p.id)), 20000); if (S.g && S.g.game === g) S.g.history = h.filter(x => x.id !== g.id); }
   catch (e) { if (S.g) S.g.history = []; }
 }
-async function saveEvent(ev) {
+// kind: 'save' (someone tapped it) or 'auto' (the phone saved a finished Pick 3 by itself — losing that race is no news)
+async function saveEvent(ev, kind = 'save') {
   if (FCab.isStale(S.g.game.id)) { Two.reload(); throw new Error('Catching up with the other phone — try again in a moment'); }
   const probe = { ...S.g.game, events: S.g.game.events.concat([ev]) };
   Umpire.replay({ players: probe.players.map(p => p.name), priority: probe.setup.priority }, probe.events);   // throws if the rules say no
   S.g.undone = null;
   const p = FCab.addEvent(S.g.game, ev);
   G.replay();
-  p.catch(e => (e && (e.code === 'PERMISSION_DENIED' || e.code === 'STALE') ? Two.lost(e) : toast('Couldn’t save: ' + e.message, true)));
+  p.catch(e => (e && (e.code === 'PERMISSION_DENIED' || e.code === 'STALE') ? Two.lost(e, kind) : toast('Couldn’t save: ' + e.message, true)));
 }
 function afterPlayFx() {
   const idx = S.g.game.events.length - 1;
@@ -4124,15 +4164,18 @@ Object.assign(ACT, {
   gUndo: async () => {
     const ev = G.lastEvent(); if (!ev) return;
     if (FCab.isStale(S.g.game.id)) { Two.reload(); return toast('Catching up with the other phone — try again in a moment', true); }
-    await FCab.undo(S.g.game).catch(e => toast(e.message, true));
+    const sent = FCab.undo(S.g.game);                    // (takes it off this phone's copy right away)
+    let desc = null; try { desc = describeAfterUndo(ev); } catch (e) { /* the game changed underneath — no summary */ }
     G.replay();
     Popup.clear();
-    S.g.undone = { ev, ...describeAfterUndo(ev) };
-    if (ev.type === 'play') { S.g.pending.picks = { ...(ev.picks || {}) }; S.g.res = { outcome: null, runs: 0, extraOuts: 0 }; S.g.view = null; }
+    S.g.undone = desc ? { ev, ...desc } : null;
+    const back = {}; Object.entries(ev.picks || {}).forEach(([j, v]) => { if (v && v.pick) back[j] = { pick: v.pick, conf: !!v.conf }; });
+    if (ev.type === 'play') { S.g.pending.picks = back; S.g.res = { outcome: null, runs: 0, extraOuts: 0 }; S.g.view = null; }
     else if (ev.type === 'pick3') { S.g.pending.p3 = {}; S.g.view = null; }
     else if (ev.type === 'nextHalf') { const l = G.lastEvent(); S.g.view = l && l.type === 'play' ? 'after' : null; }   // back to that half: its last play, or the pick if none yet
     else S.g.view = null;
     render();
+    await sent.catch(e => { if (e && (e.code === 'PERMISSION_DENIED' || e.code === 'STALE')) { S.g && (S.g.undone = null); Two.lost(e, 'undo'); } else toast(e.message, true); });   // refused: reloads the real game
     clearTimeout(ACT.gUndo.t); ACT.gUndo.t = setTimeout(() => { if (S.g && S.g.undone) { S.g.undone = null; render(); } }, 6000);
   },
   gRedo: async () => {
@@ -4155,15 +4198,7 @@ Object.assign(ACT, {
       await FCab.endGame(g, { scores: s.scores.slice(), mlb: { away: s.mlb.away, home: s.mlb.home }, note: (S.draft.note || '').trim() });
       S.busy = false; S.sheet = null; Awake.off(); Two.stop();
       if (!plays) { S.g = null; S.stack = []; go('home', {}, false); toast('Game thrown out — nothing was played'); loadHome(); return; }
-      const done = { ...g, events: g.events.slice(), ended: true };
-      const hist = S.g.history || [];
-      const all = hist.concat([done]);
-      const sum = Statistician.summary(done, all);
-      const got = Statistician.awardsInGame(all, done);
-      const merged = [];
-      got.forEach(a => { const m = merged.find(x => x.award.id === a.award.id && x.tier === a.tier); if (m) m.names.push(a.name); else merged.push({ ...a, names: [a.name] }); });
-      S.final = { game: done, sum, awards: merged, open: false };
-      S.g = null; S.stack = []; S.screen = 'final'; render(); Sound.play('award');
+      showFinal({ ...g, events: g.events.slice(), ended: true }, S.g.history || []);
     } catch (e) { S.busy = false; render(); toast(e.message, true); }
   },
   discardGame: async () => {
@@ -4184,11 +4219,20 @@ function describeAfterUndo(ev) {
   const diffs = after.scores.map((v, i) => v - before.scores[i]).map((d, i) => (d ? `${g.players[i].name} ${signed(-d)}` : '')).filter(Boolean);
   return { what: 'PLAY', detail: [code(ev.outcome) + (ev.runs ? `, ${ev.runs} run${ev.runs > 1 ? 's' : ''}` : ''), ...diffs, 'back to AB ' + before.ab].join(' · ') };
 }
+// The final page (with the share card) — on the host's phone after End game, and on every phone that joined the game
+function showFinal(done, hist) {
+  const all = hist.concat([done]);
+  const sum = Statistician.summary(done, all);
+  const got = Statistician.awardsInGame(all, done);
+  const merged = [];
+  got.forEach(a => { const m = merged.find(x => x.award.id === a.award.id && x.tier === a.tier); if (m) m.names.push(a.name); else merged.push({ ...a, names: [a.name] }); });
+  S.final = { game: done, sum, awards: merged, open: false };
+  S.g = null; S.stack = []; S.screen = 'final'; render(); Sound.play('award');
+}
 function afterP3Choice() {
-  if (S.g.remote) return render();                     // a joined player never saves — the host's phone does
-  if (G.p3Next() === undefined) {
+  if (G.p3Next() === undefined) {                       // everyone's in: save it (in an online game any phone may — first to Firebase wins)
     const picks = S.g.game.players.map((_, i) => S.g.pending.p3[i] || null);
-    saveEvent({ type: 'pick3', picks }).then(() => { S.g.pending.p3 = {}; render(); }).catch(e => { S.g.pending.p3 = {}; toast(e.message, true); render(); });
+    saveEvent({ type: 'pick3', picks }, 'auto').then(() => { S.g.pending.p3 = {}; render(); }).catch(e => { S.g.pending.p3 = {}; toast(e.message, true); render(); });
     return;
   }
   render();
@@ -5645,7 +5689,7 @@ const Two = {
     if (!S.g.remote && i !== Two.me() && Two.isAccount(g.players[i])) Diag.add('app', `2p host picking for ${g.players[i].name}: ${S.g.pickFor === i ? 'PICK FOR tapped' : Two.joined(i) ? 'JOINED?!' : 'not joined'}`);
     Diag.add('app', `2p sent ${key}/${i} ${val.pick || (val.p3 ? 'p3 ' + val.p3.join(',') : 'skip')}`);
     FCab.setSlot(g, key, i, val).then(() => { delete Two.inflight[k]; })
-      .catch(e => { delete Two.inflight[k]; Two.lost(e); });
+      .catch(e => { delete Two.inflight[k]; Two.lost(e, 'pick'); });
   },
   unsend(i) {
     if (!Two.multi() || i === undefined) return;
@@ -5653,11 +5697,22 @@ const Two = {
     FCab.clearSlot(S.g.game, Two.key(), i).catch(e => Two.lost(e));
   },
   // Firebase said no (someone else's pick got there first, or the round was already saved): show what really happened
-  async lost(e) {
+  // kind: 'pick' (a pick), 'save' (what happened / next half-inning), 'undo', 'auto' (a finished Pick 3 this phone saved by itself)
+  async lost(e, kind) {
     if (!S.g || !e || (e.code !== 'PERMISSION_DENIED' && e.code !== 'STALE')) return toast(e && e.message ? e.message : 'Couldn’t save — try again', true);
     const m = String(e.message || '').split('\n')[0];
-    if (m && !/^Skipped/.test(m)) Diag.add('app', '2p refused (' + e.code + '): ' + m.slice(0, 90));   // (the knock-on refusals just add noise to the Problem log)
-    await Two.reload(S.g.remote ? 'Too late — that round was already saved' : 'Another phone got there first — check the picks and try again');
+    if (m && !/^Skipped/.test(m)) Diag.add('app', '2p refused (' + e.code + (kind ? ', ' + kind : '') + '): ' + m.slice(0, 90));   // (the knock-on refusals just add noise to the Problem log)
+    if (kind && Two.lossKind !== 'save' && Two.lossKind !== 'undo') Two.lossKind = kind;   // the most telling reason wins the message
+    await Two.reload();
+  },
+  nameOf: uid => ((S.g.game.players.find(p => p.id === uid) || {}).name || 'The other phone'),
+  // What to tell the phone that lost a race, once it has the real game
+  lossMessage(kind) {
+    const l = G.lastEvent(), who = l && l.by && l.by !== S.user.uid ? Two.nameOf(l.by) : 'The other phone';
+    if (kind === 'auto') return null;
+    if (kind === 'save') return l && l.type === 'play' ? `${who} already entered ${code(l.outcome)}` : l && l.type === 'nextHalf' ? `${who} already started the next half-inning` : 'The other phone got there first';
+    if (kind === 'undo') return 'That was already undone — here’s the game as it is now';
+    return S.g.remote ? 'Too late — that round was already saved' : 'Another phone got there first — check the picks and try again';
   },
   async reload(msg) {
     if (!S.g) return;
@@ -5671,18 +5726,21 @@ const Two = {
     Diag.add('app', '2p reloading the real game');
     let fresh = null; try { fresh = await withTimeout(FCab.loadGame(id), 10000); } catch (e) { Diag.add('app', '2p reload failed: ' + (e && e.message)); Two.retryReload(); return toast('Offline — will catch up when you’re back online', true); }
     if (!S.g || S.g.game.id !== id) return;
-    if (!S.g.remote && (S.g.game.events.length !== startedWith || FCab.status().pending)) { Two.reloadAgain = true; return; }   // saved something while this was loading: that copy is already old
+    if (S.g.game.events.length !== startedWith || FCab.status().pending) { Two.reloadAgain = true; return; }   // saved something while this was loading: that copy is already old
     if (!fresh) return Two.gone('This game was thrown out');
-    if (S.g.remote && fresh.ended) return Two.gone('Game over');
+    if (S.g.remote && fresh.ended) return Two.finish(fresh);
     const keep = S.g.game, shownLast = JSON.stringify(G.lastEvent() || null), had = keep.events.length;
     S.g.game = Object.assign(keep, fresh, { events: fresh.events });
     FCab.adoptLive(S.g.game);
     S.g.pending = { p3: {}, picks: {} }; S.g.sel = null; S.g.p3sel = []; S.g.pickFor = null; Two.mine = {}; Two.seen = {};
-    if (!S.g.remote) { S.g.res = { outcome: null, runs: 0, extraOuts: 0 }; const l = G.lastEvent();   // stay on the outcome screen only if it still shows the real last play
-      S.g.view = S.g.view === 'after' && l && l.type === 'play' && JSON.stringify(l) === shownLast ? 'after' : null; }
+    const kind = Two.lossKind; Two.lossKind = null;
+    S.g.res = { outcome: null, runs: 0, extraOuts: 0 }; S.g.undone = null;
+    const l = G.lastEvent();
+    // stay on the outcome screen only if it still shows the real last play; a lost save shows the one that won
+    S.g.view = l && l.type === 'play' && ((S.g.view === 'after' && JSON.stringify(l) === shownLast) || kind === 'save') ? 'after' : null;
     G.replay(); Two.sync(fresh, true);
-    if (S.g && S.g.remote && S.g.game.events.length > had) { const l = G.lastEvent(); if (l && l.type === 'play') { S.g.view = 'after'; showAwardsAt(had, S.g.game.events.length - 1); render(); } }   // woke up to plays it missed
-    if (msg) toast(msg, true);
+    if (S.g && S.g.game.events.length > had) { const l2 = G.lastEvent(); if (l2 && l2.type === 'play') { S.g.view = 'after'; showAwardsAt(had, S.g.game.events.length - 1); render(); } }   // woke up to plays it missed
+    const m = msg || (S.g && Two.lossMessage(kind)); if (m) toast(m, true);
   },
   // A new copy of the game arrived from Firebase
   sync(v, quiet) {
@@ -5693,22 +5751,25 @@ const Two = {
     if (!S.g) return;
     if (!v) { if (S.g.remote) Two.gone(Two.hostName() + ' threw out this game'); return; }
     if (v.id && v.id !== S.g.game.id) return;
-    if (S.g.remote) {
-      if (v.ended) return Two.gone('Game over — see it in Stats → History');
-      const before = S.g.game.events.length;
-      S.g.game = Object.assign(S.g.game, v, { events: v.events || [] });
+    if (v.ended) { if (S.g.remote) return Two.finish(v); return; }   // (the host's own End game shows its final page)
+    if (!S.g.remote) S.g.game.joined = v.joined || null;
+    // The scorebook: any phone in an online game can write it now, so every phone follows Firebase's copy —
+    // except while this phone still has changes on their way (those land in a moment and come back in the next update)
+    const sv = v.events || [], mine = S.g.game.events, lastId = a => (a.length ? (a[a.length - 1] || {}).id || a.length : 0);
+    if ((sv.length !== mine.length || lastId(sv) !== lastId(mine)) && !FCab.status().pending && !Two.reloading) {
+      const before = mine.length, lastBefore = G.lastEvent();
+      if (S.g.remote) S.g.game = Object.assign(S.g.game, v, { events: sv });
+      else { Object.assign(S.g.game, { events: sv, head: v.head || null, closed: v.closed || null, slots: v.slots || null }); FCab.adoptLive(S.g.game); }
       G.replay();
       const now = S.g.game.events.length, l = G.lastEvent();
-      if (now !== before) Diag.add('app', `2p new round e${now} (was e${before})`);
-      if (now !== before || (S.g.pendKey && S.g.pendKey !== Two.key())) { S.g.pending = { p3: {}, picks: {} }; S.g.sel = null; S.g.p3sel = []; S.g.pendKey = Two.key(); }   // a new round: last round's picks don't carry over
-      if (now > before && l && l.type === 'play') { S.g.view = 'after'; if (!quiet) { Sound.play(Two.rightFor(l) ? 'right' : 'miss'); showAwardsAt(before, now - 1); } }   // everyone sees how the play went (and their own awards)
+      Diag.add('app', `2p scorebook now ${now} entries (was ${before})${l && l.by && l.by !== S.user.uid ? ' — ' + Two.nameOf(l.by) : ''}`);
+      S.g.pending = { p3: {}, picks: {} }; S.g.sel = null; S.g.p3sel = []; S.g.pendKey = Two.key(); S.g.res = { outcome: null, runs: 0, extraOuts: 0 }; S.g.pickFor = null;
+      if (now > before && l && l.type === 'play') { S.g.view = 'after'; S.g.undone = null; if (!quiet) { Sound.play(Two.rightFor(l) ? 'right' : 'miss'); showAwardsAt(before, now - 1); } }   // everyone sees how the play went (and their own awards)
       else if (S.g.view === 'after' && !(l && l.type === 'play')) S.g.view = null;                                     // undone, or the half changed
-    } else {
-      S.g.game.joined = v.joined || null;
-      // Only this phone writes the scorebook — so if Firebase has more of it than this phone does (and nothing is still
-      // being sent), this phone's copy is out of date (e.g. it reloaded an old copy while saving): catch up
-      if ((v.events || []).length > S.g.game.events.length && !FCab.status().pending && !Two.reloading) { Diag.add('app', '2p this phone was behind Firebase — catching up'); Two.reload(); return; }
-    }
+      if (now < before && lastBefore && v.head && v.head.by && v.head.by !== S.user.uid && !quiet) toast(`${Two.nameOf(v.head.by)} took back ${lastBefore.type === 'play' ? code(lastBefore.outcome) : lastBefore.type === 'pick3' ? 'Pick 3' : lastBefore.type === 'nextHalf' ? 'the half-inning change' : 'the last entry'}`);
+      if (now < before && lastBefore && lastBefore.type === 'play') { S.g.view = null; }
+    } else if (S.g.remote) S.g.game = Object.assign(S.g.game, v, { events: S.g.game.events });
+    if (S.g.remote && S.g.pendKey && S.g.pendKey !== Two.key()) { S.g.pending = { p3: {}, picks: {} }; S.g.sel = null; S.g.p3sel = []; S.g.pendKey = Two.key(); }   // last round's picks never carry over
     const s = S.g.s; if (!s || s.ended) return render();
     const key = Two.key(), cur = (v.slots || {})[key] || {};
     const sig = `2p update: my round ${key}, server has ${(v.events || []).length} entries, slots ${Object.entries(cur).filter(([, x]) => x).map(([i, x]) => i + ':' + (x.pick || (x.skip ? 'skip' : 'p3'))).join(' ') || 'none'}${v.joined ? ', joined ' + Object.keys(v.joined).filter(i => v.joined[i]).join(',') : ''}`;
@@ -5749,7 +5810,7 @@ const Two = {
       Two.sync(v, true);
     }).catch(() => {});
   },
-  rightFor(ev) { const i = S.g.me; return ev.picks && ev.picks[i] && ev.picks[i].pick === ev.outcome; },
+  rightFor(ev) { const i = Two.me(); return ev.picks && ev.picks[i] && ev.picks[i].pick === ev.outcome; },
   watch() {
     Two.stop();
     if (!S.g || !FCab || !S.user || !Two.multi()) return;   // (the app can open a saved live game before Firebase is ready — afterSignIn starts it then)
@@ -5765,6 +5826,15 @@ const Two = {
     Two.stopWatch = stopper;
   },
   stop() { if (Two.stopWatch) { Two.stopWatch(); Two.stopWatch = null; } },
+  // The host ended the game: this phone gets the same final page (and share card)
+  finish(v) {
+    Two.stop(); if (!S.g) return;
+    const hist = S.g.history || [];
+    const done = { ...S.g.game, ...v, events: v.events || S.g.game.events, ended: true };
+    S.invite = null; Awake.off(); Popup.clear(); S.sheet = null;
+    Diag.add('app', '2p the game ended — final page');
+    showFinal(done, hist);
+  },
   gone(msg) {
     Two.stop(); const was = S.g && S.g.remote; if (!was) return;
     S.g = null; S.invite = null; Awake.off(); Popup.clear();
@@ -5906,12 +5976,6 @@ Object.assign(ACT, {
     }
     return r;
   });
-  wrap('gUndo', async orig => {
-    const ev = G.lastEvent();
-    await orig();
-    // Undoing Pick 3 opens the round again with nobody's Pick 3 chosen: clear the shared slots too
-    if (S.g && ev && ev.type === 'pick3' && Two.multi()) S.g.game.players.forEach((_, i) => FCab.clearSlot(S.g.game, Two.key(), i).catch(() => {}));
-  });
   wrap('resume', orig => { const r = orig(); Two.watch(); return r; });
   wrap('startGame', async orig => { const r = await orig(); if (S.g && !S.g.remote) Two.watch(); return r; });
 })();
@@ -5943,7 +6007,7 @@ const Tips = {
   isNew() { const a = S.account; return !!a && (!a.createdAt || a.createdAt >= TIPS_SINCE); },
   seenMap() { const a = S.account || {}; return Object.assign({}, a.tips || {}, (S.user && Store.json('gb_tips_' + S.user.uid, {})) || {}); },
   want(id) {
-    if (S.g && S.g.remote && ['after', 'result', 'newGame'].includes(id)) return false;   // host-only tips
+    if (S.g && S.g.remote && ['after', 'newGame'].includes(id)) return false;   // host-only tips
     if (window.__noTips || !S.user || !S.account || !TIP[id.split(':')[0]]) return false;   // __noTips: the automated tests
     if (S.settings.tipsAgain) { this.replay = this.replay || Store.json('gb_tipreplay', {}); return !this.replay[id]; }
     return this.isNew() && !this.seenMap()[id];
