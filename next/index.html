@@ -1419,6 +1419,9 @@ const FilingCabinet = (() => {
       if (first) { ch['users/' + uid + '/createdAt'] = now(); ch['profiles/' + uid + '/createdAt'] = now(); }
       await queue(ch);
     }
+    // Profile photo: one small square JPEG on your profile (everyone in your clubs sees it). A new one replaces the old; null removes it.
+    async function savePhoto(dataUrl) { need(); await queue({ ['profiles/' + uid + '/photo']: dataUrl || null }); }
+    const photoOf = pid => get('profiles/' + pid + '/photo');
     // Tips this account has already seen (users/<uid>/tips/<id> = true)
     // Guess Ball Next only: this phone's Problem log, for watching a test live. Straight to Firebase (never queued — old logs don't matter).
     function saveDiag(log) { if (!uid) return Promise.resolve(); return db.update({ [R('diag/' + uid)]: { log, at: now() } }).catch(() => {}); }
@@ -1913,7 +1916,7 @@ const FilingCabinet = (() => {
 
     return { setUser, onStatus: f => { listeners.add(f); f(status()); return () => listeners.delete(f); }, status, flush,
       onRefused: f => { refusedFns.add(f); return () => refusedFns.delete(f); }, roundKey, setSlot, clearSlot, setJoined, watchGame, watchLive, myInvite, loadGame, peekGame, forgetLive, isStale, adoptLive,
-      myAccount, saveProfile, unlinkAccount, profiles, tipSeen, saveDiag,
+      myAccount, saveProfile, savePhoto, photoOf, unlinkAccount, profiles, tipSeen, saveDiag,
       createClub, findClubs, myClubs, clubInfo, roster, joinClub, requests, answerRequest, leaveClub, setCaptain, removeMember, updateClub,
       addGuest, renameGuest, claimGuest, answerClaim, myAliases, accounts, offerGuest, myOffers, dismissOffer, myClaims,
       startGame, liveGame, findLiveGame, addEvent, undo, takeOver, updateGameInfo, endGame, discardGame, addHandGame, editHandGame, deleteGame, setWhere,
@@ -1947,7 +1950,7 @@ const FilingCabinet = (() => {
 // ════════════════════════════════════════════════════════════════
 // Which copy of the app this is: the real app, or Guess Ball Next (QA, with its own test data)
 const ENV = {"name":"qa","data":"qa","store":"gbqa_"};
-const VERSION = ENV.name === 'qa' ? '2.0 · QA build 12 · 09-30 05:34 UTC' : '2.0';
+const VERSION = ENV.name === 'qa' ? '2.0 · QA build 13 · 09-30 19:36 UTC' : '2.0';
 const RULES_JSON = {
   "rules": {
     "v2": {
@@ -1971,6 +1974,9 @@ const RULES_JSON = {
           ".write": "(auth.uid === $pid) || ((!data.exists()) && (newData.child('createdBy').val() === auth.uid) && (newData.child('account').val() === false)) || ((data.child('account').val() === false) && (((data.child('club').exists()) && (root.child('v2').child('clubs').child(data.child('club').val()).child('members').child(auth.uid).child('captain').val() === true)) || ((!data.child('club').exists()) && (data.child('createdBy').val() === auth.uid)))) || (root.child('v2').child('admins').child(auth.uid).val() === true)",
           "name": {
             ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 16"
+          },
+          "photo": {
+            ".validate": "newData.isString() && newData.val().beginsWith('data:image/jpeg;base64,') && newData.val().length < 30000"
           }
         }
       },
@@ -2130,6 +2136,9 @@ const RULES_JSON = {
           ".write": "(auth.uid === $pid) || ((!data.exists()) && (newData.child('createdBy').val() === auth.uid) && (newData.child('account').val() === false)) || ((data.child('account').val() === false) && (((data.child('club').exists()) && (root.child('qa').child('clubs').child(data.child('club').val()).child('members').child(auth.uid).child('captain').val() === true)) || ((!data.child('club').exists()) && (data.child('createdBy').val() === auth.uid)))) || (root.child('v2').child('admins').child(auth.uid).val() === true)",
           "name": {
             ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 16"
+          },
+          "photo": {
+            ".validate": "newData.isString() && newData.val().beginsWith('data:image/jpeg;base64,') && newData.val().length < 30000"
           }
         }
       },
@@ -2405,6 +2414,25 @@ function info(id, labelHtml, text, cls = 'label') {
   const open = S.info === id;
   return `<div><button class="info-btn ${cls}" ${act('info', id)}>${labelHtml}<span class="info-i">i</span></button>${open ? `<div class="bubble fade">${esc(text)}</div>` : ''}</div>`;
 }
+// Profile photos: kept on the phone once seen (so they show offline), checked against Firebase once per app session
+const Photos = { mem: {}, asked: {},
+  of(pid) {
+    if (!pid || /^g_|:/.test(pid)) return null;                                  // guests have no photo
+    if (!(pid in this.mem)) { try { this.mem[pid] = Store.getItem('gb_pfp_' + pid) || null; } catch (e) { this.mem[pid] = null; } }
+    if (!this.asked[pid] && typeof FCab !== 'undefined' && FCab && S.user && FCab.photoOf) {
+      this.asked[pid] = true;
+      FCab.photoOf(pid).then(p => { p = p || null; if (p === this.mem[pid]) return; this.set(pid, p); render(); }).catch(() => { this.asked[pid] = false; });
+    }
+    return this.mem[pid];
+  },
+  set(pid, p) { this.mem[pid] = p; try { if (p) Store.setItem('gb_pfp_' + pid, p); else Store.removeItem('gb_pfp_' + pid); } catch (e) { /* phone storage full: it still shows this session */ } },
+};
+// A player's circle: their photo, or their first letter
+const avatar = (pid, name, px, bg = 'var(--card3)', color = 'var(--text)', dashed = false) => {
+  const ph = Photos.of(pid), base = `width:${px}px;height:${px}px;border-radius:${px / 2}px;flex-shrink:0`;
+  return ph ? `<span style="${base};display:block;background:#000 url('${ph}') center/cover"></span>`
+    : `<span style="${base};display:flex;align-items:center;justify-content:center;font-size:${Math.round(px * 0.42)}px;font-weight:700;color:${color};${dashed ? 'border:1.5px dashed var(--text4)' : 'background:' + bg}">${esc((name || '?').trim()[0] ? (name || '?').trim()[0].toUpperCase() : '?')}</span>`;
+};
 const backBtn = (a = 'back') => `<button class="back press" aria-label="Back" ${act(a)}>${ICON.back}</button>`;
 const toggle = (on, a, arg) => `<button class="toggle ${on ? 'on' : ''}" aria-pressed="${on}" ${act(a, arg)}><span></span></button>`;
 const progress = (n, of) => `<div style="display:flex;gap:6px">${Array.from({ length: of }, (_, i) => `<span style="width:22px;height:5px;border-radius:3px;background:${i < n ? 'var(--text)' : 'var(--card3)'}"></span>`).join('')}</div>`;
@@ -2451,12 +2479,12 @@ function teamList(selected, a) {
   }).join('') || `<div class="row"><span class="courier meta">No team matches. That's fine — it's optional.</span></div>`}</div>`;
 }
 SCREENS.setupTeam = () => `<div class="fixedpage" style="gap:12px">
-  <div class="topbar" style="justify-content:space-between">${backBtn('setupBack')}${progress(2, 3)}<button class="cond press" ${act('setupSkipTeam')} style="width:50px;color:var(--link);font-size:17px;font-weight:800;letter-spacing:.6px;text-align:right">SKIP</button></div>
+  <div class="topbar" style="justify-content:space-between">${backBtn('setupBack')}${progress(2, 3)}<span style="width:36px"></span></div>
   <h1 class="cond" style="margin:16px 0 0;font-size:40px;font-weight:800;line-height:1">FAVORITE TEAM?</h1>
-  <span class="courier" style="font-size:13px;font-weight:700;color:var(--text2)">Optional.</span>
   ${teamList(S.setup.team, 'setupPickTeam')}
   <div class="grow" style="min-height:8px"></div>
-  <button class="big-btn cond press" ${act('setupNext')} style="position:sticky;bottom:0">NEXT</button>
+  ${S.setup.team ? `<button class="big-btn cond press" ${act('setupNext')} style="position:sticky;bottom:0">NEXT</button>`
+    : `<button class="big-btn cond press" ${act('setupSkipTeam')} style="position:sticky;bottom:0">SKIP</button>`}
 </div>`;
 SCREENS.setupPlayed = () => {
   const a = S.setup.played;
@@ -2678,11 +2706,11 @@ SCREENS.settings = () => {
   return `<div class="page" style="gap:10px">
   <div class="topbar">${backBtn()}<h1 class="cond h1">SETTINGS</h1></div>
   <div class="card" style="padding:14px;display:flex;align-items:center;gap:12px">
-    <span style="width:48px;height:48px;border-radius:24px;background:var(--accent);color:var(--onaccent);display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:700">${esc((a.name || '?')[0].toUpperCase())}</span>
+    ${avatar(S.user && S.user.uid, a.name, 48, 'var(--accent)', 'var(--onaccent)')}
     <div style="flex-grow:1;display:flex;flex-direction:column;gap:2px"><span style="font-size:18px;font-weight:700">${esc(a.name || '')}</span><span class="courier meta">Signed in with Google</span></div>
     <button class="press cond small-btn" style="height:32px;padding:0 12px;font-size:15px" ${act('go', 'editProfile')}>EDIT</button></div>
   <div class="list">
-    <button class="row press" ${act('go', 'editProfile')}><span style="flex-grow:1;font-size:16px;font-weight:500">Favorite team</span><span style="font-size:15px;color:var(--text3)">${esc(shortTeam(a.team) || 'None')}</span>${ICON.chev}</button>
+    <button class="row press" ${act('openSheet', 'favTeam')}><span style="flex-grow:1;font-size:16px;font-weight:500">Favorite team</span><span style="font-size:15px;color:var(--text3)">${esc(shortTeam(a.team) || 'None')}</span>${ICON.chev}</button>
     <button class="row press" ${act('go', 'appearance')}><span style="flex-grow:1;font-size:16px;font-weight:500">Appearance</span><span style="font-size:15px;color:var(--text3)">${esc(appearanceSummary())}</span>${ICON.chev}</button>
     <button class="row press" ${act('go', 'gameOptions')}><span style="flex-grow:1;font-size:16px;font-weight:500">Game options</span><span style="font-size:15px;color:var(--text3)">${esc(gameOptionsSummary())}</span>${ICON.chev}</button>
   </div>
@@ -2708,16 +2736,16 @@ SCREENS.editProfile = () => {
   <div class="topbar" style="justify-content:space-between"><button class="press cond" ${act('back')} style="color:var(--text2);font-size:17px;font-weight:800;letter-spacing:.6px">CANCEL</button>
     <h1 class="cond" style="margin:0;font-size:24px;font-weight:800;letter-spacing:.4px">EDIT PROFILE</h1>
     <button class="press cond" ${act('saveProfile')} style="color:var(--link);font-size:17px;font-weight:800;letter-spacing:.6px">SAVE</button></div>
-  <div style="align-self:center;margin:14px 0 6px;width:84px;height:84px;border-radius:42px;background:var(--accent);color:var(--onaccent);display:flex;align-items:center;justify-content:center;font-size:36px;font-weight:700">${esc((name.trim()[0] || '?').toUpperCase())}</div>
+  <div style="align-self:center;margin:14px 0 6px;display:flex;flex-direction:column;align-items:center;gap:8px">
+    <label class="press" style="position:relative;display:block;cursor:pointer" aria-label="Profile photo">${avatar(S.user && S.user.uid, name || '?', 84, 'var(--accent)', 'var(--onaccent)')}
+      <span style="position:absolute;right:-2px;bottom:-2px;width:28px;height:28px;border-radius:14px;background:var(--card3);border:2px solid var(--bg);display:flex;align-items:center;justify-content:center">${ICON.plus}</span>
+      <input type="file" accept="image/*" data-pfp="1" style="display:none"></label>
+    ${Photos.of(S.user && S.user.uid) ? `<button class="press cond" style="font-size:14px;font-weight:800;letter-spacing:.6px;color:var(--orange)" ${act('removePfp')}>REMOVE PHOTO</button>` : ''}</div>
   ${info('dispName', '<span class="cond" style="font-size:15px;font-weight:800;letter-spacing:.8px;color:var(--text3)">DISPLAY NAME</span>', 'Shown on scoreboards, stats and share cards in every club. Your past games switch to the new name.', '')}
   <label class="field" style="height:50px"><input data-model="draft.name" value="${attr(name)}" maxlength="16" aria-label="Display name"><span class="courier meta" data-count="draft.name">${name.length}/16</span></label>
-  <span class="cond label" style="margin-top:8px">FAVORITE TEAM</span>
-  <div class="list"><button class="row press" ${act('openSheet', 'team')}><span style="flex-grow:1;font-size:16px;font-weight:500">${esc(team || 'None')}</span><span class="cond" style="font-size:15px;font-weight:800;letter-spacing:.6px;color:var(--link)">CHANGE</span>${ICON.chev}</button></div>
-  <span class="courier meta" style="padding:0 4px;color:var(--text4)">Optional.</span>
   ${info('acct', '<span class="cond" style="font-size:15px;font-weight:800;letter-spacing:.8px;color:var(--text3)">ACCOUNT</span>', 'Only you can see your email.', '')}
   <div class="card" style="border-radius:16px;padding:0 14px;height:50px;display:flex;align-items:center;gap:10px">${ICON.google}<span style="flex-grow:1;font-size:15px;font-weight:500;color:var(--text5);overflow:hidden;text-overflow:ellipsis">${esc(S.user && S.user.email)}</span><span class="courier meta">Google</span></div>
   <div class="grow" style="min-height:20px"></div>
-  ${info('delAcct', '<span class="courier meta">What does deleting do?</span>', 'Unlinks your Google sign-in. Your name, games and stats stay in your clubs as a guest profile that can be claimed again later.', '')}
   <button class="press cond mid-btn" style="font-size:18px;color:var(--orange)" ${act('openSheet', 'delete')}>DELETE ACCOUNT</button>
 </div>`;
 };
@@ -2766,7 +2794,12 @@ SCREENS.diag = () => { const rows = Diag.get(); return `<div class="page">
     <span style="flex-grow:1;min-width:0;word-break:break-word">${esc(r.d)}<span class="courier" style="color:var(--text3)"> · ${esc(r.s)}${r.sh ? ' / ' + esc(r.sh) : ''}</span></span></div>`).join('') : '<div class="courier meta" style="padding:12px 0">Nothing logged yet.</div>'}</div>
 </div>`; };
 
-const SHEETS = { switcher: switcherSheet, request: requestSheet, nickname: nicknameSheet, team: teamSheet, delete: deleteSheet };
+// Settings → Favorite team: its own list; tapping a team saves it right away
+function favTeamSheet() {
+  return `<div style="display:flex;align-items:center;justify-content:space-between"><h2 class="cond" style="margin:0;font-size:28px;font-weight:800">FAVORITE TEAM</h2>
+    <button class="press cond" ${act('setFavTeam', '')} style="color:var(--link);font-size:16px;font-weight:800;letter-spacing:.6px">NONE</button></div>${teamList(S.account.team, 'setFavTeam')}`;
+}
+const SHEETS = { switcher: switcherSheet, request: requestSheet, nickname: nicknameSheet, team: teamSheet, favTeam: favTeamSheet, delete: deleteSheet };
 
 // ════════════ Drawing ════════════
 const $app = () => document.getElementById('app');
@@ -2829,6 +2862,7 @@ function render() {
   if (focus && !el.contains(focusEl)) { const i = el.querySelector(`[data-model="${focus}"]`); if (i) { i.focus(); try { i.setSelectionRange(caret, caret); } catch (e) { /* ok */ } } }
   syncEnables();
   if (typeof Tips !== 'undefined') Tips.afterRender();
+  if ((window.scrollY || window.scrollX) && typeof typing === 'function' && !typing()) window.scrollTo(0, 0);   // never leave the page nudged up
 }
 // Update a screen in place: the scrolling page element itself is kept (so a scroll or swipe in
 // progress on iPhone isn't cut off), and only the pieces whose content changed are replaced.
@@ -3122,6 +3156,15 @@ const ACT = {
   // settings + profile
   setting: k => { S.settings[k] = !S.settings[k]; Store.put('gb_settings', S.settings); buzz(); render(); },
   pickTeam: t => { S.draft.team = t || null; S.sheet = null; buzz(); render(); },
+  setFavTeam: async t => {
+    const team = t || null, was = S.account.team; S.sheet = null;
+    S.account = { ...S.account, team }; Store.put('gb_acct_' + S.user.uid, S.account); buzz(); render();
+    try { await FCab.saveProfile({ name: S.account.name, team }); } catch (e) { S.account = { ...S.account, team: was }; Store.put('gb_acct_' + S.user.uid, S.account); render(); fail(e); }
+  },
+  removePfp: async () => {
+    const was = Photos.of(S.user.uid); Photos.set(S.user.uid, null); render();
+    try { await FCab.savePhoto(null); toast('Photo removed'); } catch (e) { Photos.set(S.user.uid, was); render(); fail(e); }
+  },
   saveProfile: async () => {
     const name = (S.draft.name == null ? S.account.name : S.draft.name).trim();
     const team = S.draft.team === undefined ? S.account.team : S.draft.team;
@@ -3552,9 +3595,8 @@ SCREENS.pick3 = () => {
   ${done.map(j => { const x = S.g.pending.p3[j]; return `<div class="card" style="border-radius:14px;padding:10px 14px;display:flex;align-items:center;gap:10px">
     <span style="font-size:16px;font-weight:700">${esc(g.players[j].name)}</span><span class="shoulders" style="flex-grow:1;font-size:20px;font-weight:900">${x ? x.map(code).join(' · ') : '<span style="font-family:inherit;font-size:14px;font-weight:600;color:var(--text3)">Skipped</span>'}</span>
     <span class="cond" style="font-size:13px;font-weight:800;letter-spacing:.8px;color:${x ? 'var(--green)' : 'var(--text4)'}">${x ? 'LOCKED' : 'SKIP'}</span></div>`; }).join('')}
-  <h1 class="cond onphoto" style="margin:4px 0 0;font-size:36px;font-weight:800;line-height:1">${esc(p.name.toUpperCase())}, PICK 3</h1>
+  ${info('p3why', `<span class="cond onphoto" style="font-size:36px;font-weight:800;line-height:1;color:var(--text)">${esc(p.name.toUpperCase())}, PICK 3</span>`, 'Call the first three at-bats in order. All three right = +7 bonus. Miss one and you pick one at a time for the rest of the half-inning. Only your first call has to be different from everyone else’s.', '')}
   ${tipCard('p3')}
-  ${info('p3why', '<span class="courier" style="font-size:13px;font-weight:700;color:var(--text2)">First three at-bats, in order</span>', 'Call the first three at-bats in order. All three right = +7 bonus. Miss one and you pick one at a time for the rest of the half-inning. Only your first call has to be different from everyone else’s.', '')}
   <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px">${[0, 1, 2].map(k => `<button class="press" ${mine[k] ? act('p3Unpick', k) : ''} style="height:76px;border-radius:16px;background:${mine[k] ? tint(pcol(i), .3) : 'var(--card)'};border:2px solid ${k === slot ? pcol(i) : mine[k] ? tint(pcol(i), .8) : 'transparent'};display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px">
     <span class="cond" style="font-size:13px;font-weight:800;letter-spacing:.8px;color:var(--text3)">AT-BAT ${k + 1}</span>
     <span class="shoulders" style="font-size:26px;font-weight:900;line-height:1;color:${mine[k] ? 'var(--text)' : 'var(--text4)'}">${mine[k] ? code(mine[k]) : '—'}</span></button>`).join('')}</div>
@@ -3852,9 +3894,9 @@ function gameMenuSheet() {
   if (S.g.remote) {                                    // a joined player: get around, or hand your picks back to the host
     const r = (a, arg, label, right = '', color = 'var(--text)') => `<button class="row press" ${act(a, arg)} style="min-height:52px"><span style="flex-grow:1;font-size:17px;font-weight:600;color:${color}">${label}</span>${right ? `<span class="courier meta">${right}</span>` : ICON.chev}</button>`;
     return `<h2 class="cond" style="margin:0;font-size:28px;font-weight:800">${esc(Two.hostName().toUpperCase())}’S GAME</h2>
-    <div class="list">${r('gLeave', 'home', 'Home')}${r('gLeave', 'stats', 'Stats')}${r('gLeave', 'awards', 'Awards')}${r('openSheet', 'rules', 'Rules')}</div>
-    <span style="font-size:14px;line-height:1.45;color:var(--text2)">An online game: you make your own picks here, and either phone can enter what happened, undo, or end the game.</span>
-    <div class="list">${G.plays() ? r('openSheet', 'endGame', 'End game', 'Asks to confirm', 'var(--orange)') : ''}${r('stopPicking', '', 'Stop picking on this phone', esc(Two.hostName()) + ' picks for you', 'var(--orange)')}</div>`;
+    <div class="list">${r('gLeave', 'home', 'Home')}${r('gLeave', 'stats', 'Stats')}${r('gLeave', 'awards', 'Awards')}${r('gLeave', 'settings', 'Settings')}${r('openSheet', 'rules', 'Rules')}</div>
+    <div class="list">${r('stopPicking', '', 'Stop picking on this phone', esc(Two.hostName()) + ' picks for you', 'var(--live)')}</div>
+    ${G.plays() ? endGameBtn() : ''}`;
   }
   const dot = `<span role="img" aria-label="${S.pending ? 'Offline, will sync' : 'All saved'}" style="width:10px;height:10px;border-radius:5px;background:${S.pending ? 'var(--gold)' : 'var(--green)'}"></span>`;   // green = saved, gold = waiting to sync
   const row = (a, arg, label, right = '', color = 'var(--text)') => `<button class="row press" ${act(a, arg)} style="min-height:52px"><span style="flex-grow:1;font-size:17px;font-weight:600;color:${color}">${label}</span>${right ? `<span class="courier meta">${right}</span>` : ICON.chev}</button>`;
@@ -3865,10 +3907,12 @@ function gameMenuSheet() {
     ${row('openSheet', 'fixMlb', 'Fix MLB score', esc(`${teamAbbr(g.away, 'Away')} ${s.mlb.away} · ${teamAbbr(g.home, 'Home')} ${s.mlb.home}`))}
     ${row('openSheet', 'matchup', 'Edit matchup', esc(shortTeam(g.home) || 'Teams'))}
     ${s.needsPick3 && !G.plays() ? '' : row('openSheet', 'endHalf', 'End half-inning', `${halfName(s).toLowerCase().replace(/^\w/, c => c.toUpperCase())} · ${s.outs} out`)}
-    ${row('openSheet', 'endGame', 'End game', 'Asks to confirm', 'var(--orange)')}
-    ${row('openSheet', 'discardGame', 'Throw out game', 'Nothing is saved', 'var(--orange)')}
-  </div>`;
+    ${row('openSheet', 'discardGame', 'Throw out game', 'Nothing is saved', 'var(--live)')}
+  </div>
+  ${endGameBtn()}`;
 }
+// End game: a red button at the bottom of the game menu (it opens the confirm sheet)
+const endGameBtn = () => `<button class="big-btn cond press" style="height:54px;background:var(--live);color:#fff" ${act('openSheet', 'endGame')}>END GAME</button>`;
 function rulesSheet() {
   const pts = [['K', 'Strikeout', 1], ['IPO', 'In play out', 1], ['1B', 'Single', 2], ['FC', "Fielder's choice", 2], ['BB', 'Walk', 3], ['HBP', 'Hit by pitch', 3], ['DP', 'Double play', 3], ['BU', 'Bunt — batter safe', 4], ['SB', 'Stolen base', 4], ['2B', 'Double', 5], ['HR', 'Home run', 7], ['3B', 'Triple', 10]];
   const extras = [['+1', 'var(--gold)', 'Per run', 'Each run that scores on your correct call'], ['+7', 'var(--green)', 'Pick 3 bonus', 'Call the first 3 at-bats of a half-inning, in order'],
@@ -4353,7 +4397,7 @@ function statsStandings(games) {
   const cols = ties ? '24px 1fr 34px 34px 34px 18px' : '24px 1fr 40px 40px 18px';
   return `<div style="display:flex;align-items:center;justify-content:space-between">
     <button class="press cond" ${act('openSheet', 'season')} style="height:36px;padding:0 14px;border-radius:18px;background:var(--card);font-size:19px;font-weight:800;letter-spacing:.6px;display:flex;align-items:center;gap:6px">${esc(yr)} ${ICON.down}</button>
-    <span class="courier meta">Tap a player for more</span></div>
+    </div>
   <div class="card" style="padding:0 14px">
     <div class="cond" style="display:grid;grid-template-columns:${cols};height:32px;align-items:center;font-size:13px;font-weight:800;letter-spacing:.8px;color:var(--text3);border-bottom:1px solid var(--line)"><span></span><span>PLAYER</span><span style="text-align:center">W</span><span style="text-align:center">L</span>${ties ? '<span style="text-align:center">T</span>' : ''}<span></span></div>
     ${rows.map((r, i) => {
@@ -4384,8 +4428,10 @@ function statsHistory(games) {
   const total = games.length;
   const card = g => {
     const d = g.date.split('-');
-    const tag = g.tag ? `<span class="cond tag" style="font-size:10px">${esc(g.tag)}</span>` : '';
-    const meta = [g.doubleheader, g.away && g.home ? `${shortTeam(g.away)} at ${shortTeam(g.home)}` : '', g.park].filter(Boolean).join(' · ');   // history already says 'Couch game' for TV games
+    // tags: STADIUM or COUCH GAME (where it was watched), plus PRE-APP / BETA / ADDED BY for older games; the teams say which park
+    const tags = [g.tag === 'COUCH GAME' ? 'COUCH GAME' : g.park ? 'STADIUM' : '', g.tag !== 'COUCH GAME' ? g.tag : ''].filter(Boolean);
+    const tag = tags.map(t => `<span class="cond tag" style="font-size:10px;flex-shrink:0">${esc(t)}</span>`).join('');
+    const meta = [g.doubleheader, g.away && g.home ? `${shortTeam(g.away)} at ${shortTeam(g.home)}` : ''].filter(Boolean).join(' · ');
     return `<button class="card press" ${act('openGame', g.id)} style="width:100%;border-radius:18px;padding:10px 16px;display:flex;align-items:center;gap:14px;text-align:left">
       <div style="width:40px;display:flex;flex-direction:column;align-items:center;flex-shrink:0"><span class="cond" style="font-size:14px;font-weight:800;color:var(--text3);letter-spacing:.6px">${MONTHS[+d[1] - 1]}</span><span class="shoulders num" style="font-size:26px;font-weight:900;line-height:1">${+d[2]}</span></div>
       <div style="flex-grow:1;min-width:0;display:flex;flex-direction:column;gap:1px">
@@ -4394,8 +4440,8 @@ function statsHistory(games) {
         ${tag || meta ? `<div style="display:flex;align-items:center;gap:6px;margin-top:3px;min-width:0">${tag}<span class="courier meta" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(meta)}</span></div>` : ''}
       </div></button>`;
   };
-  return `${hist.map((s, k) => `<div style="display:flex;align-items:baseline;justify-content:space-between;margin-top:${k ? 8 : 0}px"><h2 class="cond" style="margin:0;font-size:30px;font-weight:800">${s.season}</h2>
-    <span class="courier meta">${s.games.length} game${s.games.length > 1 ? 's' : ''}${k === 0 ? ' · ' + total + ' all time' : ''}</span></div>
+  return `${hist.map((s, k) => `<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:${k ? 8 : 0}px"><h2 class="cond" style="margin:0;font-size:30px;font-weight:800;flex-shrink:0">${s.season}</h2>
+    <span class="courier meta" style="white-space:nowrap">${s.games.length} game${s.games.length > 1 ? 's' : ''}${k === 0 ? ' · ' + total + ' all time' : ''}</span></div>
     <div style="display:flex;flex-direction:column;gap:10px">${s.games.map(card).join('')}</div>`).join('')}
   <button class="press cond small-btn" style="align-self:center;height:40px;border-radius:20px;margin-top:10px;color:var(--text2)" ${act('addGame')}>${ICON.plus} ADD A PAST GAME</button>`;
 }
@@ -4581,7 +4627,111 @@ SCREENS.addGame = () => {
 };
 
 // ════════════ Share card (a picture made on the phone) ════════════
+// The share card: laid out like the Final page (FINAL · date, headline, big score, line score, the four tiles),
+// with the awards as icons only, and the wordmark + club at the bottom. 1080 wide, as tall as it needs (4:5 or taller).
 async function drawShareCard(g, sum, awards) {
+  try { await document.fonts.ready; } catch (e) { /* fonts may not be loaded offline: system fonts are fine */ }
+  const COND = '"Barlow Condensed", -apple-system, sans-serif', SH = '"Big Shoulders Display", -apple-system, sans-serif', CO = '"Courier Prime", "Courier New", monospace', SYS = '-apple-system, "Helvetica Neue", sans-serif';
+  const F = (w, size, fam) => `${w} ${size}px ${fam}`;
+  const r = sum.result, n = g.players.length, order = g.players.map((_, i) => i).sort((a, b) => r.scores[b] - r.scores[a]);
+  const tiles = sum.tiles || [], ls = sum.lineScore, list = (awards || []).slice(0, 12);
+  const W = 540, lsH = ls ? 32 + n * 36 : 0, rows = Math.ceil(tiles.length / 2), iconRows = Math.ceil(list.length / 8);
+  const need = 150 + 110 + (ls ? lsH + 16 : 0) + rows * 88 + (list.length ? 30 + iconRows * 58 : 0) + 70;
+  const H = Math.max(675, need), K = 2, c = document.createElement('canvas'); c.width = W * K; c.height = H * K;
+  const x = c.getContext('2d'); x.scale(K, K);
+  x.fillStyle = '#0B0B0D'; x.fillRect(0, 0, W, H);
+  // The game's park photo behind everything: blurred more than in the app and darker, so every number stays crisp
+  const photo = parkPhotoFor(g, true);
+  let PANEL = '#1C1C20';
+  if (photo) {
+    try {
+      const img = await new Promise((ok, no) => { const i = new Image(); i.onload = () => ok(i); i.onerror = no; i.src = photo; });
+      const s = Math.max(W / img.width, H / img.height), iw = img.width * s, ih = img.height * s;
+      x.save(); x.filter = 'blur(9px) brightness(0.42) saturate(1.1)'; x.drawImage(img, (W - iw) / 2 - 20, (H - ih) / 2 - 20, iw + 40, ih + 40); x.restore();
+      const gr = x.createLinearGradient(0, 0, 0, H); gr.addColorStop(0, 'rgba(0,0,0,.35)'); gr.addColorStop(0.5, 'rgba(0,0,0,.1)'); gr.addColorStop(1, 'rgba(0,0,0,.5)');
+      x.fillStyle = gr; x.fillRect(0, 0, W, H); PANEL = 'rgba(22,22,26,.72)';
+    } catch (e) { /* no photo: plain dark card */ }
+  }
+  const rr = (px, py, w, h, rad, fill) => { x.beginPath(); x.roundRect(px, py, w, h, rad); x.fillStyle = fill; x.fill(); };
+  const text = (t, px, py, font, color, align = 'left') => { x.font = font; x.fillStyle = color; x.textAlign = align; x.fillText(t, px, py); };
+  const fit = (t, max, font) => { x.font = font; let s = t; while (x.measureText(s).width > max && s.length > 2) s = s.slice(0, -2) + '…'; return s; };
+  const nm = i => g.players[i].name.toUpperCase();
+  // FINAL · date (and where)
+  text('FINAL', W / 2, 46, F(800, 18, COND), '#A1A1AA', 'center');
+  const meta = [g.away && `${shortTeam(g.away)} ${g.mlb ? g.mlb.away : ''}`.trim(), g.home && `${shortTeam(g.home)} ${g.mlb ? g.mlb.home : ''}`.trim(), whereAt(g), niceDate(g.date)].filter(Boolean).join(' · ');
+  text(fit(meta, W - 72, F(700, 13, CO)), W / 2, 66, F(700, 13, CO), '#A1A1AA', 'center');
+  // headline, big score, the line under it
+  const head = r.tie ? r.leaders.map(nm).join(' & ') + ' TIE' : nm(r.winner) + ' WINS';
+  let hs = 46; x.font = F(800, hs, COND); while (x.measureText(head).width > W - 72 && hs > 26) { hs -= 2; x.font = F(800, hs, COND); }
+  text(head, W / 2, 122, F(800, hs, COND), '#F5F5F7', 'center');
+  let y = 212;
+  const big = F(900, 86, SH), dash = F(800, 40, SH);
+  if (n === 2 || r.tie) {
+    const [a1, b1] = r.tie ? r.leaders : order, sa = String(r.scores[a1]), sb = String(r.scores[b1]);
+    x.font = big; const wa = x.measureText(sa).width, wb = x.measureText(sb).width, gap = 44, tot = wa + gap + wb, x0 = (W - tot) / 2;
+    text(sa, x0, y, big, '#F5F5F7'); text('–', x0 + wa + gap / 2, y - 14, dash, '#5E5E66', 'center'); text(sb, x0 + wa + gap, y, big, r.tie ? '#F5F5F7' : '#8E8E96');
+  } else {
+    const cols = order.map(i => String(r.scores[i])), cw = (W - 72) / n;
+    order.forEach((i, k) => { const cx = 36 + cw * k + cw / 2;
+      text(['1ST', '2ND', '3RD', '4TH'][k], cx, y - 74, F(800, 13, COND), k ? '#8E8E96' : '#F2C14E', 'center');
+      text(cols[k], cx, y, F(900, k ? 56 : 86, SH), k ? '#A1A1AA' : '#F5F5F7', 'center');
+      text(fit(g.players[i].name, cw - 8, F(600, 13, SYS)), cx, y + 18, F(600, 13, SYS), '#A1A1AA', 'center'); });
+  }
+  const se = sum.series;
+  const sub = r.tie ? 'Dead even' : n === 3 ? (sum.winNumber ? `${g.players[r.winner].name}’s ${ordinal(sum.winNumber)} win` : '')
+    : se ? (se.leader ? `${g.players[se.leader === 'a' ? 0 : 1].name} leads the series ${Math.max(se.a.wins, se.b.wins)}–${Math.min(se.a.wins, se.b.wins)}` : `Series tied ${se.a.wins}–${se.b.wins}`) : '';
+  if (sub && n !== 3) text(fit(sub, W - 72, F(700, 14, CO)), W / 2, y + 30, F(700, 14, CO), '#A1A1AA', 'center');
+  y += n === 3 && !r.tie ? 38 : 50;
+  // line score
+  if (ls) {
+    const inns = ls.innings.slice(-9);
+    rr(36, y, W - 72, lsH, 18, PANEL);
+    const x0 = 36 + 14 + 66, colW = (W - 72 - 28 - 66 - 40) / inns.length;
+    inns.forEach((k, j) => text(String(k), x0 + colW * j + colW / 2, y + 22, F(700, 14, COND), '#8E8E96', 'center'));
+    text('R', W - 50, y + 22, F(700, 14, COND), '#F5F5F7', 'right');
+    g.players.forEach((p, i) => { const yy = y + 32 + i * 36 + 25; const lead = ls.totals[i] === Math.max(...ls.totals);
+      text(fit(p.name, 64, F(700, 15, SYS)), 50, yy, F(lead ? 700 : 600, 15, SYS), lead ? '#F5F5F7' : '#A1A1AA');
+      inns.forEach((k, j) => { const v = ls.rows[i][k - 1]; if (v != null) text(String(v), x0 + colW * j + colW / 2, yy, F(800, 19, SH), '#C7C7CC', 'center'); });
+      text(String(ls.totals[i]), W - 50, yy + 1, F(900, 26, SH), lead ? '#F5F5F7' : '#A1A1AA', 'right'); });
+    y += lsH + 12;
+  }
+  // the four tiles (accuracy, Pick 3 bonuses, confidence, best streak) — best in white, like the Final page
+  const tw = (W - 72 - 10) / 2;
+  tiles.forEach((t, k) => {
+    const tx = 36 + (k % 2) * (tw + 10), ty = y + Math.floor(k / 2) * 88;
+    rr(tx, ty, tw, 78, 16, PANEL);
+    const fmt = v => (t.label === 'ACCURACY' ? (v == null ? '—' : Math.round(v * 100) + '%') : t.label === 'CONFIDENCE' ? v.join('–') : String(v));
+    const score = v => (t.label === 'CONFIDENCE' ? v[0] - v[1] : v == null ? -1 : v), top = Math.max(...t.values.map(score));
+    text(t.label, tx + 14, ty + 22, F(800, 13, COND), '#8E8E96');
+    let vx = tx + 14; const vf = F(900, n === 3 ? 20 : 26, SH);
+    order.forEach(i => { const s2 = fmt(t.values[i]); text(s2, vx, ty + 50, vf, score(t.values[i]) === top ? '#F5F5F7' : '#6E6E76'); x.font = vf; vx += x.measureText(s2).width + (n === 3 ? 8 : 12); });
+    text(fit(order.map(i => g.players[i].name).join(n === 3 ? ' · ' : ' vs '), tw - 28, F(700, 12, CO)), tx + 14, ty + 68, F(700, 12, CO), '#A1A1AA');
+  });
+  y += rows * 88;
+  // awards: just the icons
+  if (list.length) {
+    text('EARNED TODAY', 36, y + 14, F(800, 14, COND), '#8E8E96'); y += 26;
+    const size = 50, gapI = (W - 72 - size * 8) / 7;
+    for (let k = 0; k < list.length; k++) {
+      const a = list[k], ix = 36 + (k % 8) * (size + gapI), iy = y + Math.floor(k / 8) * 58;
+      rr(ix, iy, size, size, 14, 'rgba(242,193,78,.14)');
+      const svg = awardIcon(a.award, 34);
+      if (svg.startsWith('<svg')) {
+        try { const img = await new Promise((ok, no) => { const i = new Image(); i.onload = () => ok(i); i.onerror = no; i.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg.replace('<svg ', '<svg xmlns="http://www.w3.org/2000/svg" ')); });
+          x.drawImage(img, ix + (size - 34) / 2, iy + (size - 34) / 2, 34, 34); } catch (e) { /* skip a bad icon */ }
+      } else text(a.award.code || '?', ix + size / 2, iy + size / 2 + 8, F(900, 22, SH), '#F4F1E8', 'center');
+    }
+    y += iconRows * 58;
+  }
+  // footer: the wordmark, and the club
+  text('Guess Ball', 36, H - 30, '28px Norican, cursive', '#F4F1E8');
+  x.save(); x.translate(36, H - 24); x.scale(124 / 440, 124 / 440); x.strokeStyle = '#D63A2F'; x.lineCap = 'round'; x.lineJoin = 'round';
+  x.lineWidth = 7; x.stroke(new Path2D('M40 26C150 12 290 9 382 18')); x.lineWidth = 4; x.stroke(new Path2D('M406 36L422 20 406 4 390 20z')); x.restore();
+  const club = (S.clubs.find(k => (g.clubList || []).includes(k.code)) || {}).name;
+  if (club) text(club.toUpperCase(), W - 36, H - 32, F(800, 15, COND), '#8E8E96', 'right');
+  return new Promise(res => c.toBlob(res, photo ? 'image/jpeg' : 'image/png', 0.9));
+}
+async function drawShareCardOld(g, sum, awards) {
   try { await document.fonts.ready; } catch (e) { /* fonts may not be loaded offline: system fonts are fine */ }
   const W = 540, H = 675, K = 2, c = document.createElement('canvas'); c.width = W * K; c.height = H * K;
   const x = c.getContext('2d'); x.scale(K, K);
@@ -4992,7 +5142,7 @@ SCREENS.awards = () => {
     const tools = cat === 'ALL' ? `<div style="display:flex;gap:8px;align-items:center">
         <label class="field search" style="flex:1;min-width:0;height:40px;background:var(--card)">${ICON.search}<input data-model="awq" data-region="awlist" value="${attr(S.awq || '')}" placeholder="Search awards" autocomplete="off"></label>
         <button class="press cond" ${act('awWon')} aria-pressed="${wonOnly}" style="flex-shrink:0;height:40px;padding:0 14px;border-radius:20px;font-size:14px;font-weight:800;letter-spacing:.6px;background:${wonOnly ? 'var(--gold)' : 'var(--card)'};color:${wonOnly ? '#1A1406' : 'var(--text3)'}">WON ONLY</button></div>` : '';
-    body = `${tools}<div data-region="awlist" style="display:flex;flex-direction:column;gap:14px"><span class="courier meta" style="padding:0 2px">${got} of ${list.length} earned · tap one for details</span>${recent}${secs || `<div class="card" style="padding:18px;font-size:15px;color:var(--text2)">${q ? `No awards${wonOnly ? ' you’ve won' : ''} match “${esc(S.awq.trim())}”` : 'No awards won yet'}.</div>`}</div>`;
+    body = `${tools}<div data-region="awlist" style="display:flex;flex-direction:column;gap:14px">${cat === 'ALL' ? `<span class="courier meta" style="padding:0 2px">${got} of ${list.length} earned</span>` : ''}${recent}${secs || `<div class="card" style="padding:18px;font-size:15px;color:var(--text2)">${q ? `No awards${wonOnly ? ' you’ve won' : ''} match “${esc(S.awq.trim())}”` : 'No awards won yet'}.</div>`}</div>`;
   }
   const chips = [['ALL', 'ALL']].concat(AWARD_CATS).map(([c, label]) => `<button class="press cond" ${act('awCat', c)} style="flex-shrink:0;height:30px;padding:0 12px;border-radius:15px;font-size:14px;font-weight:800;letter-spacing:.6px;background:${c === cat ? 'var(--text)' : 'var(--card)'};color:${c === cat ? 'var(--bg)' : 'var(--text5)'}">${label}</button>`).join('');
   return `<div class="page tabbed split">
@@ -5107,7 +5257,7 @@ Object.assign(ACT, {
 // Club card (name, privacy, invite, captain settings) · REQUESTS (captains) · ROSTER · GUESTS · Leave club.
 // Tap a person → Roster member sheet. Tap a guest → Guest sheet (claim link, link to an account, rename).
 const clubOf = code => S.clubs.find(c => c.code === code) || null;
-const initialDot = (name, color = 'var(--card3)', dashed = false) => `<span style="width:32px;height:32px;border-radius:16px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;${dashed ? 'border:1.5px dashed var(--text4)' : 'background:' + color}">${esc((name || '?')[0].toUpperCase())}</span>`;
+const initialDot = (name, color = 'var(--card3)', dashed = false, pid = null) => avatar(pid, name, 32, color, 'var(--text)', dashed);   // (their photo when they have one)
 const baseUrl = () => location.origin + location.pathname.replace(/index\.html$/, '');
 // FIND A CLUB / CREATE A CLUB pinned above the tab bar (and above the LIVE bar during a game)
 const clubDock = () => { const live = typeof liveBar === 'function' && liveBar() ? 56 : 0;
@@ -5185,13 +5335,13 @@ SCREENS.club = () => {
     body = `${reqs}
       <div style="display:flex;align-items:baseline;justify-content:space-between;margin-top:4px"><h2 class="cond h2" data-tip="roster">ROSTER</h2><span class="shoulders" style="font-size:20px;font-weight:800;color:var(--text2)">${people.length}</span></div>
       <div class="list">${people.map(m => `<button class="row press" ${act('openSheet', 'member:' + m.pid)} style="min-height:52px">
-        ${initialDot(m.name, m.pid === S.user.uid ? 'var(--accent)' : 'var(--card3)')}
+        ${initialDot(m.name, m.pid === S.user.uid ? 'var(--accent)' : 'var(--card3)', false, m.pid)}
         <span style="flex-grow:1;min-width:0;font-size:17px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(m.name)}</span>
         ${m.captain ? '<span class="cond tag gold">CAPTAIN</span>' : ''}<span class="courier meta" style="min-width:58px;text-align:right">${loaded ? plural(count(m.pid), 'game') : ''}</span></button>`).join('')}</div>
-      ${guests.length ? `<div style="display:flex;align-items:baseline;justify-content:space-between;margin-top:4px"><h2 class="cond h2">GUESTS</h2><span class="shoulders" style="font-size:20px;font-weight:800;color:var(--text2)">${guests.length}</span></div>
+      ${guests.length ? `<div style="display:flex;align-items:center;justify-content:space-between;margin-top:4px">${info('guestWhy', '<h2 class="cond h2" style="margin:0">GUESTS</h2>', 'Someone who plays on another person’s phone without an account. Tap a guest to send them a claim link — when they sign up, their games move to their account.', '')}<span class="shoulders" style="font-size:20px;font-weight:800;color:var(--text2)">${guests.length}</span></div>
       <div style="display:flex;flex-wrap:wrap;gap:8px">${guests.map(m => `<button class="press" ${act('openSheet', 'guest:' + m.pid)} style="height:36px;padding:0 14px 0 6px;border-radius:18px;background:var(--card);display:flex;align-items:center;gap:8px;font-size:15px;font-weight:600">
         <span style="width:24px;height:24px;border-radius:12px;border:1.5px dashed var(--text4);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700">${esc(m.name[0].toUpperCase())}</span>${esc(m.name)}</button>`).join('')}</div>
-      ${info('guestWhy', '<span class="courier meta">What’s a guest?</span>', 'Someone who plays on another person’s phone without an account. Tap a guest to send them a claim link — when they sign up, their games move to their account.', '')}` : ''}
+      ` : ''}
       <button class="press cond mid-btn" style="margin-top:10px;color:var(--orange);font-size:18px" ${act('openSheet', 'leave')}>LEAVE CLUB</button>`;
   }
   return `<div class="page tabbed" style="--dock:${dockPad()}">
@@ -5237,8 +5387,7 @@ function scoutingReport(games, pid, name) {
     ${r.best.length ? `<div class="cond" style="font-size:13px;font-weight:800;letter-spacing:.8px;color:var(--text3);padding-top:8px">BEST CALLS</div>${r.best.map(c => callRow(c, 'var(--green)')).join('')}` : ''}
     ${r.worst.length ? `<div class="cond" style="font-size:13px;font-weight:800;letter-spacing:.8px;color:var(--text3);padding-top:10px">BLIND SPOTS</div>${r.worst.map(c => callRow(c, 'var(--orange)')).join('')}` : ''}</div>` : ''}
   ${r.p3.halves ? line2('PICK 3', `Bonus hit ${r.p3.hits} of ${plural(r.p3.halves, 'half-inning')}`, pct(r.p3.hits / r.p3.halves)) : ''}
-  ${r.priority != null ? line2('PRIORITY', `Held it for ${pct(r.priority)} of at-bats`, pct(r.priority)) : ''}
-  <span class="courier meta" style="text-align:center">Only games played in the app count · 5+ picks for best calls and blind spots</span>`;
+  ${r.priority != null ? line2('PRIORITY', `Held it for ${pct(r.priority)} of at-bats`, pct(r.priority)) : ''}`;
 }
 function memberSheet() {
   const pid = S.sheet.arg, d = clubData() || { roster: [] }, m = (d.roster || []).find(x => x.pid === pid) || { name: 'Player' };
@@ -5263,7 +5412,7 @@ function memberSheet() {
       <span class="shoulders num" style="font-size:20px;font-weight:900">${sc[i]}–${best}</span></button>`; };
   const since = m.joinedAt ? new Date(m.joinedAt).getFullYear() : null;
   return `<div style="display:flex;align-items:center;gap:12px">
-    <span style="width:52px;height:52px;border-radius:26px;background:var(--card3);display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:800;flex-shrink:0">${esc(m.name[0].toUpperCase())}</span>
+    ${avatar(m.pid, m.name, 52)}
     <div style="display:flex;flex-direction:column;gap:3px;min-width:0"><div style="display:flex;align-items:center;gap:8px"><span class="cond" style="font-size:28px;font-weight:800;line-height:1">${esc(m.name)}</span>${m.captain ? '<span class="cond tag gold">CAPTAIN</span>' : ''}</div>
     <span class="courier meta">In ${esc((clubOf(S.scope) || {}).name || 'the club')}${since ? ' since ' + since : ''}</span></div></div>
   <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px">
@@ -5344,7 +5493,7 @@ SCREENS.clubSettings = () => {
   const people = (d.roster || []).filter(m => !m.guest);
   const caps = people.filter(m => cs.caps[m.pid]), others = people.filter(m => !cs.caps[m.pid]);
   const onlyOne = caps.length <= 1;
-  const capRow = m => `<div class="row" style="min-height:54px">${initialDot(m.name, m.pid === S.user.uid ? 'var(--accent)' : 'var(--card3)')}
+  const capRow = m => `<div class="row" style="min-height:54px">${initialDot(m.name, m.pid === S.user.uid ? 'var(--accent)' : 'var(--card3)', false, m.pid)}
     <span style="flex-grow:1;font-size:17px;font-weight:600">${esc(m.name)}</span>
     <button class="press cond small-btn" style="color:var(--orange);${onlyOne ? 'opacity:.35' : ''}" ${onlyOne ? `${act('toast', 'A club needs at least one captain')}` : act('csCap', m.pid + '|0')}>${m.pid === S.user.uid ? 'STEP DOWN' : 'REMOVE'}</button></div>`;
   return `<div class="page">
@@ -5616,7 +5765,7 @@ SCREENS.appearance = () => {
   const a = ap(), fav = favTeam(), team = a.park || (PARKS[fav] ? fav : null);
   const src = a.bg === 'off' ? null : a.bg === 'mine' ? (myPhoto() || favPhoto()) : favPhoto();
   const pick = team && parkPick(team);
-  const caption = a.bg === 'off' ? 'No background photo' : a.bg === 'mine' ? (myPhoto() ? 'My photo' : 'No photo chosen yet') : pick ? `${PARKS[team].park} · ${pick.label}` : 'Pick a park below';
+  const caption = a.bg === 'off' ? 'No background photo' : a.bg === 'mine' ? (myPhoto() ? 'My photo' : '') : pick ? `${PARKS[team].park} · ${pick.label}` : 'Pick a park below';
   const seg = (key, opts) => `<div class="seg" style="grid-template-columns:repeat(${opts.length},minmax(0,1fr))">${opts.map(([v, l]) => `<button class="${a[key] === v ? 'on' : ''}" ${act('apSet', key + '|' + v)}>${l}</button>`).join('')}</div>`;
   const dot = (k, color, label) => `<button class="press" aria-label="${k}" ${act('apSet', 'accent|' + k)} style="width:38px;height:38px;border-radius:19px;flex-shrink:0;background:${color};display:flex;align-items:center;justify-content:center;color:#fff;font:800 11px 'Barlow Condensed',sans-serif;letter-spacing:.4px;box-shadow:${a.accent === k ? '0 0 0 2px var(--bg), 0 0 0 4px ' + color : 'none'}">${label || ''}</button>`;
   const teamSwatch = fav && TEAM_STYLE[fav] ? dot('team', TEAM_STYLE[fav][1], TEAM_STYLE[fav][0]) : '';
@@ -5628,26 +5777,23 @@ SCREENS.appearance = () => {
       <span class="courier" style="font-size:10px;font-weight:700;line-height:1.25;color:${pick && pick.id === p.id ? 'var(--text)' : 'var(--text3)'}">${esc(p.label)}</span></button>`).join('')}</div>` : ''}` : '';
   const mineRow = a.bg === 'mine' ? `
     <label class="press mid-btn" style="cursor:pointer">${ICON.plus} ${myPhoto() ? 'CHOOSE A DIFFERENT PHOTO' : 'CHOOSE A PHOTO'}<input type="file" accept="image/*" data-photo="1" style="display:none"></label>
-    ${myPhoto() ? `<button class="press cond small-btn" style="align-self:flex-start;color:var(--orange)" ${act('apClearPhoto')}>REMOVE MY PHOTO</button>` : ''}
-    <span class="courier meta" style="line-height:1.5">Stays on this phone only — nobody else sees it, and it isn’t uploaded.</span>` : '';
+    ${myPhoto() ? `<button class="press cond small-btn" style="align-self:flex-start;color:var(--orange)" ${act('apClearPhoto')}>REMOVE MY PHOTO</button>` : ''}` : '';
   return `<div class="page">
   <div class="topbar">${backBtn()}<h1 class="cond h1">APPEARANCE</h1></div>
   <div style="display:flex;flex-direction:column;align-items:center;gap:8px">
     <div style="position:relative;width:120px;height:254px;border-radius:26px;border:3px solid var(--line2);overflow:hidden;background:${src ? `#000 url('${src}') center/cover` : 'var(--bg)'}">${src ? `<div style="position:absolute;inset:0;background:var(--wash)"></div>` : ''}
       ${previewCards(!!src && a.frost)}</div>
-    <span class="courier meta">${esc(caption)}</span></div>
+    ${caption ? `<span class="courier meta">${esc(caption)}</span>` : ''}</div>
   <span class="cond label">BACKGROUND</span>
   ${seg('bg', [['off', 'OFF'], ['stadium', 'STADIUM'], ['mine', 'MY PHOTO']])}
   ${parkRow}${mineRow}
-  ${a.bg !== 'off' ? `<span class="courier meta" style="line-height:1.5">Games at a ballpark show that park’s own photo. Couch games show yours.</span>` : ''}
   <span class="cond label">THEME</span>
   ${seg('theme', [['dark', 'DARK'], ['light', 'LIGHT'], ['auto', 'AUTO']])}
   <div class="list"><div class="row" style="min-height:52px"><div style="flex-grow:1;padding:6px 0">${info('apFrost', '<span style="font-size:16px;font-weight:500;color:var(--text)">Frosted cards</span>', 'Blurs the stadium photo behind each card (you can see it in the preview above). Only shows when a background photo is on. If the app ever feels sticky, turn this off.', '')}</div>${toggle(a.frost, 'apToggleFrost')}</div></div>
   <span class="cond label">ACCENT COLOR</span>
   <div class="card" style="padding:12px;display:flex;gap:10px;flex-wrap:wrap">${Object.entries(ACCENTS).map(([k, c]) => dot(k, c)).join('')}${teamSwatch}</div>
-  ${teamSwatch ? `<span class="courier meta" style="margin-top:-6px">${TEAM_STYLE[fav][0]} = your favorite team’s color.</span>` : ''}
   <span class="cond label">TEXT</span>
-  <div class="list"><div class="row" style="min-height:52px"><div style="flex-grow:1;padding:6px 0">${info('apBig', '<span style="font-size:16px;font-weight:500;color:var(--text)">Larger text</span>', 'Makes text a little bigger everywhere. Easier to read in the sun.', '')}</div>${toggle(S.settings.big, 'setting', 'big')}</div></div>
+  <div class="list"><div class="row" style="min-height:52px"><div style="flex-grow:1;padding:6px 0">${info('apBig', '<span style="font-size:16px;font-weight:500;color:var(--text)">Larger text</span>', 'This is for you Stu', '')}</div>${toggle(S.settings.big, 'setting', 'big')}</div></div>
 </div>`;
 };
 // Two sample cards inside the preview phone, so frosted vs plain is easy to see
@@ -5682,6 +5828,28 @@ async function shrinkPhoto(file) {
     return out;
   } finally { URL.revokeObjectURL(url); }
 }
+// Profile photo: a square, centered crop, small enough to live on your profile (~10 KB)
+async function shrinkPfp(file) {
+  const url = URL.createObjectURL(file);
+  try {
+    const img = await new Promise((ok, no) => { const i = new Image(); i.onload = () => ok(i); i.onerror = no; i.src = url; });
+    const S2 = 192, c = document.createElement('canvas'); c.width = S2; c.height = S2;
+    const x = c.getContext('2d'), s = Math.max(S2 / img.width, S2 / img.height), iw = img.width * s, ih = img.height * s;
+    x.drawImage(img, (S2 - iw) / 2, (S2 - ih) / 2, iw, ih);
+    let q = 0.8, out = c.toDataURL('image/jpeg', q);
+    while (out.length > 28000 && q > 0.3) { q -= 0.1; out = c.toDataURL('image/jpeg', q); }
+    return out;
+  } finally { URL.revokeObjectURL(url); }
+}
+$app().addEventListener('change', async e => {
+  const i = e.target; if (!i.dataset || !i.dataset.pfp || !i.files || !i.files[0]) return;
+  const uid = S.user && S.user.uid, was = Photos.of(uid);
+  try {
+    const d = await shrinkPfp(i.files[0]); i.value = '';
+    Photos.set(uid, d); buzz(); render();
+    await FCab.savePhoto(d); toast('Photo set');
+  } catch (e2) { Photos.set(uid, was); render(); toast('Couldn’t use that photo — try another', true); }
+});
 $app().addEventListener('change', async e => {
   const i = e.target; if (!i.dataset || !i.dataset.photo || !i.files || !i.files[0]) return;
   try { const d = await shrinkPhoto(i.files[0]); localStorage.setItem(sk('gb_myphoto'), d); ap().bg = 'mine'; saveAp(); buzz(); render(); toast('Photo set'); }
@@ -6186,20 +6354,37 @@ ACT.tipsAgain = () => {
 // Photo runs up behind the clock (see-through status bar). Some iPhones then report the home-screen app's
 // window 47pt too short (e.g. 797 instead of 844), which cut off the tab bar in build 2 — so size the app
 // from the real screen height when that happens.
+// Some iPhones report a home-screen app's window shorter than the real screen (the tab bar then floats up with a black
+// band below it). The fix doesn't guess per phone model: as a home-screen app, upright, with no keyboard open, the app
+// always fills the whole screen. (With the keyboard open it keeps its last size, so sheets still lift above the keys.)
+const safeTop = () => { const p = document.createElement('div'); p.style.cssText = 'position:fixed;visibility:hidden;padding-top:env(safe-area-inset-top)';
+  document.body.appendChild(p); const t = parseFloat(getComputedStyle(p).paddingTop) || 0; p.remove(); return t; };
+const typing = () => { const el = document.activeElement; return !!(el && (/^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName) || el.isContentEditable)) || !!(window.visualViewport && innerHeight - visualViewport.height > 120); };
+let lastShort = 0;
 const shortBy = () => {
   const portrait = innerHeight > innerWidth, standalone = navigator.standalone === true || (window.matchMedia && matchMedia('(display-mode: standalone)').matches);
-  const probe = document.createElement('div'); probe.style.cssText = 'position:fixed;visibility:hidden;padding-top:env(safe-area-inset-top)';
-  document.body.appendChild(probe); const top = parseFloat(getComputedStyle(probe).paddingTop) || 0; probe.remove();   // app drawn under the clock?
+  if (typing()) return lastShort;                                    // keyboard up: leave the size alone
   const d = screen.height - innerHeight;
-  // Only a gap the size of the status bar (never a keyboard). It differs by phone: 47pt on older notched iPhones,
-  // 59pt on 14/15 Pro, 62pt on the iPhone 16 Pro (the old 60pt limit missed it, so Hailey's tab bar floated up).
-  return standalone && portrait && top > 0 && d > 0 && d <= Math.max(60, top + 4) ? d : 0;
+  lastShort = standalone && portrait && d > 0 && d < screen.height * 0.25 ? d : 0;   // (a quarter of the screen or more would be a keyboard)
+  return lastShort;
 };
 function sizeApp() {
   const miss = shortBy();
   document.documentElement.style.setProperty('--apph', miss ? screen.height + 'px' : '100%');
+  if (!typing() && (window.scrollY || window.scrollX)) window.scrollTo(0, 0);   // iOS can leave the whole page nudged up: put it back
+  logLayout();
+}
+// For the Problem log (and live logs in Guess Ball Next): what size the phone says it is, and what the app did about it
+function logLayout() {
+  clearTimeout(logLayout.t); logLayout.t = setTimeout(() => {
+    const v = window.visualViewport, app = document.getElementById('app');
+    const line = `layout: screen ${screen.width}×${screen.height}, window ${innerWidth}×${innerHeight}${v ? ', visible ' + Math.round(v.height) : ''}, top ${safeTop()}, fix ${lastShort}, app ${app ? app.offsetHeight : '?'}, scrolled ${Math.round(window.scrollY)}`;
+    if (line !== logLayout.last && typeof Diag !== 'undefined') { logLayout.last = line; Diag.add('app', line); }
+  }, 600);
 }
 sizeApp(); addEventListener('resize', sizeApp); addEventListener('orientationchange', () => setTimeout(sizeApp, 300));
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') setTimeout(sizeApp, 300); });
+document.addEventListener('focusout', () => setTimeout(sizeApp, 350));   // keyboard closed
 // When the keyboard opens, lift sheets so their lists stay above it
 if (window.visualViewport) {
   const kb = () => {
