@@ -1955,7 +1955,7 @@ const FilingCabinet = (() => {
 // ════════════════════════════════════════════════════════════════
 // Which copy of the app this is: the real app, or Guess Ball Next (QA, with its own test data)
 const ENV = {"name":"qa","data":"qa","store":"gbqa_"};
-const VERSION = ENV.name === 'qa' ? '2.0 · QA build 15 · 09-30 21:46 UTC' : '2.0';
+const VERSION = ENV.name === 'qa' ? '2.0 · QA build 16 · 09-30 21:59 UTC' : '2.0';
 const RULES_JSON = {
   "rules": {
     "v2": {
@@ -4467,19 +4467,24 @@ function statsRecords(games) {
       case 'MOST GAMES': return [r.value, r.who, 'Since ' + r.since];
       case 'SEASONS': return [r.value, 'Club history', r.from === r.to ? String(r.from) : `${r.from} – ${r.to}`];
       case 'BEST HALF-INNING': return ['+' + r.value, r.who, niceDate(r.date)];
-      case 'BIGGEST COMEBACK': return [r.value, r.who, 'Down by this much, still won'];
-      case 'LONGEST PICK STREAK': return [r.value, r.who, 'Right in a row · ' + niceDate(r.date)];
+      case 'BIGGEST COMEBACK': return [r.value, r.who, niceDate(r.date)];
+      case 'LONGEST PICK STREAK': return [r.value, r.who, niceDate(r.date)];
+      case 'TOP BALLPARK': return [r.value, r.who, 'Games played there'];
       default: return [String(r.value).replace('-', '−'), r.who, niceDate(r.date)];
     }
   };
   const hasInGame = recs.some(r => r.label === 'BEST HALF-INNING');
+  // Top ballpark (moved here from the club card): the park with the most games, couch games not counted
+  const parks = {}; games.forEach(g => { if (g.park && !g.tv && g.ended !== false) parks[g.park] = (parks[g.park] || 0) + 1; });
+  const topPark = Object.entries(parks).sort((a, b) => b[1] - a[1])[0];
+  if (topPark) recs.push({ label: 'TOP BALLPARK', value: topPark[1], who: topPark[0], park: true });
   return `<div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px">${recs.map(r => { const [v, who, when] = fmt(r);
     const tap = r.top && r.top.length > 1;
     return `<${tap ? 'button' : 'div'} class="card${tap ? ' press' : ''}" ${tap ? act('openSheet', 'record:' + r.label) : ''} style="border-radius:16px;padding:10px 14px;display:flex;flex-direction:column;min-width:0;text-align:left;width:100%">
-      <span class="cond" style="font-size:13px;font-weight:800;letter-spacing:.8px;color:var(--text3);display:flex;justify-content:space-between">${r.label}${tap ? '<span style="color:var(--text4)">›</span>' : ''}</span>
-      <span class="shoulders" style="font-size:38px;font-weight:900;line-height:1.05">${v}</span>
+      <span class="cond" style="font-size:13px;font-weight:800;letter-spacing:.5px;color:var(--text3);display:flex;justify-content:space-between;gap:4px;min-width:0"><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0">${r.label === 'LONGEST PICK STREAK' ? 'PICK STREAK' : r.label}</span>${tap ? '<span style="color:var(--text4)">›</span>' : ''}</span>
+      <span class="shoulders" style="font-size:38px;font-weight:900;line-height:1.05;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${v}</span>
       <span style="font-size:14px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(who)}</span>
-      <span class="courier" style="font-size:10px;font-weight:700;color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(when)}</span></${tap ? 'button' : 'div'}>`; }).join('')}</div>
+      <span class="courier" style="font-size:10px;font-weight:700;color:var(--text2);line-height:1.35">${esc(when)}</span></${tap ? 'button' : 'div'}>`; }).join('')}</div>
   ${hasInGame ? '' : `<span class="courier meta" style="line-height:1.5;padding:0 2px">In-game records (best half-inning, biggest comeback, longest pick streak) start with the first new-app game.</span>`}`;
 }
 
@@ -4497,7 +4502,6 @@ function recordSheet() {
     case 'WIN STREAK': return 'Ended ' + niceDate(t.date);
     case 'MOST WINS': return 'Wins, all time';
     case 'MOST GAMES': return 'Games, all time';
-    case 'LONGEST PICK STREAK': return 'Right in a row · ' + niceDate(t.date);
     default: return t.date ? niceDate(t.date) : ''; } };
   return `<h2 class="cond" style="margin:0;font-size:28px;font-weight:800">${esc(r.label)}</h2>
   <span class="courier meta">Top ${r.top.length} · ${esc(scopeName())}</span>
@@ -5310,9 +5314,7 @@ SCREENS.club = () => {
   const cap = amCaptain();
   // Club card
   const years = games.map(g => +g.date.slice(0, 4)), since = years.length ? Math.min(...years) : (c.createdAt ? new Date(c.createdAt).getFullYear() : null);
-  const parks = {}; games.forEach(g => { if (g.park && !g.tv) parks[g.park] = (parks[g.park] || 0) + 1; });
-  const topPark = Object.entries(parks).sort((a, b) => b[1] - a[1])[0];
-  const meta = [since && 'Since ' + since, plural(games.length, 'game'), years.length && plural(new Set(years).size, 'season'), topPark && topPark[0]].filter(Boolean).join(' · ');
+  const meta = [since && 'Since ' + since, plural(games.length, 'game'), years.length && plural(new Set(years).size, 'season')].filter(Boolean).join(' · ');
   const card = `<div class="card" style="padding:16px;display:flex;flex-direction:column;gap:10px">
     <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
       <button class="press cond" ${act('openSwitcher')} style="display:flex;align-items:center;gap:8px;min-width:0;font-size:34px;font-weight:800;letter-spacing:.4px;line-height:1"><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(c.name.toUpperCase())}</span>${ICON.down}</button>
