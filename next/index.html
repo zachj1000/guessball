@@ -1955,7 +1955,7 @@ const FilingCabinet = (() => {
 // ════════════════════════════════════════════════════════════════
 // Which copy of the app this is: the real app, or Guess Ball Next (QA, with its own test data)
 const ENV = {"name":"qa","data":"qa","store":"gbqa_"};
-const VERSION = ENV.name === 'qa' ? '2.0 · QA build 16 · 09-30 21:59 UTC' : '2.0';
+const VERSION = ENV.name === 'qa' ? '2.0 · QA build 17 · 09-30 23:52 UTC' : '2.0';
 const RULES_JSON = {
   "rules": {
     "v2": {
@@ -4439,7 +4439,7 @@ function statsHistory(games) {
   const card = g => {
     const d = g.date.split('-');
     // tags: STADIUM or COUCH GAME (where it was watched), plus PRE-APP / BETA / ADDED BY for older games; the teams say which park
-    const tags = [g.tag === 'COUCH GAME' ? 'COUCH GAME' : g.park ? 'STADIUM' : '', g.tag !== 'COUCH GAME' ? g.tag : ''].filter(Boolean);
+    const tags = [g.tag === 'COUCH GAME' ? 'COUCH' : g.park ? 'STADIUM' : '', g.tag !== 'COUCH GAME' ? g.tag : ''].filter(Boolean);
     const tag = tags.map(t => `<span class="cond tag" style="font-size:10px;flex-shrink:0">${esc(t)}</span>`).join('');
     const meta = [g.doubleheader, g.away && g.home ? `${shortTeam(g.away)} at ${shortTeam(g.home)}` : ''].filter(Boolean).join(' · ');
     return `<button class="card press" ${act('openGame', g.id)} style="width:100%;border-radius:18px;padding:10px 16px;display:flex;align-items:center;gap:14px;text-align:left">
