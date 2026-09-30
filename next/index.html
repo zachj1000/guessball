@@ -1955,7 +1955,7 @@ const FilingCabinet = (() => {
 // ════════════════════════════════════════════════════════════════
 // Which copy of the app this is: the real app, or Guess Ball Next (QA, with its own test data)
 const ENV = {"name":"qa","data":"qa","store":"gbqa_"};
-const VERSION = ENV.name === 'qa' ? '2.0 · QA build 14 · 09-30 20:12 UTC' : '2.0';
+const VERSION = ENV.name === 'qa' ? '2.0 · QA build 15 · 09-30 21:46 UTC' : '2.0';
 const RULES_JSON = {
   "rules": {
     "v2": {
@@ -3527,14 +3527,14 @@ SCREENS.newGame = () => {
   return `<div class="fixedpage" style="gap:12px">
   <div class="topbar">${backBtn()}<h1 class="cond h1">NEW GAME</h1></div>
   ${tipCard('newGame')}
-  <div style="display:flex;justify-content:space-between;align-items:baseline;margin:6px 0 0"><h2 class="cond label" style="margin:0;font-size:18px">MATCHUP</h2><span class="cond label" style="font-size:15px">${esc(today.toUpperCase())}</span></div>
+  <div style="display:flex;justify-content:space-between;align-items:baseline;margin:6px 0 0"><h2 class="cond label" style="margin:0;font-size:18px">MATCHUP</h2><span class="cond label onphoto" style="align-self:auto;font-size:15px">${esc(today.toUpperCase())}</span></div>
   <div class="seg cond"><button class="${n.tv ? '' : 'on'}" ${act('ngWhere', 'park')}>AT THE BALLPARK</button><button class="${n.tv ? 'on' : ''}" ${act('ngWhere', 'home')}>COUCH GAME</button></div>
   <div class="list">${team('away', 'AWAY')}${team('home', 'HOME')}${n.tv ? '' : `<button class="row press" ${act('openSheet', 'park')} style="min-height:54px">
     <span class="cond" style="width:48px;font-size:15px;font-weight:800;letter-spacing:.8px;color:var(--text3)">PARK</span>
     <span style="flex-grow:1;font-size:17px;font-weight:600;color:${park ? 'var(--text)' : 'var(--text4)'}">${esc(park || 'Choose ballpark')}</span>${ICON.chev}</button>`}</div>
   <h2 class="cond label" style="margin:6px 0 0;font-size:18px">PLAYERS</h2>
   <div class="list">${n.players.map((p, i) => { const c = PCOLOR[p.color || PCOLORS[i][0]]; return `<div class="row" style="min-height:62px">
-      <button class="press" aria-label="Color for ${attr(p.name)}" ${act('openSheet', 'ngColor:' + i)} style="width:40px;height:40px;border-radius:20px;background:${c};color:${onColor(c)};display:flex;align-items:center;justify-content:center;font-weight:800;flex-shrink:0;position:relative">${esc(p.name[0].toUpperCase())}
+      <button class="press" aria-label="Color for ${attr(p.name)}" ${act('openSheet', 'ngColor:' + i)} style="width:40px;height:40px;border-radius:20px;background:${c};color:${onColor(c)};display:flex;align-items:center;justify-content:center;font-weight:800;flex-shrink:0;position:relative">${!p.guest && Photos.of(p.id) ? `<span style="position:absolute;inset:3px;border-radius:50%;background:#000 url('${Photos.of(p.id)}') center/cover"></span>` : esc(p.name[0].toUpperCase())}
         <span style="position:absolute;right:-3px;bottom:-3px;width:17px;height:17px;border-radius:9px;background:var(--card2);border:2px solid var(--card);display:flex;align-items:center;justify-content:center"><svg width="9" height="9" viewBox="0 0 12 12" fill="none" stroke="var(--text2)" stroke-width="2" stroke-linecap="round"><path d="M8.5 1.5l2 2L4 10H2V8z"/></svg></span></button>
       <button class="press" ${act('ngPriority', i)} style="flex-grow:1;display:flex;align-items:center;gap:12px;text-align:left;min-width:0">
         <div style="display:flex;flex-direction:column;min-width:0"><span style="font-size:17px;font-weight:700">${esc(p.name)}${p.guest ? ' <span class="cond tag" style="font-size:10px">GUEST</span>' : ''}</span>
@@ -3580,7 +3580,7 @@ function addPlayerSheet() {
   const guests = (S.ngRoster || []).filter(m => m.guest && !taken.has(m.pid) && (!ql || m.name.toLowerCase().includes(ql)));
   const exact = (S.ngRoster || []).some(m => m.name.toLowerCase() === ql);
   const row = (m, isGuest) => `<button class="row press" ${act('ngAdd', m.pid)} style="min-height:54px">
-    <span style="width:32px;height:32px;border-radius:16px;${isGuest ? 'border:1.5px solid var(--text4)' : 'background:var(--card3)'};display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;flex-shrink:0">${esc(m.name[0].toUpperCase())}</span>
+    ${isGuest ? `<span style="width:32px;height:32px;border-radius:16px;border:1.5px solid var(--text4);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;flex-shrink:0">${esc(m.name[0].toUpperCase())}</span>` : avatar(m.pid, m.name, 32)}
     <span style="flex-grow:1;font-size:17px;font-weight:600">${esc(m.name)}</span>${isGuest ? '<span class="cond tag">GUEST</span>' : ''}</button>`;
   return `<h2 class="cond" style="margin:0;font-size:28px;font-weight:800">ADD A PLAYER</h2>
   <label class="field search" style="background:var(--sheetcard)">${ICON.search}<input data-model="q" data-region="people" value="${attr(S.q)}" placeholder="Search or type a guest name" maxlength="16"></label>
