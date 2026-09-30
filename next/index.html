@@ -49,7 +49,7 @@ html[data-theme="light"] {
   --cream: #0E1F3D; --nav: rgba(255,255,255,0.86); --navpill: rgba(0,0,0,0.06); --scrim: rgba(0,0,0,0.3);
   --silver: #7E828C; --bronze: #A8642C;
   --popbg: #FFF7E2; --goldtint: #FFF3D6; --toastbg: #FFFFFF; --livebar: #FFFFFF; --tagline: #C7C7CC; --dim: #A1A1A8;
-  --glass: rgba(255,255,255,0.8); --wash: linear-gradient(180deg, rgba(242,242,247,.24) 0%, rgba(242,242,247,.06) 45%, rgba(242,242,247,.3) 100%);
+  --glass: rgba(255,255,255,0.88); --wash: linear-gradient(180deg, rgba(242,242,247,.24) 0%, rgba(242,242,247,.06) 45%, rgba(242,242,247,.3) 100%);
 }
 html[data-theme="light"] .tabbar { border-color: rgba(0,0,0,.06); box-shadow: 0 10px 30px rgba(0,0,0,.12); }
 html[data-theme="light"] .toast, html[data-theme="light"] .bubble { box-shadow: 0 10px 30px rgba(0,0,0,.14); }
@@ -71,7 +71,12 @@ html[data-theme="light"] #app.photo .screen .page h2, html[data-theme="light"] #
   -webkit-backdrop-filter: blur(18px); backdrop-filter: blur(18px); }
 /* On a photo, text that sits straight on the picture (not on a card) gets a soft shadow and a brighter grey, so it reads on bright parks */
 #app.photo .screen .page, #app.photo .screen .fixedpage { text-shadow: 0 1px 2px rgba(0,0,0,.9), 0 0 10px rgba(0,0,0,.55); }
-html[data-theme="light"] #app.photo .screen .page, html[data-theme="light"] #app.photo .screen .fixedpage { text-shadow: 0 0 2px rgba(255,255,255,.95), 0 0 10px rgba(255,255,255,.8); }
+html[data-theme="light"] #app.photo .screen .page, html[data-theme="light"] #app.photo .screen .fixedpage { text-shadow: 0 0 1px rgba(255,255,255,.9), 0 0 4px rgba(255,255,255,.6); }
+/* Light mode on a photo: no blurry glow on things that have their own pill; page titles get a pill too (build 14) */
+html[data-theme="light"] #app.photo .screen :is(.onphoto, h1, .sechead, .page h2, .fixedpage h2) { text-shadow: none; }
+html[data-theme="light"] #app.photo .screen :is(.page, .fixedpage, .topbar) h1:not(:is(.card, .list, .sheet) *) {
+  width: fit-content; padding: 0 14px; border-radius: 16px; background: var(--glass); -webkit-backdrop-filter: blur(18px); backdrop-filter: blur(18px); }
+html[data-theme="light"] #app.photo .screen .onphoto { color: var(--text) !important; }
 #app.photo .screen :is(.card, .list, .chips, .seg, .field, .tabbar, .livebar, .dock, .swipe-ghost .card, button:not(.info-btn)) { text-shadow: none; }
 #app.photo .screen :is(.meta, .info-btn):not(:is(.card, .list, .chips, .seg, .tabbar, .dock, .sheet, .swipe-ghost, button:not(.info-btn), .info-btn) *) {
   align-self: flex-start; width: fit-content; padding: 3px 10px !important; border-radius: 10px; background: var(--glass); color: var(--text2); text-shadow: none; line-height: 1.5;
@@ -1950,7 +1955,7 @@ const FilingCabinet = (() => {
 // ════════════════════════════════════════════════════════════════
 // Which copy of the app this is: the real app, or Guess Ball Next (QA, with its own test data)
 const ENV = {"name":"qa","data":"qa","store":"gbqa_"};
-const VERSION = ENV.name === 'qa' ? '2.0 · QA build 13 · 09-30 19:36 UTC' : '2.0';
+const VERSION = ENV.name === 'qa' ? '2.0 · QA build 14 · 09-30 20:12 UTC' : '2.0';
 const RULES_JSON = {
   "rules": {
     "v2": {
@@ -3334,6 +3339,11 @@ function wire() {
     else if (i.dataset.rerender) render();
     else syncEnables();
   });
+  // Live logs (build 14): after a swipe on Home, note how far the page scrolled — to see whether Share Guess Ball can be reached
+  el.addEventListener('touchend', () => { if (S.screen !== 'home') return; clearTimeout(wire.hs); wire.hs = setTimeout(() => {
+    const pg = $app().querySelector('.screen .page'); if (!pg) return;
+    const line = `home scroll: at ${Math.round(pg.scrollTop)} of ${Math.max(0, pg.scrollHeight - pg.clientHeight)} (page ${pg.scrollHeight}, box ${pg.clientHeight}, app ${$app().offsetHeight})`;
+    if (line !== wire.hsl) { wire.hsl = line; Diag.add('app', line); } }, 900); }, { passive: true });
   // iPhone scroll lock guard: a scrolling page sitting exactly at its top or bottom can hand the swipe to the
   // (unscrollable) page behind it and then stay stuck. Keep every long page 1px away from its ends when a touch starts.
   el.addEventListener('touchstart', e => {
@@ -4508,15 +4518,14 @@ function statsH2H(games) {
   const picker = (side, id, color) => `<button class="press cond" ${act('openSheet', 'h2hPick:' + side)} style="flex:1;min-width:0;height:44px;border-radius:12px;background:var(--card);border-bottom:3px solid ${color};font-size:19px;font-weight:800;display:flex;align-items:center;justify-content:center;gap:6px;overflow:hidden;white-space:nowrap">${esc(nameOf(id))} ${ICON.down}</button>`;
   if (!b) return `<div style="display:flex;align-items:center;gap:10px">${picker('a', a, H2H_A)}</div><div class="card" style="padding:18px;color:var(--text2)">${esc(nameOf(a))} hasn't played anyone here yet.</div>`;
   const h = Statistician.h2h(games, a, b);
-  const lead = h.leader ? nameOf(h.leader === 'a' ? a : b) + ' leads' : 'All square';
   const initial = id => esc(nameOf(id)[0].toUpperCase());
   const row = (label, va, vb) => `<div style="display:grid;grid-template-columns:70px 1fr 70px;align-items:center;height:48px;border-top:1px solid var(--line)">
     <span class="shoulders num" style="font-size:24px;font-weight:900">${va}</span><span class="cond" style="text-align:center;font-size:15px;font-weight:800;letter-spacing:.8px;color:var(--text3)">${label}</span><span class="shoulders num" style="text-align:right;font-size:24px;font-weight:900">${vb}</span></div>`;
   const streak = side => (h[side].current ? 'W' + h[side].current : '—');
-  return `<div style="display:flex;align-items:center;gap:10px">${picker('a', a, H2H_A)}<span class="cond" style="font-size:16px;font-weight:800;color:var(--text3)">VS</span>${picker('b', b, H2H_B)}</div>
+  return `<div style="display:flex;align-items:center;gap:10px">${picker('a', a, H2H_A)}<span class="cond onphoto" style="align-self:center;font-size:16px;font-weight:800;color:var(--text3)">VS</span>${picker('b', b, H2H_B)}</div>
   <div style="display:flex;flex-direction:column;align-items:center;gap:4px;padding:6px 0">
     <div style="display:flex;align-items:baseline;gap:16px"><span class="shoulders" style="font-size:80px;font-weight:900;line-height:1;color:${H2H_A}">${h.a.wins}</span><span class="shoulders" style="font-size:36px;font-weight:800;color:var(--text4)">–</span><span class="shoulders" style="font-size:80px;font-weight:900;line-height:1;color:${H2H_B}">${h.b.wins}</span></div>
-    <span class="courier" style="font-size:13px;font-weight:700;color:var(--text2)">${h.games} game${h.games === 1 ? '' : 's'}${h.since ? ' since ' + h.since : ''} · ${esc(lead)}</span></div>
+    <span class="courier onphoto" style="align-self:center;font-size:13px;font-weight:700;color:var(--text2)">${h.games} game${h.games === 1 ? '' : 's'}${h.since ? ' since ' + h.since : ''}</span></div>
   ${h.last10.length ? `<div class="card" style="border-radius:16px;padding:12px 14px;display:flex;flex-direction:column;gap:8px">
     <div style="display:flex;justify-content:space-between"><span class="cond" style="font-size:14px;font-weight:800;letter-spacing:.8px;color:var(--text3)">LAST ${h.last10.length}</span><span class="courier meta">oldest → newest</span></div>
     <div style="display:grid;grid-template-columns:repeat(10,minmax(0,1fr));gap:4px">${h.last10.map(w => `<span class="cond" style="height:30px;border-radius:7px;background:${w === 'a' ? H2H_A : H2H_B};color:#fff;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:800">${initial(w === 'a' ? a : b)}</span>`).join('')}</div></div>` : ''}
@@ -5136,7 +5145,7 @@ SCREENS.awards = () => {
       if (!items.length) return '';
       return `<div style="display:flex;flex-direction:column;gap:6px">
         <div style="display:flex;align-items:baseline;justify-content:space-between;padding:4px 2px 0"><span class="cond sechead" style="font-size:20px;font-weight:800;letter-spacing:.6px">${c}</span>
-          <span class="shoulders" style="font-size:18px;font-weight:800;color:var(--text2)">${n} / ${all.length}</span></div>
+          <span class="shoulders onphoto" style="align-self:auto;font-size:18px;font-weight:800;color:var(--text2)">${n} / ${all.length}</span></div>
         <div class="list">${items.map(a => awardRow(a)).join('')}</div></div>`;
     }).join('');
     const tools = cat === 'ALL' ? `<div style="display:flex;gap:8px;align-items:center">
@@ -6360,36 +6369,45 @@ ACT.tipsAgain = () => {
 const safeTop = () => { const p = document.createElement('div'); p.style.cssText = 'position:fixed;visibility:hidden;padding-top:env(safe-area-inset-top)';
   document.body.appendChild(p); const t = parseFloat(getComputedStyle(p).paddingTop) || 0; p.remove(); return t; };
 const typing = () => { const el = document.activeElement; return !!(el && (/^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName) || el.isContentEditable)) || !!(window.visualViewport && innerHeight - visualViewport.height > 120); };
-let lastShort = 0;
+let lastShort = 0, fill = false;
+// Build 14: iOS can shrink the window a moment AFTER the app opens, without telling the app (seen in live logs on
+// Zach's and Hailey's iPhones: fix 0 while the window was 47/62pt short). So an iPhone home-screen app held upright
+// ALWAYS fills the real screen — no measuring needed — and everything is re-checked a few times after opening.
 const shortBy = () => {
-  const portrait = innerHeight > innerWidth, standalone = navigator.standalone === true || (window.matchMedia && matchMedia('(display-mode: standalone)').matches);
   if (typing()) return lastShort;                                    // keyboard up: leave the size alone
+  const portrait = innerHeight > innerWidth, iosApp = navigator.standalone === true,
+    standalone = iosApp || (window.matchMedia && matchMedia('(display-mode: standalone)').matches);
+  fill = iosApp && portrait;
   const d = screen.height - innerHeight;
   lastShort = standalone && portrait && d > 0 && d < screen.height * 0.25 ? d : 0;   // (a quarter of the screen or more would be a keyboard)
   return lastShort;
 };
 function sizeApp() {
   const miss = shortBy();
-  document.documentElement.style.setProperty('--apph', miss ? screen.height + 'px' : '100%');
+  document.documentElement.style.setProperty('--apph', (fill || miss) ? screen.height + 'px' : '100%');
   if (!typing() && (window.scrollY || window.scrollX)) window.scrollTo(0, 0);   // iOS can leave the whole page nudged up: put it back
   logLayout();
 }
+const recheck = () => [0, 300, 1000, 2500].forEach(t => setTimeout(sizeApp, t));
+let seenWin = innerWidth + 'x' + innerHeight;
+setInterval(() => { const w = innerWidth + 'x' + innerHeight; if (w !== seenWin) { seenWin = w; sizeApp(); } }, 1500);   // a quiet size change: catch it
 // For the Problem log (and live logs in Guess Ball Next): what size the phone says it is, and what the app did about it
 function logLayout() {
   clearTimeout(logLayout.t); logLayout.t = setTimeout(() => {
     const v = window.visualViewport, app = document.getElementById('app');
-    const line = `layout: screen ${screen.width}×${screen.height}, window ${innerWidth}×${innerHeight}${v ? ', visible ' + Math.round(v.height) : ''}, top ${safeTop()}, fix ${lastShort}, app ${app ? app.offsetHeight : '?'}, scrolled ${Math.round(window.scrollY)}`;
+    const line = `layout: screen ${screen.width}×${screen.height}, window ${innerWidth}×${innerHeight}${v ? ', visible ' + Math.round(v.height) : ''}, top ${safeTop()}, ios app ${navigator.standalone === true ? 'yes' : 'no'}, fill ${fill ? 'yes' : 'no'}, app ${app ? app.offsetHeight : '?'}, scrolled ${Math.round(window.scrollY)}`;
     if (line !== logLayout.last && typeof Diag !== 'undefined') { logLayout.last = line; Diag.add('app', line); }
   }, 600);
 }
-sizeApp(); addEventListener('resize', sizeApp); addEventListener('orientationchange', () => setTimeout(sizeApp, 300));
-document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') setTimeout(sizeApp, 300); });
+sizeApp(); recheck(); addEventListener('resize', sizeApp); addEventListener('orientationchange', () => setTimeout(sizeApp, 300));
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') recheck(); });
 document.addEventListener('focusout', () => setTimeout(sizeApp, 350));   // keyboard closed
 // When the keyboard opens, lift sheets so their lists stay above it
 if (window.visualViewport) {
   const kb = () => {
     const v = visualViewport, open = innerHeight - v.height - v.offsetTop;
-    const gap = Math.max(0, open > 100 ? open + shortBy() : open);
+    const appEl = document.getElementById('app'), extra = Math.max(0, (appEl ? appEl.offsetHeight : innerHeight) - innerHeight);   // app taller than the window: lift by that too
+    const gap = Math.max(0, open > 100 ? open + extra : open);
     document.documentElement.style.setProperty('--kb', gap + 'px');
     document.documentElement.style.setProperty('--vh', v.height + 'px');
   };
