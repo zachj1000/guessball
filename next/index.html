@@ -77,6 +77,10 @@ html[data-theme="light"] #app.photo .screen :is(.onphoto, h1, .sechead, .page h2
 html[data-theme="light"] #app.photo .screen :is(.page, .fixedpage, .topbar) h1:not(:is(.card, .list, .sheet) *) {
   width: fit-content; padding: 0 14px; border-radius: 16px; background: var(--glass); -webkit-backdrop-filter: blur(18px); backdrop-filter: blur(18px); }
 html[data-theme="light"] #app.photo .screen .onphoto { color: var(--text) !important; }
+/* Light mode on a photo (build 18): the Final page's top block sits on one frosted card; buttons that aren't ready yet are solid, not see-through blue */
+html[data-theme="light"] #app.photo .screen .finalhead { background: var(--glass); -webkit-backdrop-filter: blur(18px); backdrop-filter: blur(18px); border-radius: 24px; padding: 6px 14px 8px; text-shadow: none; }
+html[data-theme="light"] #app.photo .screen .finalhead span { text-shadow: none; }
+html[data-theme="light"] #app.photo .screen .big-btn:disabled { opacity: 1; background: var(--glass) !important; color: var(--text4) !important; -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); }
 #app.photo .screen :is(.card, .list, .chips, .seg, .field, .tabbar, .livebar, .dock, .swipe-ghost .card, button:not(.info-btn)) { text-shadow: none; }
 #app.photo .screen :is(.meta, .info-btn):not(:is(.card, .list, .chips, .seg, .tabbar, .dock, .sheet, .swipe-ghost, button:not(.info-btn), .info-btn) *) {
   align-self: flex-start; width: fit-content; padding: 3px 10px !important; border-radius: 10px; background: var(--glass); color: var(--text2); text-shadow: none; line-height: 1.5;
@@ -1955,7 +1959,7 @@ const FilingCabinet = (() => {
 // ════════════════════════════════════════════════════════════════
 // Which copy of the app this is: the real app, or Guess Ball Next (QA, with its own test data)
 const ENV = {"name":"qa","data":"qa","store":"gbqa_"};
-const VERSION = ENV.name === 'qa' ? '2.0 · QA build 17 · 09-30 23:52 UTC' : '2.0';
+const VERSION = ENV.name === 'qa' ? '2.0 · QA build 18 · 10-01 22:13 UTC' : '2.0';
 const RULES_JSON = {
   "rules": {
     "v2": {
@@ -3870,12 +3874,13 @@ SCREENS.final = () => {
   const plays = sum.plays || [], top = plays[0];
   const awards = f.awards || [];
   return `<div class="page" style="padding-bottom:calc(var(--safe-bot) + 110px)">
+  <div class="finalhead">
   <div style="display:flex;flex-direction:column;align-items:center;gap:2px;padding-top:6px">
     <span class="cond" style="font-size:18px;font-weight:800;letter-spacing:2px;color:var(--text2)">FINAL</span>
     <span class="courier" style="font-size:13px;font-weight:700;color:var(--text2);text-align:center">${esc(meta)}</span></div>
   <div class="rise" style="display:flex;flex-direction:column;align-items:center;gap:6px;padding:10px 0 6px">
     <span class="cond" style="font-size:${headline.length > 22 ? 30 : headline.length > 16 ? 36 : 44}px;font-weight:800;letter-spacing:.6px;line-height:1.05;text-align:center;max-width:100%;overflow-wrap:anywhere">${headline}</span>${scoreRow}
-    ${sub ? `<span class="courier" style="font-size:13px;font-weight:700;color:var(--text2);text-align:center">${sub}</span>` : ''}</div>
+    ${sub ? `<span class="courier" style="font-size:13px;font-weight:700;color:var(--text2);text-align:center">${sub}</span>` : ''}</div></div>
   <div class="rise2">${lineScoreCard(false, g)}</div>
   ${tiles ? `<div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px">${tiles}</div>` : ''}
   ${top ? `<div class="card" style="overflow:hidden"><button class="press" ${act('finalPlays')} style="width:100%;padding:14px 16px;display:flex;align-items:center;gap:14px;text-align:left">
@@ -4742,95 +4747,6 @@ async function drawShareCard(g, sum, awards) {
   x.lineWidth = 7; x.stroke(new Path2D('M40 26C150 12 290 9 382 18')); x.lineWidth = 4; x.stroke(new Path2D('M406 36L422 20 406 4 390 20z')); x.restore();
   const club = (S.clubs.find(k => (g.clubList || []).includes(k.code)) || {}).name;
   if (club) text(club.toUpperCase(), W - 36, H - 32, F(800, 15, COND), '#8E8E96', 'right');
-  return new Promise(res => c.toBlob(res, photo ? 'image/jpeg' : 'image/png', 0.9));
-}
-async function drawShareCardOld(g, sum, awards) {
-  try { await document.fonts.ready; } catch (e) { /* fonts may not be loaded offline: system fonts are fine */ }
-  const W = 540, H = 675, K = 2, c = document.createElement('canvas'); c.width = W * K; c.height = H * K;
-  const x = c.getContext('2d'); x.scale(K, K);
-  const F = (w, size, fam) => `${w} ${size}px ${fam}`;
-  const COND = '"Barlow Condensed", -apple-system, sans-serif', SH = '"Big Shoulders Display", -apple-system, sans-serif', CO = '"Courier Prime", "Courier New", monospace', SYS = '-apple-system, "Helvetica Neue", sans-serif';
-  x.fillStyle = '#0B0B0D'; x.fillRect(0, 0, W, H);
-  // The game's park photo behind everything: blurred more than in the app and darker, so every number stays crisp
-  const photo = parkPhotoFor(g, true);
-  let PANEL = '#17171A';
-  if (photo) {
-    try {
-      const img = await new Promise((ok, no) => { const i = new Image(); i.onload = () => ok(i); i.onerror = no; i.src = photo; });
-      const s = Math.max(W / img.width, H / img.height), iw = img.width * s, ih = img.height * s;
-      x.save(); x.filter = 'blur(9px) brightness(0.42) saturate(1.1)'; x.drawImage(img, (W - iw) / 2 - 20, (H - ih) / 2 - 20, iw + 40, ih + 40); x.restore();
-      const gr = x.createLinearGradient(0, 0, 0, H); gr.addColorStop(0, 'rgba(0,0,0,.35)'); gr.addColorStop(0.5, 'rgba(0,0,0,.1)'); gr.addColorStop(1, 'rgba(0,0,0,.45)');
-      x.fillStyle = gr; x.fillRect(0, 0, W, H); PANEL = 'rgba(16,16,20,.68)';
-    } catch (e) { /* no photo: plain dark card */ }
-  }
-  // faint scorebook diamond watermark (the red double tapers into the outline at home plate)
-  x.save(); x.globalAlpha = 0.06; x.translate(W + 120 - 420, -110); x.scale(3.5, 3.5);
-  x.strokeStyle = '#F4F1E8'; x.lineWidth = 3; x.stroke(new Path2D('M60 5L115 60 60 115 5 60z'));
-  x.fillStyle = '#D63A2F'; x.fill(new Path2D('M60 117.12L119.95 60 60 0.05 60 9.95 110.05 60 60 112.88z')); x.restore();
-  const rr = (px, py, w, h, r, fill) => { x.beginPath(); x.roundRect(px, py, w, h, r); x.fillStyle = fill; x.fill(); };
-  const text = (t, px, py, font, color, align = 'left') => { x.font = font; x.fillStyle = color; x.textAlign = align; x.fillText(t, px, py); };
-  const fit = (t, max, font) => { x.font = font; let s = t; while (x.measureText(s).width > max && s.length > 2) s = s.slice(0, -2) + '…'; return s; };
-  // wordmark
-  text('Guess Ball', 36, 70, '36px Norican, cursive', '#F4F1E8');
-  x.save(); x.translate(36, 78); x.scale(160 / 440, 160 / 440); x.strokeStyle = '#D63A2F'; x.lineCap = 'round'; x.lineJoin = 'round';   // swoosh ending in a diamond
-  x.lineWidth = 6; x.stroke(new Path2D('M40 26C150 12 290 9 382 18')); x.lineWidth = 3; x.stroke(new Path2D('M406 36L422 20 406 4 390 20z'));
-  x.lineWidth = 7; x.stroke(new Path2D('M406 36L422 20 406 4')); x.restore();
-  const r = sum.result, n = g.players.length, order = g.players.map((_, i) => i).sort((a, b) => r.scores[b] - r.scores[a]);
-  text('FINAL', W - 36, 52, F(800, 16, COND), '#A1A1AA', 'right');
-  text([niceDate(g.date), whereAt(g)].filter(Boolean).join(' · '), W - 36, 72, F(700, 13, CO), '#A1A1AA', 'right');
-  if (g.mlb && (g.away || g.home)) text(`${shortTeam(g.away) || 'Away'} ${g.mlb.away} · ${shortTeam(g.home) || 'Home'} ${g.mlb.home}`, W - 36, 90, F(700, 13, CO), '#C7C7CC', 'right');
-  // headline + score
-  const nm = i => g.players[i].name.toUpperCase();
-  const head = r.tie ? r.leaders.map(nm).join(' & ') + ' TIE' : nm(r.winner) + ' WINS';
-  let hs = 54; x.font = F(800, hs, COND); while (x.measureText(head).width > W - 72 && hs > 30) { hs -= 2; x.font = F(800, hs, COND); }
-  text(head, 36, 160, F(800, hs, COND), '#F5F5F7');
-  let y = 250;
-  if (r.tie) { text(`${r.scores[r.leaders[0]]}`, 36, y, F(900, 96, SH), '#F5F5F7'); x.font = F(900, 96, SH); let w = x.measureText(String(r.scores[r.leaders[0]])).width;
-    text('–', 36 + w + 14, y - 10, F(800, 44, SH), '#5E5E66'); text(`${r.scores[r.leaders[1]]}`, 36 + w + 50, y, F(900, 96, SH), '#F5F5F7'); w += 50 + x.measureText(String(r.scores[r.leaders[1]])).width;
-    text('DEAD EVEN', 36 + w + 20, y - 8, F(800, 22, COND), '#8E8E96');
-  } else {
-    const top = String(r.scores[order[0]]); text(top, 36, y, F(900, 96, SH), '#F5F5F7'); x.font = F(900, 96, SH); const w = x.measureText(top).width;
-    if (n === 2) { text('–', 36 + w + 14, y - 10, F(800, 44, SH), '#5E5E66'); text(String(r.scores[order[1]]), 36 + w + 50, y, F(900, 96, SH), '#8E8E96');
-      x.font = F(900, 96, SH); const w2 = x.measureText(String(r.scores[order[1]])).width; text('OVER ' + nm(order[1]), 36 + w + 50 + w2 + 16, y - 8, F(800, 22, COND), '#8E8E96'); }
-    else order.slice(1).forEach((i, k) => { const yy = y - 52 + k * 40; text(fit(`${k ? '3RD' : '2ND'} · ${nm(i)}`, 250, F(800, 20, COND)), 36 + w + 24, yy, F(800, 20, COND), '#A1A1AA'); text(String(r.scores[i]), W - 36, yy + 4, F(900, 30, SH), '#A1A1AA', 'right'); });
-  }
-  y += 22;
-  // line score (app games)
-  if (sum.lineScore) {
-    const ls = sum.lineScore, inns = ls.innings.slice(-9), h = 32 + n * 36;
-    rr(36, y, W - 72, h, 16, PANEL);
-    const x0 = 36 + 14 + 58, colW = (W - 72 - 28 - 58 - 40) / inns.length;
-    inns.forEach((k, j) => text(String(k), x0 + colW * j + colW / 2, y + 22, F(700, 14, COND), '#8E8E96', 'center'));
-    text('R', W - 50, y + 22, F(700, 14, COND), '#F5F5F7', 'right');
-    g.players.forEach((p, i) => { const yy = y + 32 + i * 36 + 25; const lead = ls.totals[i] === Math.max(...ls.totals);
-      text(fit(p.name, 56, F(700, 15, SYS)), 50, yy, F(lead ? 700 : 600, 15, SYS), lead ? '#F5F5F7' : '#A1A1AA');
-      inns.forEach((k, j) => { const v = ls.rows[i][k - 1]; if (v != null) text(String(v), x0 + colW * j + colW / 2, yy, F(800, 19, SH), '#C7C7CC', 'center'); });
-      text(String(ls.totals[i]), W - 50, yy + 1, F(900, 26, SH), lead ? '#F5F5F7' : '#A1A1AA', 'right'); });
-    y += h + 16;
-  }
-  // play of the game
-  const top = sum.plays[0];
-  if (top) {
-    rr(36, y, W - 72, 68, 16, PANEL);
-    x.save(); x.translate(50, y + 12); x.scale(44 / 58, 44 / 58); x.strokeStyle = '#5BD27A'; x.lineWidth = 5; x.lineJoin = 'round'; x.stroke(new Path2D('M29 53L53 29 29 5 5 29z')); x.restore();
-    text(top.code, 72, y + 40, F(900, top.code.length > 2 ? 14 : 17, SH), '#F5F5F7', 'center');
-    text('PLAY OF THE GAME', 108, y + 28, F(800, 13, COND), '#8E8E96');
-    text(fit(`${top.text} · +${top.pts}`, W - 72 - 90, F(700, 16, SYS)), 108, y + 50, F(700, 16, SYS), '#F5F5F7');
-    y += 84;
-  }
-  // awards
-  if (awards && awards.length) {
-    text('AWARDS', 36, y + 20, F(800, 13, COND), '#8E8E96');
-    let cx = 100, cy = y;
-    awards.slice(0, 6).forEach(a => {
-      const label = `${a.award.name} · ${a.names.join(', ')}`; x.font = F(600, 13, SYS); const w = Math.min(x.measureText(label).width + 24, W - 72);
-      if (cx + w > W - 36) { cx = 36; cy += 38; }
-      rr(cx, cy, w, 30, 15, PANEL); text(fit(label, w - 24, F(600, 13, SYS)), cx + 12, cy + 20, F(600, 13, SYS), '#F5F5F7'); cx += w + 8;
-    });
-  }
-  // footer: the club name only
-  const club = (S.clubs.find(k => (g.clubList || []).includes(k.code)) || {}).name;
-  if (club) text(club.toUpperCase(), W / 2, H - 26, F(800, 14, COND), '#5E5E66', 'center');
   return new Promise(res => c.toBlob(res, photo ? 'image/jpeg' : 'image/png', 0.9));
 }
 async function shareGame(g, sum, awards) {
