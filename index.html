@@ -49,7 +49,7 @@ html[data-theme="light"] {
   --cream: #0E1F3D; --nav: rgba(255,255,255,0.86); --navpill: rgba(0,0,0,0.06); --scrim: rgba(0,0,0,0.3);
   --silver: #7E828C; --bronze: #A8642C;
   --popbg: #FFF7E2; --goldtint: #FFF3D6; --toastbg: #FFFFFF; --livebar: #FFFFFF; --tagline: #C7C7CC; --dim: #A1A1A8;
-  --glass: rgba(255,255,255,0.8); --wash: linear-gradient(180deg, rgba(242,242,247,.24) 0%, rgba(242,242,247,.06) 45%, rgba(242,242,247,.3) 100%);
+  --glass: rgba(255,255,255,0.88); --wash: linear-gradient(180deg, rgba(242,242,247,.24) 0%, rgba(242,242,247,.06) 45%, rgba(242,242,247,.3) 100%);
 }
 html[data-theme="light"] .tabbar { border-color: rgba(0,0,0,.06); box-shadow: 0 10px 30px rgba(0,0,0,.12); }
 html[data-theme="light"] .toast, html[data-theme="light"] .bubble { box-shadow: 0 10px 30px rgba(0,0,0,.14); }
@@ -71,7 +71,16 @@ html[data-theme="light"] #app.photo .screen .page h2, html[data-theme="light"] #
   -webkit-backdrop-filter: blur(18px); backdrop-filter: blur(18px); }
 /* On a photo, text that sits straight on the picture (not on a card) gets a soft shadow and a brighter grey, so it reads on bright parks */
 #app.photo .screen .page, #app.photo .screen .fixedpage { text-shadow: 0 1px 2px rgba(0,0,0,.9), 0 0 10px rgba(0,0,0,.55); }
-html[data-theme="light"] #app.photo .screen .page, html[data-theme="light"] #app.photo .screen .fixedpage { text-shadow: 0 0 2px rgba(255,255,255,.95), 0 0 10px rgba(255,255,255,.8); }
+html[data-theme="light"] #app.photo .screen .page, html[data-theme="light"] #app.photo .screen .fixedpage { text-shadow: 0 0 1px rgba(255,255,255,.9), 0 0 4px rgba(255,255,255,.6); }
+/* Light mode on a photo: no blurry glow on things that have their own pill; page titles get a pill too (build 14) */
+html[data-theme="light"] #app.photo .screen :is(.onphoto, h1, .sechead, .page h2, .fixedpage h2) { text-shadow: none; }
+html[data-theme="light"] #app.photo .screen :is(.page, .fixedpage, .topbar) h1:not(:is(.card, .list, .sheet) *) {
+  width: fit-content; padding: 0 14px; border-radius: 16px; background: var(--glass); -webkit-backdrop-filter: blur(18px); backdrop-filter: blur(18px); }
+html[data-theme="light"] #app.photo .screen .onphoto { color: var(--text) !important; }
+/* Light mode on a photo (build 18): the Final page's top block sits on one frosted card; buttons that aren't ready yet are solid, not see-through blue */
+html[data-theme="light"] #app.photo .screen .finalhead { background: var(--glass); -webkit-backdrop-filter: blur(18px); backdrop-filter: blur(18px); border-radius: 24px; padding: 6px 14px 8px; text-shadow: none; }
+html[data-theme="light"] #app.photo .screen .finalhead span { text-shadow: none; }
+html[data-theme="light"] #app.photo .screen .big-btn:disabled { opacity: 1; background: var(--glass) !important; color: var(--text4) !important; -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); }
 #app.photo .screen :is(.card, .list, .chips, .seg, .field, .tabbar, .livebar, .dock, .swipe-ghost .card, button:not(.info-btn)) { text-shadow: none; }
 #app.photo .screen :is(.meta, .info-btn):not(:is(.card, .list, .chips, .seg, .tabbar, .dock, .sheet, .swipe-ghost, button:not(.info-btn), .info-btn) *) {
   align-self: flex-start; width: fit-content; padding: 3px 10px !important; border-radius: 10px; background: var(--glass); color: var(--text2); text-shadow: none; line-height: 1.5;
@@ -139,6 +148,12 @@ html[data-theme="light"] .picked { box-shadow: inset 0 0 0 1.5px rgba(0,0,0,.35)
 html[data-theme="light"] .dock button { border-color: rgba(0,0,0,.06); box-shadow: 0 8px 24px rgba(0,0,0,.12); }
 .fixedpage { overscroll-behavior: contain; position: absolute; inset: 0; padding: calc(var(--safe-top) + 14px) 20px calc(var(--safe-bot) + 20px); display: flex; flex-direction: column; gap: 14px; overflow-y: auto; }
 .fixedpage > * { flex-shrink: 0; }
+/* Game screens: the list scrolls, the bottom buttons stay put */
+.fixedpage.gamepage { overflow: hidden; }
+.fixedpage.gamepage > .gscroll { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; display: flex; flex-direction: column; gap: inherit; margin: 0 -20px; padding: 0 20px 10px;
+  -webkit-mask-image: linear-gradient(#000 calc(100% - 12px), transparent); mask-image: linear-gradient(#000 calc(100% - 12px), transparent); }
+.gscroll > * { flex-shrink: 0; }
+.fixedpage.gamepage > .gfoot { flex-shrink: 0; display: flex; flex-direction: column; gap: inherit; }
 .grow { flex-grow: 1 !important; flex-shrink: 1 !important; }
 
 .card { background: var(--card); border-radius: 18px; }
@@ -318,8 +333,9 @@ const Umpire = (() => {
   function applyPick3(s, ev) {
     if (!s.needsPick3) throw new Error('Pick 3 already made this half-inning');
     const firsts = new Set();
+    const picks = ev.picks || [];      // everyone skipped: Firebase doesn't keep an empty list
     s.players.forEach((_, i) => {
-      const p = ev.picks[i];
+      const p = picks[i];
       if (p == null) return; // skipped
       if (!Array.isArray(p) || p.length !== 3 || !p.every(x => PICKABLE.includes(x)))
         throw new Error('Pick 3 must be three valid outcomes');
@@ -327,8 +343,8 @@ const Umpire = (() => {
       firsts.add(p[0]);
     });
     s.p3 = {
-      picks: s.players.map((_, i) => ev.picks[i] || null),
-      alive: s.players.map((_, i) => !!ev.picks[i]),
+      picks: s.players.map((_, i) => picks[i] || null),
+      alive: s.players.map((_, i) => !!picks[i]),
       hits: s.players.map(() => 0),
     };
     s.needsPick3 = false;
@@ -349,7 +365,7 @@ const Umpire = (() => {
     needed.forEach(i => {
       if (!manual[i] || !PICKABLE.includes(manual[i].pick)) throw new Error(s.players[i] + ' has no pick');
     });
-    Object.keys(manual).forEach(i => {
+    Object.keys(manual).filter(i => manual[i] != null).forEach(i => {   // (a list from Firebase can have empty spots for players who didn't pick)
       if (!needed.includes(+i)) throw new Error(s.players[i] + ' should not be picking now');
       picks[i] = { pick: manual[i].pick, conf: !!manual[i].conf, fromP3: false };
     });
@@ -1349,7 +1365,14 @@ const FilingCabinet = (() => {
     const emit = () => listeners.forEach(f => f(status()));
 
     const denied = new Map();                 // outbox item id → Firebase's refusal
+    const refusedFns = new Set();             // told about every refusal — including ones that happen later, after reconnecting
+    // A game whose scorebook change Firebase refused is "stale" on this phone until it reloads the real game (loadGame):
+    // until then any further scorebook change is stopped right here, so nothing is ever written on top of a wrong copy.
+    const staleGames = new Set();
+    const scorebookGame = ch => { for (const k of Object.keys(ch)) { const m = /(?:^|\/)games\/([^/]+)\/(events|closed|slots)\//.exec(k); if (m) return m[1]; } return null; };
     function queue(changes) {                 // changes: { 'path': value | null, … } — sent together, all or nothing
+      const sg = scorebookGame(changes);
+      if (sg && staleGames.has(sg)) return Promise.reject(Object.assign(new Error('This game changed on another phone — reloading it'), { code: 'STALE' }));
       const full = {};
       Object.entries(changes).forEach(([p, v]) => { full[R(p)] = v === undefined ? null : v; });
       const id = now() + '-' + Math.floor(random() * 1e9);
@@ -1362,12 +1385,20 @@ const FilingCabinet = (() => {
     function flush() {
       if (flushing) return flushing;
       flushing = (async () => {
+        const stale = staleGames;
+        const scorebookOf = ch => { const g = scorebookGame(ch); return g ? [null, g] : null; };
+        const refuse = (item, e) => { denied.set(item.id, e); console.warn('Firebase refused a change', item.changes); refusedFns.forEach(f => { try { f(item.changes, e); } catch (x) { /* ignore */ } }); };
         while (online && outbox.length) {
           const item = outbox[0];
-          try { await db.update(item.changes); }
-          catch (e) {
-            if (e && e.code === 'PERMISSION_DENIED') { denied.set(item.id, e); console.warn('Firebase refused a change', item.changes); }
-            else break;                          // network trouble — try again later
+          const sb = scorebookOf(item.changes);
+          if (sb && stale.has(sb[1])) {           // built on top of a refused save: drop it too, never leave a gap in the scorebook
+            refuse(item, Object.assign(new Error('Skipped: an earlier change to this game was refused'), { code: 'PERMISSION_DENIED' }));
+          } else {
+            try { await db.update(item.changes); }
+            catch (e) {
+              if (e && e.code === 'PERMISSION_DENIED') { refuse(item, e); const ev = Object.keys(item.changes).find(k => /\/games\/[^/]+\/events\//.test('/' + k.replace(/^\//, ''))); if (ev) stale.add(/games\/([^/]+)\//.exec(ev)[1]); }
+              else { setTimeout(() => { if (online && outbox.length) flush(); }, 5000); break; }   // network trouble — try again in a few seconds (and whenever the connection comes back)
+            }
           }
           outbox.shift(); save('gb_outbox', outbox); emit();
         }
@@ -1397,7 +1428,12 @@ const FilingCabinet = (() => {
       if (first) { ch['users/' + uid + '/createdAt'] = now(); ch['profiles/' + uid + '/createdAt'] = now(); }
       await queue(ch);
     }
+    // Profile photo: one small square JPEG on your profile (everyone in your clubs sees it). A new one replaces the old; null removes it.
+    async function savePhoto(dataUrl) { need(); await queue({ ['profiles/' + uid + '/photo']: dataUrl || null }); }
+    const photoOf = pid => get('profiles/' + pid + '/photo');
     // Tips this account has already seen (users/<uid>/tips/<id> = true)
+    // Guess Ball Next only: this phone's Problem log, for watching a test live. Straight to Firebase (never queued — old logs don't matter).
+    function saveDiag(log) { if (!uid) return Promise.resolve(); return db.update({ [R('diag/' + uid)]: { log, at: now() } }).catch(() => {}); }
     async function tipSeen(id) { need(); await queue({ ['users/' + uid + '/tips/' + String(id).replace(/[.#$\[\]\/]/g, '_')]: true }); }
     // "Delete account": unlinks Google only. The profile turns back into a guest that can be claimed again.
     async function unlinkAccount() {
@@ -1673,15 +1709,86 @@ const FilingCabinet = (() => {
       save('gb_live', ready);
       return ready;
     }
-    function addEvent(g, ev) {
-      g.events.push(ev); save('gb_live', g);
-      return queue({ ['games/' + g.id + '/events/' + (g.events.length - 1)]: ev, ['games/' + g.id + '/updatedAt']: now() });
+    // ── Rounds of picking (two-phone play) ──
+    // Picks for the next scorebook entry are made in round "e<n>" (n = how many entries the scorebook has).
+    // Saving the entry closes that round in the same instant, so a pick arriving late is refused.
+    const roundKey = g => 'e' + g.events.length;
+    const staleErr = () => Promise.reject(Object.assign(new Error('Catching up with the other phone — try again in a moment'), { code: 'STALE' }));
+    // The scorebook's head (see the security rules): where the next entry goes, which one is last, and that entry's id
+    const headOf = g => { const n = g.events.length, l = g.events[n - 1]; return { next: '' + n, last: '' + (n - 1), id: (l && l.id) || null }; };
+    const entryId = () => now().toString(36) + Math.floor(random() * 1e9).toString(36);
+    // extra: more changes that must land in the same write (e.g. clearing a first-at-bat pick that clashes with a changed Pick 3)
+    function addEvent(g, ev, extra = {}) {
+      if (staleGames.has(g.id)) return staleErr();   // never build on a copy Firebase already said is wrong (not even on this phone)
+      const n = g.events.length, key = 'e' + n;
+      ev = { ...ev, id: entryId(), by: uid };
+      if (ev.type === 'play' || ev.type === 'pick3') ev.key = key;
+      g.events.push(ev); g.closed = { ...(g.closed || {}), [key]: true }; g.head = headOf(g); if (g.host === uid) save('gb_live', g);
+      const ch = {}; Object.entries(extra).forEach(([p, v]) => { ch['games/' + g.id + '/' + p] = v; });
+      return queue({ ...ch, ['games/' + g.id + '/events/' + n]: ev, ['games/' + g.id + '/closed/' + key]: true, ['games/' + g.id + '/head']: g.head, ['games/' + g.id + '/updatedAt']: now() });
     }
-    function undo(g) {
+    // only: undoing a Pick 3 to change one player's picks — only that player's are cleared, everyone else's stay in
+    function undo(g, { only = null } = {}) {
       if (!g.events.length) return Promise.resolve();
-      g.events.pop(); save('gb_live', g);
-      return queue({ ['games/' + g.id + '/events/' + g.events.length]: null, ['games/' + g.id + '/updatedAt']: now() });
+      if (staleGames.has(g.id)) return staleErr();
+      const gone = g.events.pop(), n = g.events.length, key = 'e' + n; if (g.closed) delete g.closed[key];
+      g.head = { ...headOf(g), undid: (gone && gone.id) || null, by: uid }; if (g.host === uid) save('gb_live', g);
+      const ch = { ['games/' + g.id + '/events/' + n]: null, ['games/' + g.id + '/closed/' + key]: null, ['games/' + g.id + '/head']: g.head, ['games/' + g.id + '/updatedAt']: now() };
+      if (gone && gone.type === 'pick3') {
+        if (only == null) { ch['games/' + g.id + '/slots/' + key] = null; if (g.slots) delete g.slots[key]; }   // Pick 3 opens again with nobody's picks in
+        else { ch['games/' + g.id + '/slots/' + key + '/' + only] = null; if (g.slots && g.slots[key]) delete g.slots[key][only]; }
+      }
+      return queue(ch);
     }
+    // A game straight from Firebase: events back in a list, and a skipped Pick 3 put back (Firebase drops empty values)
+    const tidyGame = g => { if (!g) return g;
+      g.events = g.events ? Object.values(g.events).filter(Boolean).map(ev => ev.type !== 'pick3' ? ev
+        : { ...ev, picks: Array.from({ length: g.players.length }, (_, i) => (ev.picks && ev.picks[i] ? Object.values(ev.picks[i]) : null)) }) : [];
+      return g; };
+    // One player's pick for one round: { pick, conf } or { p3: [a,b,c] } or { skip: true }. First to Firebase wins.
+    function setSlot(g, key, i, val) {
+      const v = { ...val, by: uid, at: now() };
+      g.slots = g.slots || {}; g.slots[key] = { ...(g.slots[key] || {}), [i]: v }; if (g.host === uid) save('gb_live', g);
+      return queue({ ['games/' + g.id + '/slots/' + key + '/' + i]: v });
+    }
+    function clearSlot(g, key, i) {
+      if (g.slots && g.slots[key]) { delete g.slots[key][i]; if (g.host === uid) save('gb_live', g); }
+      return queue({ ['games/' + g.id + '/slots/' + key + '/' + i]: null });
+    }
+    // "I'm picking on my own phone" (or not any more)
+    function setJoined(g, i, on) { return queue({ ['games/' + g.id + '/joined/' + i]: on ? true : null }); }
+    // Live updates of one game (both the host and joined players): calls back with the whole game each time it changes
+    function watchGame(id, cb) {
+      if (!db.watch) return () => {};
+      return db.watch(R('games/' + id), v => cb(v ? tidyGame(v) : null));
+    }
+    // Someone else started a live game you're in: { game, hostName } (so you can pick from your own phone)
+    async function myInvite() {
+      need();
+      const l = await get('live/' + uid);
+      if (!l || !l.gameId || l.host === uid) return null;
+      const g = await get('games/' + l.gameId);
+      if (!g || g.ended || g.host === uid) return null;
+      tidyGame(g);
+      const i = g.players.findIndex(p => p.id === uid); if (i < 0) return null;
+      const host = (await get('profiles/' + g.host)) || {};
+      return { game: g, me: i, hostName: host.name || 'Someone' };
+    }
+    // The game as Firebase has it now. Loading it doesn't change anything on this phone: a game this phone was blocked
+    // from writing (stale) stays blocked until the phone actually takes the fresh copy (adoptLive) — a load that arrives
+    // after the phone gave up waiting must never unblock an out-of-date copy.
+    const loadGame = async id => tidyGame(await get('games/' + id));
+    const peekGame = loadGame;
+    // Someone else ended this phone's live game: forget it here, and clear everyone's "in a live game" marker (host only)
+    function forgetLive(g) {
+      if (!g || g.host !== uid) return Promise.resolve();
+      storage.removeItem('gb_live'); const off = {}; g.players.forEach(p => { off['live/' + p.id] = null; });
+      return queue(off).catch(() => {});
+    }
+    const isStale = id => staleGames.has(id);
+    const adoptLive = g => { if (!g) return; staleGames.delete(g.id); if (g.host === uid) save('gb_live', g); };   // this phone took the fresh copy: it can write again
+    // Your live-game marker (so a phone hears the moment someone starts a game you're in)
+    function watchLive(cb) { if (!db.watch || !uid) return () => {}; return db.watch(R('live/' + uid), cb); }
     // Fix the matchup mid-game (teams / ballpark)
     function updateGameInfo(g, fields) {
       const ch = {};
@@ -1701,16 +1808,19 @@ const FilingCabinet = (() => {
     }
     // End the game. A game with no plays is thrown away instead of saved.
     async function endGame(g, { scores, mlb = null, note = '' } = {}) {
-      const liveOff = {}; g.players.forEach(p => { liveOff['live/' + p.id] = null; });
+      const host = g.host === uid, liveOff = {};
+      if (host) g.players.forEach(p => { liveOff['live/' + p.id] = null; });   // (a joined phone ending it can't clear these; the host's phone does when it next opens)
       const plays = g.events.filter(e => e.type === 'play').length;
-      storage.removeItem('gb_live');
+      if (!plays && !host) throw new Error('Nothing was played yet — only the host can throw out this game');
+      if (host) storage.removeItem('gb_live');
       if (!plays) {
         await queue({ ...liveOff, ['games/' + g.id]: null });
         return queue(indexChanges(g, null));
       }
-      g.events.push({ type: 'end' });
+      const endEv = { type: 'end', id: entryId(), by: uid };
+      g.events.push(endEv); g.head = headOf(g);
       Object.assign(g, { ended: true, endedAt: now(), scores, mlb, note: note.slice(0, 280) });
-      return queue({ ['games/' + g.id + '/events/' + (g.events.length - 1)]: { type: 'end' },
+      return queue({ ['games/' + g.id + '/events/' + (g.events.length - 1)]: endEv, ['games/' + g.id + '/head']: g.head,
         ['games/' + g.id + '/ended']: true, ['games/' + g.id + '/endedAt']: g.endedAt,
         ['games/' + g.id + '/scores']: scores, ['games/' + g.id + '/mlb']: mlb, ['games/' + g.id + '/note']: g.note, ...liveOff });
     }
@@ -1814,7 +1924,8 @@ const FilingCabinet = (() => {
     const isAdmin = async () => { need(); await flush(); return (await db.get('v2/admins/' + uid)) === true; };   // one admin list for the real app and QA
 
     return { setUser, onStatus: f => { listeners.add(f); f(status()); return () => listeners.delete(f); }, status, flush,
-      myAccount, saveProfile, unlinkAccount, profiles, tipSeen,
+      onRefused: f => { refusedFns.add(f); return () => refusedFns.delete(f); }, roundKey, setSlot, clearSlot, setJoined, watchGame, watchLive, myInvite, loadGame, peekGame, forgetLive, isStale, adoptLive,
+      myAccount, saveProfile, savePhoto, photoOf, unlinkAccount, profiles, tipSeen, saveDiag,
       createClub, findClubs, myClubs, clubInfo, roster, joinClub, requests, answerRequest, leaveClub, setCaptain, removeMember, updateClub,
       addGuest, renameGuest, claimGuest, answerClaim, myAliases, accounts, offerGuest, myOffers, dismissOffer, myClaims,
       startGame, liveGame, findLiveGame, addEvent, undo, takeOver, updateGameInfo, endGame, discardGame, addHandGame, editHandGame, deleteGame, setWhere,
@@ -1827,6 +1938,7 @@ const FilingCabinet = (() => {
       get: async p => (await F.get(F.ref(database, p))).val(),
       update: changes => F.update(F.ref(database), changes),
       onConnected: cb => F.onValue(F.ref(database, '.info/connected'), s => cb(s.val() === true)),
+      watch: (p, cb) => F.onValue(F.ref(database, p), s => cb(s.val()), () => {}),   // returns the "stop watching" function
       newId: () => F.push(F.ref(database, root + '/games')).key,
     };
   }
@@ -1847,7 +1959,7 @@ const FilingCabinet = (() => {
 // ════════════════════════════════════════════════════════════════
 // Which copy of the app this is: the real app, or Guess Ball Next (QA, with its own test data)
 const ENV = {"name":"live","data":"v2","store":"gb_"};
-const VERSION = ENV.name === 'qa' ? '2.0 · QA build 7' : '2.0';
+const VERSION = ENV.name === 'qa' ? '2.0 · QA build 18 · 10-04 04:43 UTC' : '2.0';
 const RULES_JSON = {
   "rules": {
     "v2": {
@@ -1871,6 +1983,9 @@ const RULES_JSON = {
           ".write": "(auth.uid === $pid) || ((!data.exists()) && (newData.child('createdBy').val() === auth.uid) && (newData.child('account').val() === false)) || ((data.child('account').val() === false) && (((data.child('club').exists()) && (root.child('v2').child('clubs').child(data.child('club').val()).child('members').child(auth.uid).child('captain').val() === true)) || ((!data.child('club').exists()) && (data.child('createdBy').val() === auth.uid)))) || (root.child('v2').child('admins').child(auth.uid).val() === true)",
           "name": {
             ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 16"
+          },
+          "photo": {
+            ".validate": "newData.isString() && newData.val().beginsWith('data:image/jpeg;base64,') && newData.val().length < 30000"
           }
         }
       },
@@ -1933,7 +2048,57 @@ const RULES_JSON = {
       "games": {
         "$gid": {
           ".read": "auth != null",
-          ".write": "((!data.exists()) && (newData.child('host').val() === auth.uid)) || ((data.child('host').val() === auth.uid) && (newData.exists()) && ((data.child('ended').val() !== true) || (data.child('era').val() === 'hand')) && (newData.child('host').val() === auth.uid)) || ((data.child('host').val() === auth.uid) && (!newData.exists()) && ((data.child('era').val() === 'hand') || (data.child('ended').val() !== true))) || ((!newData.exists()) && (((data.child('clubList/0').exists()) && (root.child('v2').child('clubs').child(data.child('clubList/0').val()).child('members').child(auth.uid).child('captain').val() === true)) || ((data.child('clubList/1').exists()) && (root.child('v2').child('clubs').child(data.child('clubList/1').val()).child('members').child(auth.uid).child('captain').val() === true)) || ((data.child('clubList/2').exists()) && (root.child('v2').child('clubs').child(data.child('clubList/2').val()).child('members').child(auth.uid).child('captain').val() === true)))) || (root.child('v2').child('admins').child(auth.uid).val() === true)"
+          ".write": "((!data.exists()) && (newData.child('host').val() === auth.uid)) || ((data.child('host').val() === auth.uid) && (newData.exists()) && ((data.child('ended').val() !== true) || (data.child('era').val() === 'hand')) && (newData.child('host').val() === auth.uid)) || ((data.child('host').val() === auth.uid) && (!newData.exists()) && ((data.child('era').val() === 'hand') || (data.child('ended').val() !== true))) || ((!newData.exists()) && (((data.child('clubList/0').exists()) && (root.child('v2').child('clubs').child(data.child('clubList/0').val()).child('members').child(auth.uid).child('captain').val() === true)) || ((data.child('clubList/1').exists()) && (root.child('v2').child('clubs').child(data.child('clubList/1').val()).child('members').child(auth.uid).child('captain').val() === true)) || ((data.child('clubList/2').exists()) && (root.child('v2').child('clubs').child(data.child('clubList/2').val()).child('members').child(auth.uid).child('captain').val() === true)))) || (root.child('v2').child('admins').child(auth.uid).val() === true)",
+          "slots": {
+            "$key": {
+              ".write": "(((root.child('v2').child('games').child($gid).child('players/0/id').val() === auth.uid) && (root.child('v2').child('games').child($gid).child('joined/0').val() === true)) || ((root.child('v2').child('games').child($gid).child('players/1/id').val() === auth.uid) && (root.child('v2').child('games').child($gid).child('joined/1').val() === true)) || ((root.child('v2').child('games').child($gid).child('players/2/id').val() === auth.uid) && (root.child('v2').child('games').child($gid).child('joined/2').val() === true)) || ((root.child('v2').child('games').child($gid).child('players/3/id').val() === auth.uid) && (root.child('v2').child('games').child($gid).child('joined/3').val() === true))) && (root.child('v2').child('games').child($gid).child('ended').val() === false) && (!newData.exists()) && (!newData.parent().parent().child('closed').child($key).exists())",
+              "$i": {
+                ".write": "((auth != null) && (root.child('v2').child('games').child($gid).child('players').child($i).child('id').val() === auth.uid) && (root.child('v2').child('games').child($gid).child('ended').val() === false) && (!root.child('v2').child('games').child($gid).child('closed').child($key).exists())) || ((((root.child('v2').child('games').child($gid).child('players/0/id').val() === auth.uid) && (root.child('v2').child('games').child($gid).child('joined/0').val() === true)) || ((root.child('v2').child('games').child($gid).child('players/1/id').val() === auth.uid) && (root.child('v2').child('games').child($gid).child('joined/1').val() === true)) || ((root.child('v2').child('games').child($gid).child('players/2/id').val() === auth.uid) && (root.child('v2').child('games').child($gid).child('joined/2').val() === true)) || ((root.child('v2').child('games').child($gid).child('players/3/id').val() === auth.uid) && (root.child('v2').child('games').child($gid).child('joined/3').val() === true))) && (root.child('v2').child('games').child($gid).child('ended').val() === false) && (!newData.exists()) && (!newData.parent().parent().parent().child('closed').child($key).exists()))",
+                ".validate": "(!data.exists()) && (newData.child('by').val() === auth.uid) && ((newData.child('pick').isString()) || (newData.child('p3').exists()) || (newData.child('skip').val() === true)) && (($i === '0') || (((!newData.child('pick').exists()) || (newData.child('pick').val() !== data.parent().child('0').child('pick').val())) && ((!newData.child('p3/0').exists()) || (newData.child('p3/0').val() !== data.parent().child('0').child('p3/0').val())))) && (($i === '1') || (((!newData.child('pick').exists()) || (newData.child('pick').val() !== data.parent().child('1').child('pick').val())) && ((!newData.child('p3/0').exists()) || (newData.child('p3/0').val() !== data.parent().child('1').child('p3/0').val())))) && (($i === '2') || (((!newData.child('pick').exists()) || (newData.child('pick').val() !== data.parent().child('2').child('pick').val())) && ((!newData.child('p3/0').exists()) || (newData.child('p3/0').val() !== data.parent().child('2').child('p3/0').val()))))"
+              }
+            }
+          },
+          "closed": {
+            "$key": {
+              ".write": "(((root.child('v2').child('games').child($gid).child('players/0/id').val() === auth.uid) && (root.child('v2').child('games').child($gid).child('joined/0').val() === true)) || ((root.child('v2').child('games').child($gid).child('players/1/id').val() === auth.uid) && (root.child('v2').child('games').child($gid).child('joined/1').val() === true)) || ((root.child('v2').child('games').child($gid).child('players/2/id').val() === auth.uid) && (root.child('v2').child('games').child($gid).child('joined/2').val() === true)) || ((root.child('v2').child('games').child($gid).child('players/3/id').val() === auth.uid) && (root.child('v2').child('games').child($gid).child('joined/3').val() === true))) && (root.child('v2').child('games').child($gid).child('ended').val() === false)",
+              ".validate": "(!root.child('v2').child('games').child($gid).child('head').exists()) || ('e' + newData.parent().parent().child('head/last').val() === $key)"
+            }
+          },
+          "updatedAt": {
+            ".write": "((root.child('v2').child('games').child($gid).child('players/0/id').val() === auth.uid) && (root.child('v2').child('games').child($gid).child('joined/0').val() === true)) || ((root.child('v2').child('games').child($gid).child('players/1/id').val() === auth.uid) && (root.child('v2').child('games').child($gid).child('joined/1').val() === true)) || ((root.child('v2').child('games').child($gid).child('players/2/id').val() === auth.uid) && (root.child('v2').child('games').child($gid).child('joined/2').val() === true)) || ((root.child('v2').child('games').child($gid).child('players/3/id').val() === auth.uid) && (root.child('v2').child('games').child($gid).child('joined/3').val() === true))"
+          },
+          "ended": {
+            ".write": "(((root.child('v2').child('games').child($gid).child('players/0/id').val() === auth.uid) && (root.child('v2').child('games').child($gid).child('joined/0').val() === true)) || ((root.child('v2').child('games').child($gid).child('players/1/id').val() === auth.uid) && (root.child('v2').child('games').child($gid).child('joined/1').val() === true)) || ((root.child('v2').child('games').child($gid).child('players/2/id').val() === auth.uid) && (root.child('v2').child('games').child($gid).child('joined/2').val() === true)) || ((root.child('v2').child('games').child($gid).child('players/3/id').val() === auth.uid) && (root.child('v2').child('games').child($gid).child('joined/3').val() === true))) && (root.child('v2').child('games').child($gid).child('ended').val() === false)",
+            ".validate": "(newData.isBoolean()) && ((newData.val() === false) || (!root.child('v2').child('games').child($gid).child('head').exists()) || (newData.parent().child('head/next').val() !== root.child('v2').child('games').child($gid).child('head/next').val()))"
+          },
+          "endedAt": {
+            ".write": "(((root.child('v2').child('games').child($gid).child('players/0/id').val() === auth.uid) && (root.child('v2').child('games').child($gid).child('joined/0').val() === true)) || ((root.child('v2').child('games').child($gid).child('players/1/id').val() === auth.uid) && (root.child('v2').child('games').child($gid).child('joined/1').val() === true)) || ((root.child('v2').child('games').child($gid).child('players/2/id').val() === auth.uid) && (root.child('v2').child('games').child($gid).child('joined/2').val() === true)) || ((root.child('v2').child('games').child($gid).child('players/3/id').val() === auth.uid) && (root.child('v2').child('games').child($gid).child('joined/3').val() === true))) && (root.child('v2').child('games').child($gid).child('ended').val() === false) && (newData.parent().child('ended').val() === true)"
+          },
+          "scores": {
+            ".write": "(((root.child('v2').child('games').child($gid).child('players/0/id').val() === auth.uid) && (root.child('v2').child('games').child($gid).child('joined/0').val() === true)) || ((root.child('v2').child('games').child($gid).child('players/1/id').val() === auth.uid) && (root.child('v2').child('games').child($gid).child('joined/1').val() === true)) || ((root.child('v2').child('games').child($gid).child('players/2/id').val() === auth.uid) && (root.child('v2').child('games').child($gid).child('joined/2').val() === true)) || ((root.child('v2').child('games').child($gid).child('players/3/id').val() === auth.uid) && (root.child('v2').child('games').child($gid).child('joined/3').val() === true))) && (root.child('v2').child('games').child($gid).child('ended').val() === false) && (newData.parent().child('ended').val() === true)"
+          },
+          "mlb": {
+            ".write": "(((root.child('v2').child('games').child($gid).child('players/0/id').val() === auth.uid) && (root.child('v2').child('games').child($gid).child('joined/0').val() === true)) || ((root.child('v2').child('games').child($gid).child('players/1/id').val() === auth.uid) && (root.child('v2').child('games').child($gid).child('joined/1').val() === true)) || ((root.child('v2').child('games').child($gid).child('players/2/id').val() === auth.uid) && (root.child('v2').child('games').child($gid).child('joined/2').val() === true)) || ((root.child('v2').child('games').child($gid).child('players/3/id').val() === auth.uid) && (root.child('v2').child('games').child($gid).child('joined/3').val() === true))) && (root.child('v2').child('games').child($gid).child('ended').val() === false) && (newData.parent().child('ended').val() === true)"
+          },
+          "note": {
+            ".write": "(((root.child('v2').child('games').child($gid).child('players/0/id').val() === auth.uid) && (root.child('v2').child('games').child($gid).child('joined/0').val() === true)) || ((root.child('v2').child('games').child($gid).child('players/1/id').val() === auth.uid) && (root.child('v2').child('games').child($gid).child('joined/1').val() === true)) || ((root.child('v2').child('games').child($gid).child('players/2/id').val() === auth.uid) && (root.child('v2').child('games').child($gid).child('joined/2').val() === true)) || ((root.child('v2').child('games').child($gid).child('players/3/id').val() === auth.uid) && (root.child('v2').child('games').child($gid).child('joined/3').val() === true))) && (root.child('v2').child('games').child($gid).child('ended').val() === false) && (newData.parent().child('ended').val() === true)"
+          },
+          "head": {
+            ".write": "(((root.child('v2').child('games').child($gid).child('players/0/id').val() === auth.uid) && (root.child('v2').child('games').child($gid).child('joined/0').val() === true)) || ((root.child('v2').child('games').child($gid).child('players/1/id').val() === auth.uid) && (root.child('v2').child('games').child($gid).child('joined/1').val() === true)) || ((root.child('v2').child('games').child($gid).child('players/2/id').val() === auth.uid) && (root.child('v2').child('games').child($gid).child('joined/2').val() === true)) || ((root.child('v2').child('games').child($gid).child('players/3/id').val() === auth.uid) && (root.child('v2').child('games').child($gid).child('joined/3').val() === true))) && (root.child('v2').child('games').child($gid).child('ended').val() === false)",
+            ".validate": "(!data.exists()) || ((newData.child('last').val() === data.child('next').val()) && (!data.parent().child('events').child(data.child('next').val()).exists()) && (newData.parent().child('events').child(data.child('next').val()).exists()) && (newData.parent().child('events').child(data.child('next').val()).child('id').val() === newData.child('id').val())) || ((newData.child('undid').val() === data.child('id').val()) && (!newData.parent().child('events').child(data.child('last').val()).exists()) && (newData.child('next').val() === data.child('last').val()) && ((newData.child('last').val() === '-1') || (newData.parent().child('events').child(newData.child('last').val()).child('id').val() === newData.child('id').val())))"
+          },
+          "joined": {
+            "$i": {
+              ".write": "(auth != null) && (root.child('v2').child('games').child($gid).child('players').child($i).child('id').val() === auth.uid) && (root.child('v2').child('games').child($gid).child('ended').val() === false)",
+              ".validate": "newData.isBoolean()"
+            }
+          },
+          "events": {
+            "$n": {
+              ".write": "(((root.child('v2').child('games').child($gid).child('players/0/id').val() === auth.uid) && (root.child('v2').child('games').child($gid).child('joined/0').val() === true)) || ((root.child('v2').child('games').child($gid).child('players/1/id').val() === auth.uid) && (root.child('v2').child('games').child($gid).child('joined/1').val() === true)) || ((root.child('v2').child('games').child($gid).child('players/2/id').val() === auth.uid) && (root.child('v2').child('games').child($gid).child('joined/2').val() === true)) || ((root.child('v2').child('games').child($gid).child('players/3/id').val() === auth.uid) && (root.child('v2').child('games').child($gid).child('joined/3').val() === true))) && (root.child('v2').child('games').child($gid).child('ended').val() === false) && ((newData.exists()) || (root.child('v2').child('games').child($gid).child('head/last').val() === $n))",
+              ".validate": "(!data.exists()) && ((!root.child('v2').child('games').child($gid).child('head').exists()) || (root.child('v2').child('games').child($gid).child('head/next').val() === $n)) && ((!root.child('v2').child('games').child($gid).child('head').exists()) || (newData.parent().parent().child('head/last').val() === $n)) && ((!newData.child('key').exists()) || (!root.child('v2').child('games').child($gid).child('slots').child(newData.child('key').val()).child('0').exists()) || (((newData.child('type').val() !== 'play') || ((newData.child('picks/0/pick').val() === root.child('v2').child('games').child($gid).child('slots').child(newData.child('key').val()).child('0').child('pick').val()) && (newData.child('picks/0/conf').val() === root.child('v2').child('games').child($gid).child('slots').child(newData.child('key').val()).child('0').child('conf').val()))) && ((newData.child('type').val() !== 'pick3') || ((root.child('v2').child('games').child($gid).child('slots').child(newData.child('key').val()).child('0').child('skip').val() === true) && (!newData.child('picks/0').exists())) || ((newData.child('picks/0/0').val() === root.child('v2').child('games').child($gid).child('slots').child(newData.child('key').val()).child('0').child('p3/0').val()) && (newData.child('picks/0/1').val() === root.child('v2').child('games').child($gid).child('slots').child(newData.child('key').val()).child('0').child('p3/1').val()) && (newData.child('picks/0/2').val() === root.child('v2').child('games').child($gid).child('slots').child(newData.child('key').val()).child('0').child('p3/2').val()))))) && ((!newData.child('key').exists()) || (!root.child('v2').child('games').child($gid).child('slots').child(newData.child('key').val()).child('1').exists()) || (((newData.child('type').val() !== 'play') || ((newData.child('picks/1/pick').val() === root.child('v2').child('games').child($gid).child('slots').child(newData.child('key').val()).child('1').child('pick').val()) && (newData.child('picks/1/conf').val() === root.child('v2').child('games').child($gid).child('slots').child(newData.child('key').val()).child('1').child('conf').val()))) && ((newData.child('type').val() !== 'pick3') || ((root.child('v2').child('games').child($gid).child('slots').child(newData.child('key').val()).child('1').child('skip').val() === true) && (!newData.child('picks/1').exists())) || ((newData.child('picks/1/0').val() === root.child('v2').child('games').child($gid).child('slots').child(newData.child('key').val()).child('1').child('p3/0').val()) && (newData.child('picks/1/1').val() === root.child('v2').child('games').child($gid).child('slots').child(newData.child('key').val()).child('1').child('p3/1').val()) && (newData.child('picks/1/2').val() === root.child('v2').child('games').child($gid).child('slots').child(newData.child('key').val()).child('1').child('p3/2').val()))))) && ((!newData.child('key').exists()) || (!root.child('v2').child('games').child($gid).child('slots').child(newData.child('key').val()).child('2').exists()) || (((newData.child('type').val() !== 'play') || ((newData.child('picks/2/pick').val() === root.child('v2').child('games').child($gid).child('slots').child(newData.child('key').val()).child('2').child('pick').val()) && (newData.child('picks/2/conf').val() === root.child('v2').child('games').child($gid).child('slots').child(newData.child('key').val()).child('2').child('conf').val()))) && ((newData.child('type').val() !== 'pick3') || ((root.child('v2').child('games').child($gid).child('slots').child(newData.child('key').val()).child('2').child('skip').val() === true) && (!newData.child('picks/2').exists())) || ((newData.child('picks/2/0').val() === root.child('v2').child('games').child($gid).child('slots').child(newData.child('key').val()).child('2').child('p3/0').val()) && (newData.child('picks/2/1').val() === root.child('v2').child('games').child($gid).child('slots').child(newData.child('key').val()).child('2').child('p3/1').val()) && (newData.child('picks/2/2').val() === root.child('v2').child('games').child($gid).child('slots').child(newData.child('key').val()).child('2').child('p3/2').val())))))"
+            }
+          }
         }
       },
       "playerGames": {
@@ -1980,6 +2145,9 @@ const RULES_JSON = {
           ".write": "(auth.uid === $pid) || ((!data.exists()) && (newData.child('createdBy').val() === auth.uid) && (newData.child('account').val() === false)) || ((data.child('account').val() === false) && (((data.child('club').exists()) && (root.child('qa').child('clubs').child(data.child('club').val()).child('members').child(auth.uid).child('captain').val() === true)) || ((!data.child('club').exists()) && (data.child('createdBy').val() === auth.uid)))) || (root.child('v2').child('admins').child(auth.uid).val() === true)",
           "name": {
             ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 16"
+          },
+          "photo": {
+            ".validate": "newData.isString() && newData.val().beginsWith('data:image/jpeg;base64,') && newData.val().length < 30000"
           }
         }
       },
@@ -2042,7 +2210,57 @@ const RULES_JSON = {
       "games": {
         "$gid": {
           ".read": "auth != null",
-          ".write": "((!data.exists()) && (newData.child('host').val() === auth.uid)) || ((data.child('host').val() === auth.uid) && (newData.exists()) && ((data.child('ended').val() !== true) || (data.child('era').val() === 'hand')) && (newData.child('host').val() === auth.uid)) || ((data.child('host').val() === auth.uid) && (!newData.exists()) && ((data.child('era').val() === 'hand') || (data.child('ended').val() !== true))) || ((!newData.exists()) && (((data.child('clubList/0').exists()) && (root.child('qa').child('clubs').child(data.child('clubList/0').val()).child('members').child(auth.uid).child('captain').val() === true)) || ((data.child('clubList/1').exists()) && (root.child('qa').child('clubs').child(data.child('clubList/1').val()).child('members').child(auth.uid).child('captain').val() === true)) || ((data.child('clubList/2').exists()) && (root.child('qa').child('clubs').child(data.child('clubList/2').val()).child('members').child(auth.uid).child('captain').val() === true)))) || (root.child('v2').child('admins').child(auth.uid).val() === true)"
+          ".write": "((!data.exists()) && (newData.child('host').val() === auth.uid)) || ((data.child('host').val() === auth.uid) && (newData.exists()) && ((data.child('ended').val() !== true) || (data.child('era').val() === 'hand')) && (newData.child('host').val() === auth.uid)) || ((data.child('host').val() === auth.uid) && (!newData.exists()) && ((data.child('era').val() === 'hand') || (data.child('ended').val() !== true))) || ((!newData.exists()) && (((data.child('clubList/0').exists()) && (root.child('qa').child('clubs').child(data.child('clubList/0').val()).child('members').child(auth.uid).child('captain').val() === true)) || ((data.child('clubList/1').exists()) && (root.child('qa').child('clubs').child(data.child('clubList/1').val()).child('members').child(auth.uid).child('captain').val() === true)) || ((data.child('clubList/2').exists()) && (root.child('qa').child('clubs').child(data.child('clubList/2').val()).child('members').child(auth.uid).child('captain').val() === true)))) || (root.child('v2').child('admins').child(auth.uid).val() === true)",
+          "slots": {
+            "$key": {
+              ".write": "(((root.child('qa').child('games').child($gid).child('players/0/id').val() === auth.uid) && (root.child('qa').child('games').child($gid).child('joined/0').val() === true)) || ((root.child('qa').child('games').child($gid).child('players/1/id').val() === auth.uid) && (root.child('qa').child('games').child($gid).child('joined/1').val() === true)) || ((root.child('qa').child('games').child($gid).child('players/2/id').val() === auth.uid) && (root.child('qa').child('games').child($gid).child('joined/2').val() === true)) || ((root.child('qa').child('games').child($gid).child('players/3/id').val() === auth.uid) && (root.child('qa').child('games').child($gid).child('joined/3').val() === true))) && (root.child('qa').child('games').child($gid).child('ended').val() === false) && (!newData.exists()) && (!newData.parent().parent().child('closed').child($key).exists())",
+              "$i": {
+                ".write": "((auth != null) && (root.child('qa').child('games').child($gid).child('players').child($i).child('id').val() === auth.uid) && (root.child('qa').child('games').child($gid).child('ended').val() === false) && (!root.child('qa').child('games').child($gid).child('closed').child($key).exists())) || ((((root.child('qa').child('games').child($gid).child('players/0/id').val() === auth.uid) && (root.child('qa').child('games').child($gid).child('joined/0').val() === true)) || ((root.child('qa').child('games').child($gid).child('players/1/id').val() === auth.uid) && (root.child('qa').child('games').child($gid).child('joined/1').val() === true)) || ((root.child('qa').child('games').child($gid).child('players/2/id').val() === auth.uid) && (root.child('qa').child('games').child($gid).child('joined/2').val() === true)) || ((root.child('qa').child('games').child($gid).child('players/3/id').val() === auth.uid) && (root.child('qa').child('games').child($gid).child('joined/3').val() === true))) && (root.child('qa').child('games').child($gid).child('ended').val() === false) && (!newData.exists()) && (!newData.parent().parent().parent().child('closed').child($key).exists()))",
+                ".validate": "(!data.exists()) && (newData.child('by').val() === auth.uid) && ((newData.child('pick').isString()) || (newData.child('p3').exists()) || (newData.child('skip').val() === true)) && (($i === '0') || (((!newData.child('pick').exists()) || (newData.child('pick').val() !== data.parent().child('0').child('pick').val())) && ((!newData.child('p3/0').exists()) || (newData.child('p3/0').val() !== data.parent().child('0').child('p3/0').val())))) && (($i === '1') || (((!newData.child('pick').exists()) || (newData.child('pick').val() !== data.parent().child('1').child('pick').val())) && ((!newData.child('p3/0').exists()) || (newData.child('p3/0').val() !== data.parent().child('1').child('p3/0').val())))) && (($i === '2') || (((!newData.child('pick').exists()) || (newData.child('pick').val() !== data.parent().child('2').child('pick').val())) && ((!newData.child('p3/0').exists()) || (newData.child('p3/0').val() !== data.parent().child('2').child('p3/0').val()))))"
+              }
+            }
+          },
+          "closed": {
+            "$key": {
+              ".write": "(((root.child('qa').child('games').child($gid).child('players/0/id').val() === auth.uid) && (root.child('qa').child('games').child($gid).child('joined/0').val() === true)) || ((root.child('qa').child('games').child($gid).child('players/1/id').val() === auth.uid) && (root.child('qa').child('games').child($gid).child('joined/1').val() === true)) || ((root.child('qa').child('games').child($gid).child('players/2/id').val() === auth.uid) && (root.child('qa').child('games').child($gid).child('joined/2').val() === true)) || ((root.child('qa').child('games').child($gid).child('players/3/id').val() === auth.uid) && (root.child('qa').child('games').child($gid).child('joined/3').val() === true))) && (root.child('qa').child('games').child($gid).child('ended').val() === false)",
+              ".validate": "(!root.child('qa').child('games').child($gid).child('head').exists()) || ('e' + newData.parent().parent().child('head/last').val() === $key)"
+            }
+          },
+          "updatedAt": {
+            ".write": "((root.child('qa').child('games').child($gid).child('players/0/id').val() === auth.uid) && (root.child('qa').child('games').child($gid).child('joined/0').val() === true)) || ((root.child('qa').child('games').child($gid).child('players/1/id').val() === auth.uid) && (root.child('qa').child('games').child($gid).child('joined/1').val() === true)) || ((root.child('qa').child('games').child($gid).child('players/2/id').val() === auth.uid) && (root.child('qa').child('games').child($gid).child('joined/2').val() === true)) || ((root.child('qa').child('games').child($gid).child('players/3/id').val() === auth.uid) && (root.child('qa').child('games').child($gid).child('joined/3').val() === true))"
+          },
+          "ended": {
+            ".write": "(((root.child('qa').child('games').child($gid).child('players/0/id').val() === auth.uid) && (root.child('qa').child('games').child($gid).child('joined/0').val() === true)) || ((root.child('qa').child('games').child($gid).child('players/1/id').val() === auth.uid) && (root.child('qa').child('games').child($gid).child('joined/1').val() === true)) || ((root.child('qa').child('games').child($gid).child('players/2/id').val() === auth.uid) && (root.child('qa').child('games').child($gid).child('joined/2').val() === true)) || ((root.child('qa').child('games').child($gid).child('players/3/id').val() === auth.uid) && (root.child('qa').child('games').child($gid).child('joined/3').val() === true))) && (root.child('qa').child('games').child($gid).child('ended').val() === false)",
+            ".validate": "(newData.isBoolean()) && ((newData.val() === false) || (!root.child('qa').child('games').child($gid).child('head').exists()) || (newData.parent().child('head/next').val() !== root.child('qa').child('games').child($gid).child('head/next').val()))"
+          },
+          "endedAt": {
+            ".write": "(((root.child('qa').child('games').child($gid).child('players/0/id').val() === auth.uid) && (root.child('qa').child('games').child($gid).child('joined/0').val() === true)) || ((root.child('qa').child('games').child($gid).child('players/1/id').val() === auth.uid) && (root.child('qa').child('games').child($gid).child('joined/1').val() === true)) || ((root.child('qa').child('games').child($gid).child('players/2/id').val() === auth.uid) && (root.child('qa').child('games').child($gid).child('joined/2').val() === true)) || ((root.child('qa').child('games').child($gid).child('players/3/id').val() === auth.uid) && (root.child('qa').child('games').child($gid).child('joined/3').val() === true))) && (root.child('qa').child('games').child($gid).child('ended').val() === false) && (newData.parent().child('ended').val() === true)"
+          },
+          "scores": {
+            ".write": "(((root.child('qa').child('games').child($gid).child('players/0/id').val() === auth.uid) && (root.child('qa').child('games').child($gid).child('joined/0').val() === true)) || ((root.child('qa').child('games').child($gid).child('players/1/id').val() === auth.uid) && (root.child('qa').child('games').child($gid).child('joined/1').val() === true)) || ((root.child('qa').child('games').child($gid).child('players/2/id').val() === auth.uid) && (root.child('qa').child('games').child($gid).child('joined/2').val() === true)) || ((root.child('qa').child('games').child($gid).child('players/3/id').val() === auth.uid) && (root.child('qa').child('games').child($gid).child('joined/3').val() === true))) && (root.child('qa').child('games').child($gid).child('ended').val() === false) && (newData.parent().child('ended').val() === true)"
+          },
+          "mlb": {
+            ".write": "(((root.child('qa').child('games').child($gid).child('players/0/id').val() === auth.uid) && (root.child('qa').child('games').child($gid).child('joined/0').val() === true)) || ((root.child('qa').child('games').child($gid).child('players/1/id').val() === auth.uid) && (root.child('qa').child('games').child($gid).child('joined/1').val() === true)) || ((root.child('qa').child('games').child($gid).child('players/2/id').val() === auth.uid) && (root.child('qa').child('games').child($gid).child('joined/2').val() === true)) || ((root.child('qa').child('games').child($gid).child('players/3/id').val() === auth.uid) && (root.child('qa').child('games').child($gid).child('joined/3').val() === true))) && (root.child('qa').child('games').child($gid).child('ended').val() === false) && (newData.parent().child('ended').val() === true)"
+          },
+          "note": {
+            ".write": "(((root.child('qa').child('games').child($gid).child('players/0/id').val() === auth.uid) && (root.child('qa').child('games').child($gid).child('joined/0').val() === true)) || ((root.child('qa').child('games').child($gid).child('players/1/id').val() === auth.uid) && (root.child('qa').child('games').child($gid).child('joined/1').val() === true)) || ((root.child('qa').child('games').child($gid).child('players/2/id').val() === auth.uid) && (root.child('qa').child('games').child($gid).child('joined/2').val() === true)) || ((root.child('qa').child('games').child($gid).child('players/3/id').val() === auth.uid) && (root.child('qa').child('games').child($gid).child('joined/3').val() === true))) && (root.child('qa').child('games').child($gid).child('ended').val() === false) && (newData.parent().child('ended').val() === true)"
+          },
+          "head": {
+            ".write": "(((root.child('qa').child('games').child($gid).child('players/0/id').val() === auth.uid) && (root.child('qa').child('games').child($gid).child('joined/0').val() === true)) || ((root.child('qa').child('games').child($gid).child('players/1/id').val() === auth.uid) && (root.child('qa').child('games').child($gid).child('joined/1').val() === true)) || ((root.child('qa').child('games').child($gid).child('players/2/id').val() === auth.uid) && (root.child('qa').child('games').child($gid).child('joined/2').val() === true)) || ((root.child('qa').child('games').child($gid).child('players/3/id').val() === auth.uid) && (root.child('qa').child('games').child($gid).child('joined/3').val() === true))) && (root.child('qa').child('games').child($gid).child('ended').val() === false)",
+            ".validate": "(!data.exists()) || ((newData.child('last').val() === data.child('next').val()) && (!data.parent().child('events').child(data.child('next').val()).exists()) && (newData.parent().child('events').child(data.child('next').val()).exists()) && (newData.parent().child('events').child(data.child('next').val()).child('id').val() === newData.child('id').val())) || ((newData.child('undid').val() === data.child('id').val()) && (!newData.parent().child('events').child(data.child('last').val()).exists()) && (newData.child('next').val() === data.child('last').val()) && ((newData.child('last').val() === '-1') || (newData.parent().child('events').child(newData.child('last').val()).child('id').val() === newData.child('id').val())))"
+          },
+          "joined": {
+            "$i": {
+              ".write": "(auth != null) && (root.child('qa').child('games').child($gid).child('players').child($i).child('id').val() === auth.uid) && (root.child('qa').child('games').child($gid).child('ended').val() === false)",
+              ".validate": "newData.isBoolean()"
+            }
+          },
+          "events": {
+            "$n": {
+              ".write": "(((root.child('qa').child('games').child($gid).child('players/0/id').val() === auth.uid) && (root.child('qa').child('games').child($gid).child('joined/0').val() === true)) || ((root.child('qa').child('games').child($gid).child('players/1/id').val() === auth.uid) && (root.child('qa').child('games').child($gid).child('joined/1').val() === true)) || ((root.child('qa').child('games').child($gid).child('players/2/id').val() === auth.uid) && (root.child('qa').child('games').child($gid).child('joined/2').val() === true)) || ((root.child('qa').child('games').child($gid).child('players/3/id').val() === auth.uid) && (root.child('qa').child('games').child($gid).child('joined/3').val() === true))) && (root.child('qa').child('games').child($gid).child('ended').val() === false) && ((newData.exists()) || (root.child('qa').child('games').child($gid).child('head/last').val() === $n))",
+              ".validate": "(!data.exists()) && ((!root.child('qa').child('games').child($gid).child('head').exists()) || (root.child('qa').child('games').child($gid).child('head/next').val() === $n)) && ((!root.child('qa').child('games').child($gid).child('head').exists()) || (newData.parent().parent().child('head/last').val() === $n)) && ((!newData.child('key').exists()) || (!root.child('qa').child('games').child($gid).child('slots').child(newData.child('key').val()).child('0').exists()) || (((newData.child('type').val() !== 'play') || ((newData.child('picks/0/pick').val() === root.child('qa').child('games').child($gid).child('slots').child(newData.child('key').val()).child('0').child('pick').val()) && (newData.child('picks/0/conf').val() === root.child('qa').child('games').child($gid).child('slots').child(newData.child('key').val()).child('0').child('conf').val()))) && ((newData.child('type').val() !== 'pick3') || ((root.child('qa').child('games').child($gid).child('slots').child(newData.child('key').val()).child('0').child('skip').val() === true) && (!newData.child('picks/0').exists())) || ((newData.child('picks/0/0').val() === root.child('qa').child('games').child($gid).child('slots').child(newData.child('key').val()).child('0').child('p3/0').val()) && (newData.child('picks/0/1').val() === root.child('qa').child('games').child($gid).child('slots').child(newData.child('key').val()).child('0').child('p3/1').val()) && (newData.child('picks/0/2').val() === root.child('qa').child('games').child($gid).child('slots').child(newData.child('key').val()).child('0').child('p3/2').val()))))) && ((!newData.child('key').exists()) || (!root.child('qa').child('games').child($gid).child('slots').child(newData.child('key').val()).child('1').exists()) || (((newData.child('type').val() !== 'play') || ((newData.child('picks/1/pick').val() === root.child('qa').child('games').child($gid).child('slots').child(newData.child('key').val()).child('1').child('pick').val()) && (newData.child('picks/1/conf').val() === root.child('qa').child('games').child($gid).child('slots').child(newData.child('key').val()).child('1').child('conf').val()))) && ((newData.child('type').val() !== 'pick3') || ((root.child('qa').child('games').child($gid).child('slots').child(newData.child('key').val()).child('1').child('skip').val() === true) && (!newData.child('picks/1').exists())) || ((newData.child('picks/1/0').val() === root.child('qa').child('games').child($gid).child('slots').child(newData.child('key').val()).child('1').child('p3/0').val()) && (newData.child('picks/1/1').val() === root.child('qa').child('games').child($gid).child('slots').child(newData.child('key').val()).child('1').child('p3/1').val()) && (newData.child('picks/1/2').val() === root.child('qa').child('games').child($gid).child('slots').child(newData.child('key').val()).child('1').child('p3/2').val()))))) && ((!newData.child('key').exists()) || (!root.child('qa').child('games').child($gid).child('slots').child(newData.child('key').val()).child('2').exists()) || (((newData.child('type').val() !== 'play') || ((newData.child('picks/2/pick').val() === root.child('qa').child('games').child($gid).child('slots').child(newData.child('key').val()).child('2').child('pick').val()) && (newData.child('picks/2/conf').val() === root.child('qa').child('games').child($gid).child('slots').child(newData.child('key').val()).child('2').child('conf').val()))) && ((newData.child('type').val() !== 'pick3') || ((root.child('qa').child('games').child($gid).child('slots').child(newData.child('key').val()).child('2').child('skip').val() === true) && (!newData.child('picks/2').exists())) || ((newData.child('picks/2/0').val() === root.child('qa').child('games').child($gid).child('slots').child(newData.child('key').val()).child('2').child('p3/0').val()) && (newData.child('picks/2/1').val() === root.child('qa').child('games').child($gid).child('slots').child(newData.child('key').val()).child('2').child('p3/1').val()) && (newData.child('picks/2/2').val() === root.child('qa').child('games').child($gid).child('slots').child(newData.child('key').val()).child('2').child('p3/2').val())))))"
+            }
+          }
         }
       },
       "playerGames": {
@@ -2065,6 +2283,13 @@ const RULES_JSON = {
         ".read": "auth != null",
         "$pid": {
           ".write": "(newData.child('host').val() === auth.uid) || (data.child('host').val() === auth.uid) || (root.child('v2').child('admins').child(auth.uid).val() === true)"
+        }
+      },
+      "diag": {
+        ".read": "root.child('v2').child('admins').child(auth.uid).val() === true",
+        "$uid": {
+          ".write": "auth.uid === $uid",
+          ".validate": "newData.child('log').isString() && newData.child('log').val().length < 40000"
         }
       }
     },
@@ -2126,7 +2351,8 @@ const Diag = (() => {
     if (prev && prev.k === kind && prev.d.replace(/ ×\d+$/, '') === d && prev.s === sc && kind === 'touch') {   // a run of touches on the same layer: one line
       prev.n = (prev.n || 1) + 1; prev.d = d + ' ×' + prev.n; prev.t = Date.now();
     } else log.push({ t: Date.now(), k: kind, s: sc, sh, d });
-    if (log.length > 150) log = log.slice(-150);
+    if (log.length > 400) log = log.slice(-400);
+    try { LiveLog.poke(); } catch (e) { /* not set up yet */ }
     clearTimeout(save); save = setTimeout(() => Store.put('gb_diag', log), 400);
   };
   addEventListener('error', e => add('error', (e.message || 'error') + (e.lineno ? ' @' + e.lineno : '')));
@@ -2197,6 +2423,25 @@ function info(id, labelHtml, text, cls = 'label') {
   const open = S.info === id;
   return `<div><button class="info-btn ${cls}" ${act('info', id)}>${labelHtml}<span class="info-i">i</span></button>${open ? `<div class="bubble fade">${esc(text)}</div>` : ''}</div>`;
 }
+// Profile photos: kept on the phone once seen (so they show offline), checked against Firebase once per app session
+const Photos = { mem: {}, asked: {},
+  of(pid) {
+    if (!pid || /^g_|:/.test(pid)) return null;                                  // guests have no photo
+    if (!(pid in this.mem)) { try { this.mem[pid] = Store.getItem('gb_pfp_' + pid) || null; } catch (e) { this.mem[pid] = null; } }
+    if (!this.asked[pid] && typeof FCab !== 'undefined' && FCab && S.user && FCab.photoOf) {
+      this.asked[pid] = true;
+      FCab.photoOf(pid).then(p => { p = p || null; if (p === this.mem[pid]) return; this.set(pid, p); render(); }).catch(() => { this.asked[pid] = false; });
+    }
+    return this.mem[pid];
+  },
+  set(pid, p) { this.mem[pid] = p; try { if (p) Store.setItem('gb_pfp_' + pid, p); else Store.removeItem('gb_pfp_' + pid); } catch (e) { /* phone storage full: it still shows this session */ } },
+};
+// A player's circle: their photo, or their first letter
+const avatar = (pid, name, px, bg = 'var(--card3)', color = 'var(--text)', dashed = false) => {
+  const ph = Photos.of(pid), base = `width:${px}px;height:${px}px;border-radius:${px / 2}px;flex-shrink:0`;
+  return ph ? `<span style="${base};display:block;background:#000 url('${ph}') center/cover"></span>`
+    : `<span style="${base};display:flex;align-items:center;justify-content:center;font-size:${Math.round(px * 0.42)}px;font-weight:700;color:${color};${dashed ? 'border:1.5px dashed var(--text4)' : 'background:' + bg}">${esc((name || '?').trim()[0] ? (name || '?').trim()[0].toUpperCase() : '?')}</span>`;
+};
 const backBtn = (a = 'back') => `<button class="back press" aria-label="Back" ${act(a)}>${ICON.back}</button>`;
 const toggle = (on, a, arg) => `<button class="toggle ${on ? 'on' : ''}" aria-pressed="${on}" ${act(a, arg)}><span></span></button>`;
 const progress = (n, of) => `<div style="display:flex;gap:6px">${Array.from({ length: of }, (_, i) => `<span style="width:22px;height:5px;border-radius:3px;background:${i < n ? 'var(--text)' : 'var(--card3)'}"></span>`).join('')}</div>`;
@@ -2243,12 +2488,12 @@ function teamList(selected, a) {
   }).join('') || `<div class="row"><span class="courier meta">No team matches. That's fine — it's optional.</span></div>`}</div>`;
 }
 SCREENS.setupTeam = () => `<div class="fixedpage" style="gap:12px">
-  <div class="topbar" style="justify-content:space-between">${backBtn('setupBack')}${progress(2, 3)}<button class="cond press" ${act('setupSkipTeam')} style="width:50px;color:var(--link);font-size:17px;font-weight:800;letter-spacing:.6px;text-align:right">SKIP</button></div>
+  <div class="topbar" style="justify-content:space-between">${backBtn('setupBack')}${progress(2, 3)}<span style="width:36px"></span></div>
   <h1 class="cond" style="margin:16px 0 0;font-size:40px;font-weight:800;line-height:1">FAVORITE TEAM?</h1>
-  <span class="courier" style="font-size:13px;font-weight:700;color:var(--text2)">Optional.</span>
   ${teamList(S.setup.team, 'setupPickTeam')}
   <div class="grow" style="min-height:8px"></div>
-  <button class="big-btn cond press" ${act('setupNext')} style="position:sticky;bottom:0">NEXT</button>
+  ${S.setup.team ? `<button class="big-btn cond press" ${act('setupNext')} style="position:sticky;bottom:0">NEXT</button>`
+    : `<button class="big-btn cond press" ${act('setupSkipTeam')} style="position:sticky;bottom:0">SKIP</button>`}
 </div>`;
 SCREENS.setupPlayed = () => {
   const a = S.setup.played;
@@ -2366,6 +2611,7 @@ SCREENS.home = () => {
     ${scopeChip()}
     ${claimCard()}
     ${S.clubs.filter(c => c.status === 'pending').map(c => `<div class="card" style="border-radius:16px;padding:12px 14px;background:rgba(242,193,78,.14);border:1px solid rgba(242,193,78,.45);display:flex;flex-direction:column;gap:3px"><span class="cond" style="font-size:14px;font-weight:800;letter-spacing:.8px;color:var(--gold)">WAITING ON A CAPTAIN</span><span style="font-size:14px;line-height:1.4">Your request to join ${esc(c.name || 'the club')} is in. You’ll get in as soon as a captain approves it.</span></div>`).join('')}
+    ${typeof inviteCard === 'function' ? inviteCard() : ''}
     ${typeof resumeCard === 'function' ? resumeCard() : ''}
     ${S.g && !S.g.s.ended ? '' : `<button class="press cond mid-btn" ${act('newGame')}>${ICON.plus} NEW GAME</button>`}
     ${body}
@@ -2469,11 +2715,11 @@ SCREENS.settings = () => {
   return `<div class="page" style="gap:10px">
   <div class="topbar">${backBtn()}<h1 class="cond h1">SETTINGS</h1></div>
   <div class="card" style="padding:14px;display:flex;align-items:center;gap:12px">
-    <span style="width:48px;height:48px;border-radius:24px;background:var(--accent);color:var(--onaccent);display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:700">${esc((a.name || '?')[0].toUpperCase())}</span>
+    ${avatar(S.user && S.user.uid, a.name, 48, 'var(--accent)', 'var(--onaccent)')}
     <div style="flex-grow:1;display:flex;flex-direction:column;gap:2px"><span style="font-size:18px;font-weight:700">${esc(a.name || '')}</span><span class="courier meta">Signed in with Google</span></div>
     <button class="press cond small-btn" style="height:32px;padding:0 12px;font-size:15px" ${act('go', 'editProfile')}>EDIT</button></div>
   <div class="list">
-    <button class="row press" ${act('go', 'editProfile')}><span style="flex-grow:1;font-size:16px;font-weight:500">Favorite team</span><span style="font-size:15px;color:var(--text3)">${esc(shortTeam(a.team) || 'None')}</span>${ICON.chev}</button>
+    <button class="row press" ${act('openSheet', 'favTeam')}><span style="flex-grow:1;font-size:16px;font-weight:500">Favorite team</span><span style="font-size:15px;color:var(--text3)">${esc(shortTeam(a.team) || 'None')}</span>${ICON.chev}</button>
     <button class="row press" ${act('go', 'appearance')}><span style="flex-grow:1;font-size:16px;font-weight:500">Appearance</span><span style="font-size:15px;color:var(--text3)">${esc(appearanceSummary())}</span>${ICON.chev}</button>
     <button class="row press" ${act('go', 'gameOptions')}><span style="flex-grow:1;font-size:16px;font-weight:500">Game options</span><span style="font-size:15px;color:var(--text3)">${esc(gameOptionsSummary())}</span>${ICON.chev}</button>
   </div>
@@ -2499,16 +2745,16 @@ SCREENS.editProfile = () => {
   <div class="topbar" style="justify-content:space-between"><button class="press cond" ${act('back')} style="color:var(--text2);font-size:17px;font-weight:800;letter-spacing:.6px">CANCEL</button>
     <h1 class="cond" style="margin:0;font-size:24px;font-weight:800;letter-spacing:.4px">EDIT PROFILE</h1>
     <button class="press cond" ${act('saveProfile')} style="color:var(--link);font-size:17px;font-weight:800;letter-spacing:.6px">SAVE</button></div>
-  <div style="align-self:center;margin:14px 0 6px;width:84px;height:84px;border-radius:42px;background:var(--accent);color:var(--onaccent);display:flex;align-items:center;justify-content:center;font-size:36px;font-weight:700">${esc((name.trim()[0] || '?').toUpperCase())}</div>
+  <div style="align-self:center;margin:14px 0 6px;display:flex;flex-direction:column;align-items:center;gap:8px">
+    <label class="press" style="position:relative;display:block;cursor:pointer" aria-label="Profile photo">${avatar(S.user && S.user.uid, name || '?', 84, 'var(--accent)', 'var(--onaccent)')}
+      <span style="position:absolute;right:-2px;bottom:-2px;width:28px;height:28px;border-radius:14px;background:var(--card3);border:2px solid var(--bg);display:flex;align-items:center;justify-content:center">${ICON.plus}</span>
+      <input type="file" accept="image/*" data-pfp="1" style="display:none"></label>
+    ${Photos.of(S.user && S.user.uid) ? `<button class="press cond" style="font-size:14px;font-weight:800;letter-spacing:.6px;color:var(--orange)" ${act('removePfp')}>REMOVE PHOTO</button>` : ''}</div>
   ${info('dispName', '<span class="cond" style="font-size:15px;font-weight:800;letter-spacing:.8px;color:var(--text3)">DISPLAY NAME</span>', 'Shown on scoreboards, stats and share cards in every club. Your past games switch to the new name.', '')}
   <label class="field" style="height:50px"><input data-model="draft.name" value="${attr(name)}" maxlength="16" aria-label="Display name"><span class="courier meta" data-count="draft.name">${name.length}/16</span></label>
-  <span class="cond label" style="margin-top:8px">FAVORITE TEAM</span>
-  <div class="list"><button class="row press" ${act('openSheet', 'team')}><span style="flex-grow:1;font-size:16px;font-weight:500">${esc(team || 'None')}</span><span class="cond" style="font-size:15px;font-weight:800;letter-spacing:.6px;color:var(--link)">CHANGE</span>${ICON.chev}</button></div>
-  <span class="courier meta" style="padding:0 4px;color:var(--text4)">Optional.</span>
   ${info('acct', '<span class="cond" style="font-size:15px;font-weight:800;letter-spacing:.8px;color:var(--text3)">ACCOUNT</span>', 'Only you can see your email.', '')}
   <div class="card" style="border-radius:16px;padding:0 14px;height:50px;display:flex;align-items:center;gap:10px">${ICON.google}<span style="flex-grow:1;font-size:15px;font-weight:500;color:var(--text5);overflow:hidden;text-overflow:ellipsis">${esc(S.user && S.user.email)}</span><span class="courier meta">Google</span></div>
   <div class="grow" style="min-height:20px"></div>
-  ${info('delAcct', '<span class="courier meta">What does deleting do?</span>', 'Unlinks your Google sign-in. Your name, games and stats stay in your clubs as a guest profile that can be claimed again later.', '')}
   <button class="press cond mid-btn" style="font-size:18px;color:var(--orange)" ${act('openSheet', 'delete')}>DELETE ACCOUNT</button>
 </div>`;
 };
@@ -2538,6 +2784,14 @@ const deviceLine = () => { const u = navigator.userAgent, ios = /OS (\d+)_(\d+)/
   const standalone = navigator.standalone === true || (window.matchMedia && matchMedia('(display-mode: standalone)').matches);
   return (/iPhone/.test(u) ? 'iPhone' : /iPad/.test(u) ? 'iPad' : /Android/.test(u) ? 'Android' : 'Computer') + (ios ? ' iOS ' + ios[1] + '.' + ios[2] : '') + (standalone ? ' · home-screen app' : ' · browser'); };
 const DIAG_LABEL = { error: 'ERROR', stall: 'FROZE', tap: 'tap', touch: 'touch', app: 'app' };
+const diagText = (noTouches) => 'Guess Ball ' + VERSION + ' · ' + ((S.account && S.account.name) || '') + ' · ' + deviceLine() + '\n'
+  + Diag.get().filter(r => !noTouches || r.k !== 'touch').map(r => `${new Date(r.t).toISOString().slice(11, 19)} ${r.k} ${r.d} [${r.s}${r.sh ? '/' + r.sh : ''}]`).join('\n');
+// Guess Ball Next only: send the Problem log to Firebase a few seconds after anything new happens, so Claude can watch a test live
+const LiveLog = { t: null, last: '',
+  poke() { if (ENV.name !== 'qa' || LiveLog.t) return; LiveLog.t = setTimeout(LiveLog.send, 3000); },
+  send() { LiveLog.t = null; if (!FCab || !S.user || !FCab.saveDiag) return; const txt = diagText(true).slice(0, 39000);   // (no raw touches: the taps themselves are logged)
+    if (txt !== LiveLog.last) { LiveLog.last = txt; FCab.saveDiag(txt); } } };
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden' && LiveLog.t) { clearTimeout(LiveLog.t); LiveLog.send(); } });
 SCREENS.diag = () => { const rows = Diag.get(); return `<div class="page">
   <div class="topbar">${backBtn()}<h1 class="cond h1">PROBLEM LOG</h1></div>
   <span class="courier meta" style="color:var(--text2)">What the app noticed on this phone, newest first. Something went wrong? Take a screenshot of this page (or tap COPY and paste it in a text) and send it to Zach.</span>
@@ -2549,7 +2803,12 @@ SCREENS.diag = () => { const rows = Diag.get(); return `<div class="page">
     <span style="flex-grow:1;min-width:0;word-break:break-word">${esc(r.d)}<span class="courier" style="color:var(--text3)"> · ${esc(r.s)}${r.sh ? ' / ' + esc(r.sh) : ''}</span></span></div>`).join('') : '<div class="courier meta" style="padding:12px 0">Nothing logged yet.</div>'}</div>
 </div>`; };
 
-const SHEETS = { switcher: switcherSheet, request: requestSheet, nickname: nicknameSheet, team: teamSheet, delete: deleteSheet };
+// Settings → Favorite team: its own list; tapping a team saves it right away
+function favTeamSheet() {
+  return `<div style="display:flex;align-items:center;justify-content:space-between"><h2 class="cond" style="margin:0;font-size:28px;font-weight:800">FAVORITE TEAM</h2>
+    <button class="press cond" ${act('setFavTeam', '')} style="color:var(--link);font-size:16px;font-weight:800;letter-spacing:.6px">NONE</button></div>${teamList(S.account.team, 'setFavTeam')}`;
+}
+const SHEETS = { switcher: switcherSheet, request: requestSheet, nickname: nicknameSheet, team: teamSheet, favTeam: favTeamSheet, delete: deleteSheet };
 
 // ════════════ Drawing ════════════
 const $app = () => document.getElementById('app');
@@ -2612,6 +2871,7 @@ function render() {
   if (focus && !el.contains(focusEl)) { const i = el.querySelector(`[data-model="${focus}"]`); if (i) { i.focus(); try { i.setSelectionRange(caret, caret); } catch (e) { /* ok */ } } }
   syncEnables();
   if (typeof Tips !== 'undefined') Tips.afterRender();
+  if ((window.scrollY || window.scrollX) && typeof typing === 'function' && !typing()) window.scrollTo(0, 0);   // never leave the page nudged up
 }
 // Update a screen in place: the scrolling page element itself is kept (so a scroll or swipe in
 // progress on iPhone isn't cut off), and only the pieces whose content changed are replaced.
@@ -2789,6 +3049,7 @@ async function afterSignIn(user) {
   await loadClubs();
   if (!S.g) { const lg = FCab.liveGame(); if (lg && !lg.ended && lg.host === user.uid) openGame(lg); }
   if (!S.g) recoverLiveGame();          // app re-added or a new phone: Firebase may still have your live game
+  if (typeof Two !== 'undefined') { Two.listen(); Two.checkInvite(); if (S.g && !S.g.remote) Two.watch(); }   // someone else's game you're in; and hear picks for your own
   else if (!S.g.history) loadGameHistory();
   render();
   loadHome();
@@ -2860,6 +3121,7 @@ const ACT = {
       if (played === 'no') { S.screen = 'tutorial'; S.params = { card: 0, after: 'home' }; render(); }
       else { S.screen = 'home'; render(); }
       await loadClubs().catch(() => { S.scope = 'mine'; }); loadHome(); loadClaims();   // a guest may already be linked to this new account
+      if (typeof Two !== 'undefined') Two.listen();                                     // hear it when someone starts a game you're in
     } catch (e) { fail(e); }
   },
 
@@ -2903,6 +3165,15 @@ const ACT = {
   // settings + profile
   setting: k => { S.settings[k] = !S.settings[k]; Store.put('gb_settings', S.settings); buzz(); render(); },
   pickTeam: t => { S.draft.team = t || null; S.sheet = null; buzz(); render(); },
+  setFavTeam: async t => {
+    const team = t || null, was = S.account.team; S.sheet = null;
+    S.account = { ...S.account, team }; Store.put('gb_acct_' + S.user.uid, S.account); buzz(); render();
+    try { await FCab.saveProfile({ name: S.account.name, team }); } catch (e) { S.account = { ...S.account, team: was }; Store.put('gb_acct_' + S.user.uid, S.account); render(); fail(e); }
+  },
+  removePfp: async () => {
+    const was = Photos.of(S.user.uid); Photos.set(S.user.uid, null); render();
+    try { await FCab.savePhoto(null); toast('Photo removed'); } catch (e) { Photos.set(S.user.uid, was); render(); fail(e); }
+  },
   saveProfile: async () => {
     const name = (S.draft.name == null ? S.account.name : S.draft.name).trim();
     const team = S.draft.team === undefined ? S.account.team : S.draft.team;
@@ -2921,8 +3192,7 @@ const ACT = {
     catch (e) { toast('Couldn’t copy: ' + e.message, true); }
   },
   diagCopy: async () => {
-    const txt = Diag.get().map(r => `${new Date(r.t).toISOString().slice(11, 19)} ${r.k} ${r.d} [${r.s}${r.sh ? '/' + r.sh : ''}]`).join('\n');
-    try { await navigator.clipboard.writeText('Guess Ball ' + VERSION + ' · ' + ((S.account && S.account.name) || '') + ' · ' + deviceLine() + '\n' + txt); toast('Copied — paste it in a text to Zach'); } catch (e) { toast('Could not copy', true); }
+    try { await navigator.clipboard.writeText(diagText()); toast('Copied — paste it in a text to Zach'); } catch (e) { toast('Could not copy', true); }
   },
   diagClear: () => { Diag.clear(); render(); },
   exportAll: async () => {
@@ -3073,6 +3343,11 @@ function wire() {
     else if (i.dataset.rerender) render();
     else syncEnables();
   });
+  // Live logs (build 14): after a swipe on Home, note how far the page scrolled — to see whether Share Guess Ball can be reached
+  el.addEventListener('touchend', () => { if (S.screen !== 'home') return; clearTimeout(wire.hs); wire.hs = setTimeout(() => {
+    const pg = $app().querySelector('.screen .page'); if (!pg) return;
+    const line = `home scroll: at ${Math.round(pg.scrollTop)} of ${Math.max(0, pg.scrollHeight - pg.clientHeight)} (page ${pg.scrollHeight}, box ${pg.clientHeight}, app ${$app().offsetHeight})`;
+    if (line !== wire.hsl) { wire.hsl = line; Diag.add('app', line); } }, 900); }, { passive: true });
   // iPhone scroll lock guard: a scrolling page sitting exactly at its top or bottom can hand the swipe to the
   // (unscrollable) page behind it and then stay stuck. Keep every long page 1px away from its ends when a touch starts.
   el.addEventListener('touchstart', e => {
@@ -3122,6 +3397,8 @@ const App = {
   start(fb) {
     FCab = FilingCabinet.create({ db: fb.adapter, storage: Store, deviceId, root: ENV.data });
     FCab.onStatus(s => { S.online = s.online; S.pending = s.pending; });
+    // A change to the live game refused later (it was sent after being offline): catch up with what really happened
+    FCab.onRefused(ch => { if (S.g && typeof Two !== 'undefined' && Object.keys(ch).some(k => k.includes('/games/' + S.g.game.id + '/'))) Two.lost({ code: 'PERMISSION_DENIED' }); });
     fb.onUser(async user => {
       if (!user) Store.removeItem('gb_last_user');
             if (!user) { resetUserState(); S.user = null; S.stack = []; S.screen = 'signin'; render(); return; }
@@ -3181,8 +3458,11 @@ const G = {
     const s = S.g.s;
     if (s.ended) return 'final';
     if (S.g.view === 'after') return 'after';
-    if (s.needsPick3) return 'pick3';
-    return G.pickNext() !== undefined ? 'pick' : 'result';
+    if (s.outs >= 3) { const l = G.lastEvent(); if (l && l.type === 'play') return 'after'; }   // three outs: the NEXT HALF-INNING button lives there
+    if (s.needsPick3) { const n = G.p3Next(); return n === undefined || Two.elsewhere(n) ? 'wait' : 'pick3'; }   // wait: someone picks on their own phone
+    const n = G.pickNext();
+    if (n === undefined) return 'result';                 // (online games: every phone can enter what happened)
+    return Two.elsewhere(n) ? 'wait' : 'pick';
   },
   mlbLine: g => [g.away && `${shortTeam(g.away)} ${S.g.s.mlb.away}`, g.home && `${shortTeam(g.home)} ${S.g.s.mlb.home}`, whereAt(g)].filter(Boolean).join(' · '),
 };
@@ -3251,14 +3531,14 @@ SCREENS.newGame = () => {
   return `<div class="fixedpage" style="gap:12px">
   <div class="topbar">${backBtn()}<h1 class="cond h1">NEW GAME</h1></div>
   ${tipCard('newGame')}
-  <div style="display:flex;justify-content:space-between;align-items:baseline;margin:6px 0 0"><h2 class="cond label" style="margin:0;font-size:18px">MATCHUP</h2><span class="cond label" style="font-size:15px">${esc(today.toUpperCase())}</span></div>
+  <div style="display:flex;justify-content:space-between;align-items:baseline;margin:6px 0 0"><h2 class="cond label" style="margin:0;font-size:18px">MATCHUP</h2><span class="cond label onphoto" style="align-self:auto;font-size:15px">${esc(today.toUpperCase())}</span></div>
   <div class="seg cond"><button class="${n.tv ? '' : 'on'}" ${act('ngWhere', 'park')}>AT THE BALLPARK</button><button class="${n.tv ? 'on' : ''}" ${act('ngWhere', 'home')}>COUCH GAME</button></div>
   <div class="list">${team('away', 'AWAY')}${team('home', 'HOME')}${n.tv ? '' : `<button class="row press" ${act('openSheet', 'park')} style="min-height:54px">
     <span class="cond" style="width:48px;font-size:15px;font-weight:800;letter-spacing:.8px;color:var(--text3)">PARK</span>
     <span style="flex-grow:1;font-size:17px;font-weight:600;color:${park ? 'var(--text)' : 'var(--text4)'}">${esc(park || 'Choose ballpark')}</span>${ICON.chev}</button>`}</div>
   <h2 class="cond label" style="margin:6px 0 0;font-size:18px">PLAYERS</h2>
   <div class="list">${n.players.map((p, i) => { const c = PCOLOR[p.color || PCOLORS[i][0]]; return `<div class="row" style="min-height:62px">
-      <button class="press" aria-label="Color for ${attr(p.name)}" ${act('openSheet', 'ngColor:' + i)} style="width:40px;height:40px;border-radius:20px;background:${c};color:${onColor(c)};display:flex;align-items:center;justify-content:center;font-weight:800;flex-shrink:0;position:relative">${esc(p.name[0].toUpperCase())}
+      <button class="press" aria-label="Color for ${attr(p.name)}" ${act('openSheet', 'ngColor:' + i)} style="width:40px;height:40px;border-radius:20px;background:${c};color:${onColor(c)};display:flex;align-items:center;justify-content:center;font-weight:800;flex-shrink:0;position:relative">${!p.guest && Photos.of(p.id) ? `<span style="position:absolute;inset:3px;border-radius:50%;background:#000 url('${Photos.of(p.id)}') center/cover"></span>` : esc(p.name[0].toUpperCase())}
         <span style="position:absolute;right:-3px;bottom:-3px;width:17px;height:17px;border-radius:9px;background:var(--card2);border:2px solid var(--card);display:flex;align-items:center;justify-content:center"><svg width="9" height="9" viewBox="0 0 12 12" fill="none" stroke="var(--text2)" stroke-width="2" stroke-linecap="round"><path d="M8.5 1.5l2 2L4 10H2V8z"/></svg></span></button>
       <button class="press" ${act('ngPriority', i)} style="flex-grow:1;display:flex;align-items:center;gap:12px;text-align:left;min-width:0">
         <div style="display:flex;flex-direction:column;min-width:0"><span style="font-size:17px;font-weight:700">${esc(p.name)}${p.guest ? ' <span class="cond tag" style="font-size:10px">GUEST</span>' : ''}</span>
@@ -3304,7 +3584,7 @@ function addPlayerSheet() {
   const guests = (S.ngRoster || []).filter(m => m.guest && !taken.has(m.pid) && (!ql || m.name.toLowerCase().includes(ql)));
   const exact = (S.ngRoster || []).some(m => m.name.toLowerCase() === ql);
   const row = (m, isGuest) => `<button class="row press" ${act('ngAdd', m.pid)} style="min-height:54px">
-    <span style="width:32px;height:32px;border-radius:16px;${isGuest ? 'border:1.5px solid var(--text4)' : 'background:var(--card3)'};display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;flex-shrink:0">${esc(m.name[0].toUpperCase())}</span>
+    ${isGuest ? `<span style="width:32px;height:32px;border-radius:16px;border:1.5px solid var(--text4);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;flex-shrink:0">${esc(m.name[0].toUpperCase())}</span>` : avatar(m.pid, m.name, 32)}
     <span style="flex-grow:1;font-size:17px;font-weight:600">${esc(m.name)}</span>${isGuest ? '<span class="cond tag">GUEST</span>' : ''}</button>`;
   return `<h2 class="cond" style="margin:0;font-size:28px;font-weight:800">ADD A PLAYER</h2>
   <label class="field search" style="background:var(--sheetcard)">${ICON.search}<input data-model="q" data-region="people" value="${attr(S.q)}" placeholder="Search or type a guest name" maxlength="16"></label>
@@ -3319,19 +3599,19 @@ function addPlayerSheet() {
 // ════════════ Pick 3 ════════════
 SCREENS.pick3 = () => {
   const s = S.g.s, g = S.g.game, i = G.p3Next(), p = g.players[i];
+  S.g.shownP3 = i;                                   // whose Pick 3 is on screen (a lock can't land on someone else)
   const mine = S.g.p3sel || [];
   const firsts = Object.values(S.g.pending.p3).filter(Boolean).map(x => x[0]);
   const done = G.order().filter(j => j in S.g.pending.p3);
-  const slot = mine.length;   // which at-bat is being chosen (0..2)
+  const slot = [0, 1, 2].find(k => !mine[k]) ?? 3;   // which at-bat is being chosen (0..2; 3 = all chosen)
   return `<div class="fixedpage" style="gap:12px">
   ${gameTop(backBtn('gBack'), halfName(s) + ' · PICK 3')}
   ${done.map(j => { const x = S.g.pending.p3[j]; return `<div class="card" style="border-radius:14px;padding:10px 14px;display:flex;align-items:center;gap:10px">
     <span style="font-size:16px;font-weight:700">${esc(g.players[j].name)}</span><span class="shoulders" style="flex-grow:1;font-size:20px;font-weight:900">${x ? x.map(code).join(' · ') : '<span style="font-family:inherit;font-size:14px;font-weight:600;color:var(--text3)">Skipped</span>'}</span>
     <span class="cond" style="font-size:13px;font-weight:800;letter-spacing:.8px;color:${x ? 'var(--green)' : 'var(--text4)'}">${x ? 'LOCKED' : 'SKIP'}</span></div>`; }).join('')}
-  <h1 class="cond onphoto" style="margin:4px 0 0;font-size:36px;font-weight:800;line-height:1">${esc(p.name.toUpperCase())}, PICK 3</h1>
+  ${info('p3why', `<span class="cond onphoto" style="font-size:36px;font-weight:800;line-height:1;color:var(--text)">${esc(p.name.toUpperCase())}, PICK 3</span>`, 'Call the first three at-bats in order. All three right = +7 bonus. Miss one and you pick one at a time for the rest of the half-inning. Only your first call has to be different from everyone else’s.', '')}
   ${tipCard('p3')}
-  ${info('p3why', '<span class="courier" style="font-size:13px;font-weight:700;color:var(--text2)">First three at-bats, in order</span>', 'Call the first three at-bats in order. All three right = +7 bonus. Miss one and you pick one at a time for the rest of the half-inning. Only your first call has to be different from everyone else’s.', '')}
-  <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px">${[0, 1, 2].map(k => `<button class="press" ${k < mine.length ? act('p3Unpick', k) : ''} style="height:76px;border-radius:16px;background:${mine[k] ? tint(pcol(i), .3) : 'var(--card)'};border:2px solid ${k === slot ? pcol(i) : mine[k] ? tint(pcol(i), .8) : 'transparent'};display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px">
+  <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px">${[0, 1, 2].map(k => `<button class="press" ${mine[k] ? act('p3Unpick', k) : ''} style="height:76px;border-radius:16px;background:${mine[k] ? tint(pcol(i), .3) : 'var(--card)'};border:2px solid ${k === slot ? pcol(i) : mine[k] ? tint(pcol(i), .8) : 'transparent'};display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px">
     <span class="cond" style="font-size:13px;font-weight:800;letter-spacing:.8px;color:var(--text3)">AT-BAT ${k + 1}</span>
     <span class="shoulders" style="font-size:26px;font-weight:900;line-height:1;color:${mine[k] ? 'var(--text)' : 'var(--text4)'}">${mine[k] ? code(mine[k]) : '—'}</span></button>`).join('')}</div>
   <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px">${PICK_GRID.map(o => {
@@ -3343,13 +3623,14 @@ SCREENS.pick3 = () => {
   <div class="grow"></div>
   <div style="display:grid;grid-template-columns:120px 1fr;gap:10px">
     <button class="press cond mid-btn" style="height:56px;border-radius:28px" ${act('p3Skip')}>SKIP</button>
-    <button class="big-btn cond press" style="height:56px;background:${pcol(i)};color:${onColor(pcol(i))}" ${act('p3Lock')} ${mine.length === 3 ? '' : 'disabled'}>${mine.length === 3 ? 'LOCK IT IN' : 'CHOOSE AT-BAT ' + (slot + 1)}</button></div>
+    <button class="big-btn cond press" style="height:56px;background:${pcol(i)};color:${onColor(pcol(i))}" ${act('p3Lock')} ${slot === 3 ? '' : 'disabled'}>${slot === 3 ? 'LOCK IT IN' : 'CHOOSE AT-BAT ' + (slot + 1)}</button></div>
 </div>`;
 };
 
 // ════════════ Make a pick ════════════
 SCREENS.pick = () => {
   const s = S.g.s, g = S.g.game, i = G.pickNext(), p = g.players[i];
+  S.g.shownFor = i;
   const taken = {}, viaP3 = {};
   const owner = {};
   Object.entries(Umpire.lockedPicks(s)).forEach(([j, v]) => { taken[v.pick] = g.players[j].name; owner[v.pick] = +j; if (v.fromP3) viaP3[v.pick] = true; });
@@ -3361,7 +3642,7 @@ SCREENS.pick = () => {
   ${gameTop(backBtn('gBack'), halfName(s))}
   ${scoreCard()}
   <span class="courier onphoto" style="font-size:13px;font-weight:700;color:var(--text2)">At-bat ${s.ab}${holders ? ' · ' + holders : ''}</span>
-  <h1 class="cond onphoto" style="margin:-6px 0 0;font-size:36px;font-weight:800;line-height:1">${esc(p.name.toUpperCase())}, YOUR PICK</h1>
+  <h1 class="cond onphoto" style="margin:-6px 0 0;font-size:36px;font-weight:800;line-height:1">${S.g.pickFor === i ? 'PICKING FOR ' + esc(p.name.toUpperCase()) : esc(p.name.toUpperCase()) + ', YOUR PICK'}</h1>
   ${firstTip(['pick', 'conf'].concat(S.g.s.priority !== (S.g.game.setup || {}).priority ? ['priority'] : []), { name: (S.g.game.players[S.g.s.priority] || {}).name })}
   <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px">${PICK_GRID.map(o => {
     const who = taken[o], on = sel.pick === o;
@@ -3432,6 +3713,7 @@ function lastPlayInfo() {
 SCREENS.after = () => {
   const s = S.g.s, g = S.g.game;
   const { last, entries } = lastPlayInfo();
+  if (!last) { S.g.view = null; setTimeout(render); return '<div class="page"></div>'; }   // the play was undone on another phone
   const o = last.outcome, runs = last.runs;
   const winner = entries.find(e => e.correct);
   let title = OC[o][1].toUpperCase() + (runs ? ` · ${runs} RUN${runs > 1 ? 'S' : ''}` : '');
@@ -3592,12 +3874,13 @@ SCREENS.final = () => {
   const plays = sum.plays || [], top = plays[0];
   const awards = f.awards || [];
   return `<div class="page" style="padding-bottom:calc(var(--safe-bot) + 110px)">
+  <div class="finalhead">
   <div style="display:flex;flex-direction:column;align-items:center;gap:2px;padding-top:6px">
     <span class="cond" style="font-size:18px;font-weight:800;letter-spacing:2px;color:var(--text2)">FINAL</span>
     <span class="courier" style="font-size:13px;font-weight:700;color:var(--text2);text-align:center">${esc(meta)}</span></div>
   <div class="rise" style="display:flex;flex-direction:column;align-items:center;gap:6px;padding:10px 0 6px">
     <span class="cond" style="font-size:${headline.length > 22 ? 30 : headline.length > 16 ? 36 : 44}px;font-weight:800;letter-spacing:.6px;line-height:1.05;text-align:center;max-width:100%;overflow-wrap:anywhere">${headline}</span>${scoreRow}
-    ${sub ? `<span class="courier" style="font-size:13px;font-weight:700;color:var(--text2);text-align:center">${sub}</span>` : ''}</div>
+    ${sub ? `<span class="courier" style="font-size:13px;font-weight:700;color:var(--text2);text-align:center">${sub}</span>` : ''}</div></div>
   <div class="rise2">${lineScoreCard(false, g)}</div>
   ${tiles ? `<div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px">${tiles}</div>` : ''}
   ${top ? `<div class="card" style="overflow:hidden"><button class="press" ${act('finalPlays')} style="width:100%;padding:14px 16px;display:flex;align-items:center;gap:14px;text-align:left">
@@ -3623,6 +3906,13 @@ SCREENS.final = () => {
 // ════════════ Game sheets ════════════
 function gameMenuSheet() {
   const s = S.g.s, g = S.g.game;
+  if (S.g.remote) {                                    // a joined player: get around, or hand your picks back to the host
+    const r = (a, arg, label, right = '', color = 'var(--text)') => `<button class="row press" ${act(a, arg)} style="min-height:52px"><span style="flex-grow:1;font-size:17px;font-weight:600;color:${color}">${label}</span>${right ? `<span class="courier meta">${right}</span>` : ICON.chev}</button>`;
+    return `<h2 class="cond" style="margin:0;font-size:28px;font-weight:800">${esc(Two.hostName().toUpperCase())}’S GAME</h2>
+    <div class="list">${r('gLeave', 'home', 'Home')}${r('gLeave', 'stats', 'Stats')}${r('gLeave', 'awards', 'Awards')}${r('gLeave', 'settings', 'Settings')}${r('openSheet', 'rules', 'Rules')}</div>
+    <div class="list">${r('stopPicking', '', 'Stop picking on this phone', esc(Two.hostName()) + ' picks for you', 'var(--live)')}</div>
+    ${G.plays() ? endGameBtn() : ''}`;
+  }
   const dot = `<span role="img" aria-label="${S.pending ? 'Offline, will sync' : 'All saved'}" style="width:10px;height:10px;border-radius:5px;background:${S.pending ? 'var(--gold)' : 'var(--green)'}"></span>`;   // green = saved, gold = waiting to sync
   const row = (a, arg, label, right = '', color = 'var(--text)') => `<button class="row press" ${act(a, arg)} style="min-height:52px"><span style="flex-grow:1;font-size:17px;font-weight:600;color:${color}">${label}</span>${right ? `<span class="courier meta">${right}</span>` : ICON.chev}</button>`;
   return `<div style="display:flex;align-items:center;justify-content:space-between"><h2 class="cond" style="margin:0;font-size:28px;font-weight:800">GAME MENU</h2><div style="display:flex;align-items:center;gap:6px">${dot}</div></div>
@@ -3632,10 +3922,12 @@ function gameMenuSheet() {
     ${row('openSheet', 'fixMlb', 'Fix MLB score', esc(`${teamAbbr(g.away, 'Away')} ${s.mlb.away} · ${teamAbbr(g.home, 'Home')} ${s.mlb.home}`))}
     ${row('openSheet', 'matchup', 'Edit matchup', esc(shortTeam(g.home) || 'Teams'))}
     ${s.needsPick3 && !G.plays() ? '' : row('openSheet', 'endHalf', 'End half-inning', `${halfName(s).toLowerCase().replace(/^\w/, c => c.toUpperCase())} · ${s.outs} out`)}
-    ${row('openSheet', 'endGame', 'End game', 'Asks to confirm', 'var(--orange)')}
-    ${row('openSheet', 'discardGame', 'Throw out game', 'Nothing is saved', 'var(--orange)')}
-  </div>`;
+    ${row('openSheet', 'discardGame', 'Throw out game', 'Nothing is saved', 'var(--live)')}
+  </div>
+  ${endGameBtn()}`;
 }
+// End game: a red button at the bottom of the game menu (it opens the confirm sheet)
+const endGameBtn = () => `<button class="big-btn cond press" style="height:54px;background:var(--live);color:#fff" ${act('openSheet', 'endGame')}>END GAME</button>`;
 function rulesSheet() {
   const pts = [['K', 'Strikeout', 1], ['IPO', 'In play out', 1], ['1B', 'Single', 2], ['FC', "Fielder's choice", 2], ['BB', 'Walk', 3], ['HBP', 'Hit by pitch', 3], ['DP', 'Double play', 3], ['BU', 'Bunt — batter safe', 4], ['SB', 'Stolen base', 4], ['2B', 'Double', 5], ['HR', 'Home run', 7], ['3B', 'Triple', 10]];
   const extras = [['+1', 'var(--gold)', 'Per run', 'Each run that scores on your correct call'], ['+7', 'var(--green)', 'Pick 3 bonus', 'Call the first 3 at-bats of a half-inning, in order'],
@@ -3723,8 +4015,18 @@ Object.assign(SHEETS, { ngColor: ngColorSheet, gameMenu: gameMenuSheet, rules: r
 SCREENS.game = () => {
   if (!S.g) return SCREENS.home();
   const v = G.view();
-  return (SCREENS[v] || SCREENS.pick)() + (S.g.undone && v !== 'after' ? undoToast() : '');
+  if (!S.g.remote && (v === 'pick' || v === 'pick3')) Two.checkTurn(v === 'pick3' ? G.p3Next() : G.pickNext());
+  return pinFooter((SCREENS[v] || SCREENS.pick)()) + (S.g.undone && v !== 'after' ? undoToast() : '');
 };
+// Every game screen: the buttons at the bottom (everything after its <div class="grow">) stay put, and the rest scrolls above them
+function pinFooter(html) {
+  const GROW = '<div class="grow"></div>', t = html.trimEnd();
+  const open = t.indexOf('>'), cut = t.lastIndexOf(GROW);
+  if (!t.startsWith('<div class="fixedpage"') || cut < 0 || !t.endsWith('</div>')) return html;
+  return t.slice(0, open).replace('class="fixedpage"', 'class="fixedpage gamepage"') + '>'
+    + '<div class="gscroll" data-scroll>' + t.slice(open + 1, cut) + '</div>'
+    + '<div class="gfoot">' + t.slice(cut + GROW.length, -6) + '</div></div>';
+}
 
 // ── Live bar (above the tab bar while a game is live) + Home's resume card ──
 function liveBar() {
@@ -3798,19 +4100,22 @@ function openGame(game) {
   const last = G.lastEvent();
   if (last && last.type === 'play') S.g.view = 'after';
   loadGameHistory();
+  setTimeout(() => { if (S.g && S.g.game === game) Two.watch(); }, 0);   // hear picks made on other phones
 }
 async function loadGameHistory() {
   const g = S.g && S.g.game; if (!g || !FCab) return;
   try { const h = await withTimeout(FCab.historyOf(g.players.map(p => p.id)), 20000); if (S.g && S.g.game === g) S.g.history = h.filter(x => x.id !== g.id); }
   catch (e) { if (S.g) S.g.history = []; }
 }
-async function saveEvent(ev) {
+// kind: 'save' (someone tapped it) or 'auto' (the phone saved a finished Pick 3 by itself — losing that race is no news)
+async function saveEvent(ev, kind = 'save', extra = {}) {
+  if (FCab.isStale(S.g.game.id)) { Two.reload(); throw new Error('Catching up with the other phone — try again in a moment'); }
   const probe = { ...S.g.game, events: S.g.game.events.concat([ev]) };
   Umpire.replay({ players: probe.players.map(p => p.name), priority: probe.setup.priority }, probe.events);   // throws if the rules say no
   S.g.undone = null;
-  const p = FCab.addEvent(S.g.game, ev);
+  const p = FCab.addEvent(S.g.game, ev, extra);
   G.replay();
-  p.catch(e => toast('Couldn’t save: ' + e.message, true));
+  p.catch(e => (e && (e.code === 'PERMISSION_DENIED' || e.code === 'STALE') ? Two.lost(e, kind) : toast('Couldn’t save: ' + e.message, true)));
 }
 function afterPlayFx() {
   const idx = S.g.game.events.length - 1;
@@ -3820,10 +4125,11 @@ function afterPlayFx() {
   showAwardsAt(idx);
 }
 // Pop up any awards earned on scorebook event `idx` (after a play, or after REDO puts one back)
-function showAwardsAt(idx) {
+// (upTo: a joined phone catching up on several plays at once)
+function showAwardsAt(idx, upTo = idx) {
   if (!S.g.history) return;
   const cp = G.copy();
-  const got = Statistician.awardsInGame(S.g.history.concat([cp]), cp).filter(a => a.at === idx);
+  const got = Statistician.awardsInGame(S.g.history.concat([cp]), cp).filter(a => a.at >= idx && a.at <= upTo && Two.awardHere(a.playerId));
   if (got.length) { Popup.show(got); Sound.play('award'); buzz(); }
 }
 function describeEvent(ev) {
@@ -3908,15 +4214,16 @@ Object.assign(ACT, {
   gLeave: where => { S.sheet = null; Awake.off(); if (where === 'home') { S.stack = []; go('home', {}, false); loadHome(); } else if (where === 'settings') { S.stack = []; go('settings', {}, false); } else ACT.tab(where); },
 
   // Pick 3
-  p3Pick: o => { S.g.p3sel = (S.g.p3sel || []).concat([o]).slice(0, 3); buzz(); render(); },
-  p3Unpick: k => { S.g.p3sel = S.g.p3sel.slice(0, +k); render(); },
-  p3Skip: () => { S.g.pending.p3[G.p3Next()] = null; S.g.p3sel = []; afterP3Choice(); },
-  p3Lock: () => { S.g.pending.p3[G.p3Next()] = S.g.p3sel; S.g.p3sel = []; buzz(); afterP3Choice(); },
+  // The three Pick 3 spots: a pick fills the first empty one; tapping a filled spot empties just that one (to change it)
+  p3Pick: o => { const a = (S.g.p3sel || []).slice(0, 3); const k = [0, 1, 2].find(j => !a[j]); if (k === undefined) return; a[k] = o; S.g.p3sel = a; buzz(); render(); },
+  p3Unpick: k => { const a = (S.g.p3sel || []).slice(); a[+k] = null; S.g.p3sel = a; render(); },
+  p3Skip: () => { const i = G.p3Next(); if (i === undefined) return render(); S.g.pending.p3[i] = null; S.g.p3sel = []; afterP3Choice(); },
+  p3Lock: () => { const i = G.p3Next(); if (i === undefined || (S.g.p3sel || []).filter(Boolean).length < 3) return render(); S.g.pending.p3[i] = S.g.p3sel.slice(0, 3); S.g.p3sel = []; buzz(); afterP3Choice(); },
 
   // Picks
   pickSel: o => { S.g.sel = { pick: o, conf: (S.g.sel || {}).conf || false }; buzz(); render(); },
   pickConf: () => { S.g.sel = { ...(S.g.sel || {}), conf: !(S.g.sel || {}).conf }; render(); },
-  pickLock: () => { S.g.pending.picks[G.pickNext()] = { pick: S.g.sel.pick, conf: !!S.g.sel.conf }; S.g.sel = null; buzz(); render(); },
+  pickLock: () => { const i = G.pickNext(); if (i === undefined || !S.g.sel) return render(); S.g.pending.picks[i] = { pick: S.g.sel.pick, conf: !!S.g.sel.conf }; S.g.sel = null; buzz(); render(); },
 
   // What happened
   resSel: o => { const r = S.g.res, was = r.outcome; r.outcome = o;
@@ -3927,44 +4234,54 @@ Object.assign(ACT, {
   resStep: arg => { const [k, d] = arg.split('|'), r = S.g.res; r[k] = Math.max(k === 'runs' && r.outcome === 'home_run' ? 1 : 0, r[k] + (+d)); if (k === 'runs') r.autoRun = false; render(); },
   resSave: async () => {
     const r = S.g.res;
-    const ev = { type: 'play', outcome: r.outcome, picks: S.g.pending.picks, runs: r.runs, extraOuts: r.extraOuts };
+    const need = Umpire.pickOrder(S.g.s), picks = {};
+    need.forEach(i => { if (S.g.pending.picks[i]) picks[i] = S.g.pending.picks[i]; });
+    const ev = { type: 'play', outcome: r.outcome, picks, runs: r.runs, extraOuts: r.extraOuts };
     try { await saveEvent(ev); } catch (e) { return toast(e.message, true); }
     S.g.pending.picks = {}; S.g.res = { outcome: null, runs: 0, extraOuts: 0 }; S.g.view = 'after';
-    afterPlayFx(); render(); const p = $app().querySelector('.fixedpage'); if (p) p.scrollTop = 0;
+    afterPlayFx(); render(); const p = $app().querySelector('.gscroll') || $app().querySelector('.fixedpage'); if (p) p.scrollTop = 0;
   },
   gNext: async next => {
     Popup.clear();
     if (next === 'END GAME') { S.draft = {}; S.sheet = { name: 'endGame' }; render(); return; }
-    if (next === 'NEXT HALF-INNING') await saveEvent({ type: 'nextHalf' });
+    if (next === 'NEXT HALF-INNING') { try { await saveEvent({ type: 'nextHalf' }); } catch (e) { return toast(e.message, true); } }
     S.g.view = null; render();
   },
   gBack: () => {
     const g = S.g;
     if (g.view === 'after') return;
     const v = G.view();
-    if (v === 'pick3' && g.p3sel.length) { g.p3sel = g.p3sel.slice(0, -1); return render(); }
-    if (v === 'pick3') { const done = G.order().filter(j => j in g.pending.p3); if (done.length) { delete g.pending.p3[done.pop()]; return render(); } }
-    if ((v === 'pick' || v === 'result') && Object.keys(g.pending.picks).length) {
+    if (v === 'pick3' && (g.p3sel || []).some(Boolean)) { const a = g.p3sel.slice(); a[[2, 1, 0].find(k => a[k])] = null; g.p3sel = a; return render(); }
+    // Back steps back through the picks made on this phone (never one someone made on their own phone)
+    if (v === 'pick3' || (v === 'wait' && g.s.needsPick3)) { const done = G.order().filter(j => j in g.pending.p3 && Two.mayTakeBack(j));
+      if (done.length) { const j = done.pop(), was = g.pending.p3[j]; delete g.pending.p3[j]; g.p3sel = was ? was.slice() : []; return render(); } }   // (their picks come back to edit)
+    const order = Umpire.pickOrder(g.s).filter(j => g.pending.picks[j] && Two.mayTakeBack(j));
+    if (['pick', 'result', 'wait'].includes(v) && !g.s.needsPick3 && order.length) {
       if (v === 'result' && g.res.outcome) { g.res = { outcome: null, runs: 0, extraOuts: 0 }; }
-      const order = Umpire.pickOrder(g.s).filter(j => g.pending.picks[j]); const j = order.pop();
+      const j = order.pop();
       g.sel = g.pending.picks[j]; delete g.pending.picks[j]; return render();
     }
     const last = G.lastEvent();
     if (last && last.type === 'play') { g.view = 'after'; return render(); }
     if (last && last.type === 'nextHalf') { ACT.gUndo().then(() => toast('End of half-inning undone')); return; }     // just ended the half-inning (menu or NEXT HALF-INNING): Back puts it back
-    ACT.gLeave('home');
+    if (last && last.type === 'pick3' && Two.reopenP3()) return;                                                      // right after Pick 3: change your Pick 3
+    toast('To leave the game, use ••• → Home');                                                                        // Back never leaves a game
   },
   gUndo: async () => {
     const ev = G.lastEvent(); if (!ev) return;
-    await FCab.undo(S.g.game).catch(e => toast(e.message, true));
+    if (FCab.isStale(S.g.game.id)) { Two.reload(); return toast('Catching up with the other phone — try again in a moment', true); }
+    const sent = FCab.undo(S.g.game);                    // (takes it off this phone's copy right away)
+    let desc = null; try { desc = describeAfterUndo(ev); } catch (e) { /* the game changed underneath — no summary */ }
     G.replay();
     Popup.clear();
-    S.g.undone = { ev, ...describeAfterUndo(ev) };
-    if (ev.type === 'play') { S.g.pending.picks = { ...(ev.picks || {}) }; S.g.res = { outcome: null, runs: 0, extraOuts: 0 }; S.g.view = null; }
+    S.g.undone = desc ? { ev, ...desc } : null;
+    const back = {}; Object.entries(ev.picks || {}).forEach(([j, v]) => { if (v && v.pick) back[j] = { pick: v.pick, conf: !!v.conf }; });
+    if (ev.type === 'play') { S.g.pending.picks = back; S.g.res = { outcome: null, runs: 0, extraOuts: 0 }; S.g.view = null; }
     else if (ev.type === 'pick3') { S.g.pending.p3 = {}; S.g.view = null; }
     else if (ev.type === 'nextHalf') { const l = G.lastEvent(); S.g.view = l && l.type === 'play' ? 'after' : null; }   // back to that half: its last play, or the pick if none yet
     else S.g.view = null;
     render();
+    await sent.catch(e => { if (e && (e.code === 'PERMISSION_DENIED' || e.code === 'STALE')) { S.g && (S.g.undone = null); Two.lost(e, 'undo'); } else toast(e.message, true); });   // refused: reloads the real game
     clearTimeout(ACT.gUndo.t); ACT.gUndo.t = setTimeout(() => { if (S.g && S.g.undone) { S.g.undone = null; render(); } }, 6000);
   },
   gRedo: async () => {
@@ -3985,23 +4302,15 @@ Object.assign(ACT, {
     S.busy = true; render();
     try {
       await FCab.endGame(g, { scores: s.scores.slice(), mlb: { away: s.mlb.away, home: s.mlb.home }, note: (S.draft.note || '').trim() });
-      S.busy = false; S.sheet = null; Awake.off();
+      S.busy = false; S.sheet = null; Awake.off(); Two.stop();
       if (!plays) { S.g = null; S.stack = []; go('home', {}, false); toast('Game thrown out — nothing was played'); loadHome(); return; }
-      const done = { ...g, events: g.events.slice(), ended: true };
-      const hist = S.g.history || [];
-      const all = hist.concat([done]);
-      const sum = Statistician.summary(done, all);
-      const got = Statistician.awardsInGame(all, done);
-      const merged = [];
-      got.forEach(a => { const m = merged.find(x => x.award.id === a.award.id && x.tier === a.tier); if (m) m.names.push(a.name); else merged.push({ ...a, names: [a.name] }); });
-      S.final = { game: done, sum, awards: merged, open: false };
-      S.g = null; S.stack = []; S.screen = 'final'; render(); Sound.play('award');
+      showFinal({ ...g, events: g.events.slice(), ended: true }, S.g.history || []);
     } catch (e) { S.busy = false; render(); toast(e.message, true); }
   },
   discardGame: async () => {
     const g = S.g.game; S.busy = true; render();
     try { await FCab.discardGame(g); } catch (e) { S.busy = false; render(); return toast(e.message, true); }
-    Popup.clear(); S.busy = false; S.sheet = null; S.g = null; Awake.off(); S.stack = []; go('home', {}, false);
+    Popup.clear(); S.busy = false; S.sheet = null; S.g = null; Awake.off(); Two.stop(); S.stack = []; go('home', {}, false);
     toast('Game thrown out — nothing was saved'); loadHome();
   },
   finalPlays: () => { S.final.open = !S.final.open; render(); },
@@ -4016,10 +4325,24 @@ function describeAfterUndo(ev) {
   const diffs = after.scores.map((v, i) => v - before.scores[i]).map((d, i) => (d ? `${g.players[i].name} ${signed(-d)}` : '')).filter(Boolean);
   return { what: 'PLAY', detail: [code(ev.outcome) + (ev.runs ? `, ${ev.runs} run${ev.runs > 1 ? 's' : ''}` : ''), ...diffs, 'back to AB ' + before.ab].join(' · ') };
 }
+// The final page (with the share card) — on the host's phone after End game, and on every phone that joined the game
+function showFinal(done, hist) {
+  const all = hist.concat([done]);
+  const sum = Statistician.summary(done, all);
+  const got = Statistician.awardsInGame(all, done);
+  const merged = [];
+  got.forEach(a => { const m = merged.find(x => x.award.id === a.award.id && x.tier === a.tier); if (m) m.names.push(a.name); else merged.push({ ...a, names: [a.name] }); });
+  S.final = { game: done, sum, awards: merged, open: false };
+  S.g = null; S.stack = []; S.screen = 'final'; render(); Sound.play('award');
+}
 function afterP3Choice() {
-  if (G.p3Next() === undefined) {
+  if (G.p3Next() === undefined) {                       // everyone's in: save it (in an online game any phone may — first to Firebase wins)
     const picks = S.g.game.players.map((_, i) => S.g.pending.p3[i] || null);
-    saveEvent({ type: 'pick3', picks }).then(() => { S.g.pending.p3 = {}; render(); }).catch(e => { S.g.pending.p3 = {}; toast(e.message, true); render(); });
+    // Pick 3 comes before the first at-bat's picks: if a changed Pick 3 now clashes with a first-at-bat pick someone already
+    // made (possible after Back reopened a Pick 3), that pick is cleared in the same save and its player picks again
+    const nextKey = 'e' + (S.g.game.events.length + 1), firsts = picks.filter(Boolean).map(x => x[0]), extra = {};
+    Object.entries(Two.slotsFor(nextKey)).forEach(([j, x]) => { if (x && x.pick && firsts.includes(x.pick)) extra['slots/' + nextKey + '/' + j] = null; });
+    saveEvent({ type: 'pick3', picks }, 'auto', extra).then(() => { S.g.pending.p3 = {}; render(); }).catch(e => { S.g.pending.p3 = {}; toast(e.message, true); render(); });
     return;
   }
   render();
@@ -4089,7 +4412,7 @@ function statsStandings(games) {
   const cols = ties ? '24px 1fr 34px 34px 34px 18px' : '24px 1fr 40px 40px 18px';
   return `<div style="display:flex;align-items:center;justify-content:space-between">
     <button class="press cond" ${act('openSheet', 'season')} style="height:36px;padding:0 14px;border-radius:18px;background:var(--card);font-size:19px;font-weight:800;letter-spacing:.6px;display:flex;align-items:center;gap:6px">${esc(yr)} ${ICON.down}</button>
-    <span class="courier meta">Tap a player for more</span></div>
+    </div>
   <div class="card" style="padding:0 14px">
     <div class="cond" style="display:grid;grid-template-columns:${cols};height:32px;align-items:center;font-size:13px;font-weight:800;letter-spacing:.8px;color:var(--text3);border-bottom:1px solid var(--line)"><span></span><span>PLAYER</span><span style="text-align:center">W</span><span style="text-align:center">L</span>${ties ? '<span style="text-align:center">T</span>' : ''}<span></span></div>
     ${rows.map((r, i) => {
@@ -4120,8 +4443,10 @@ function statsHistory(games) {
   const total = games.length;
   const card = g => {
     const d = g.date.split('-');
-    const tag = g.tag ? `<span class="cond tag" style="font-size:10px">${esc(g.tag)}</span>` : '';
-    const meta = [g.doubleheader, g.away && g.home ? `${shortTeam(g.away)} at ${shortTeam(g.home)}` : '', g.park].filter(Boolean).join(' · ');   // history already says 'Couch game' for TV games
+    // tags: STADIUM or COUCH GAME (where it was watched), plus PRE-APP / BETA / ADDED BY for older games; the teams say which park
+    const tags = [g.tag === 'COUCH GAME' ? 'COUCH' : g.park ? 'STADIUM' : '', g.tag !== 'COUCH GAME' ? g.tag : ''].filter(Boolean);
+    const tag = tags.map(t => `<span class="cond tag" style="font-size:10px;flex-shrink:0">${esc(t)}</span>`).join('');
+    const meta = [g.doubleheader, g.away && g.home ? `${shortTeam(g.away)} at ${shortTeam(g.home)}` : ''].filter(Boolean).join(' · ');
     return `<button class="card press" ${act('openGame', g.id)} style="width:100%;border-radius:18px;padding:10px 16px;display:flex;align-items:center;gap:14px;text-align:left">
       <div style="width:40px;display:flex;flex-direction:column;align-items:center;flex-shrink:0"><span class="cond" style="font-size:14px;font-weight:800;color:var(--text3);letter-spacing:.6px">${MONTHS[+d[1] - 1]}</span><span class="shoulders num" style="font-size:26px;font-weight:900;line-height:1">${+d[2]}</span></div>
       <div style="flex-grow:1;min-width:0;display:flex;flex-direction:column;gap:1px">
@@ -4130,8 +4455,8 @@ function statsHistory(games) {
         ${tag || meta ? `<div style="display:flex;align-items:center;gap:6px;margin-top:3px;min-width:0">${tag}<span class="courier meta" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(meta)}</span></div>` : ''}
       </div></button>`;
   };
-  return `${hist.map((s, k) => `<div style="display:flex;align-items:baseline;justify-content:space-between;margin-top:${k ? 8 : 0}px"><h2 class="cond" style="margin:0;font-size:30px;font-weight:800">${s.season}</h2>
-    <span class="courier meta">${s.games.length} game${s.games.length > 1 ? 's' : ''}${k === 0 ? ' · ' + total + ' all time' : ''}</span></div>
+  return `${hist.map((s, k) => `<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:${k ? 8 : 0}px"><h2 class="cond" style="margin:0;font-size:30px;font-weight:800;flex-shrink:0">${s.season}</h2>
+    <span class="courier meta" style="white-space:nowrap">${s.games.length} game${s.games.length > 1 ? 's' : ''}${k === 0 ? ' · ' + total + ' all time' : ''}</span></div>
     <div style="display:flex;flex-direction:column;gap:10px">${s.games.map(card).join('')}</div>`).join('')}
   <button class="press cond small-btn" style="align-self:center;height:40px;border-radius:20px;margin-top:10px;color:var(--text2)" ${act('addGame')}>${ICON.plus} ADD A PAST GAME</button>`;
 }
@@ -4147,19 +4472,24 @@ function statsRecords(games) {
       case 'MOST GAMES': return [r.value, r.who, 'Since ' + r.since];
       case 'SEASONS': return [r.value, 'Club history', r.from === r.to ? String(r.from) : `${r.from} – ${r.to}`];
       case 'BEST HALF-INNING': return ['+' + r.value, r.who, niceDate(r.date)];
-      case 'BIGGEST COMEBACK': return [r.value, r.who, 'Down by this much, still won'];
-      case 'LONGEST PICK STREAK': return [r.value, r.who, 'Right in a row · ' + niceDate(r.date)];
+      case 'BIGGEST COMEBACK': return [r.value, r.who, niceDate(r.date)];
+      case 'LONGEST PICK STREAK': return [r.value, r.who, niceDate(r.date)];
+      case 'TOP BALLPARK': return [r.value, r.who, 'Games played there'];
       default: return [String(r.value).replace('-', '−'), r.who, niceDate(r.date)];
     }
   };
   const hasInGame = recs.some(r => r.label === 'BEST HALF-INNING');
+  // Top ballpark (moved here from the club card): the park with the most games, couch games not counted
+  const parks = {}; games.forEach(g => { if (g.park && !g.tv && g.ended !== false) parks[g.park] = (parks[g.park] || 0) + 1; });
+  const topPark = Object.entries(parks).sort((a, b) => b[1] - a[1])[0];
+  if (topPark) recs.push({ label: 'TOP BALLPARK', value: topPark[1], who: topPark[0], park: true });
   return `<div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px">${recs.map(r => { const [v, who, when] = fmt(r);
     const tap = r.top && r.top.length > 1;
     return `<${tap ? 'button' : 'div'} class="card${tap ? ' press' : ''}" ${tap ? act('openSheet', 'record:' + r.label) : ''} style="border-radius:16px;padding:10px 14px;display:flex;flex-direction:column;min-width:0;text-align:left;width:100%">
-      <span class="cond" style="font-size:13px;font-weight:800;letter-spacing:.8px;color:var(--text3);display:flex;justify-content:space-between">${r.label}${tap ? '<span style="color:var(--text4)">›</span>' : ''}</span>
-      <span class="shoulders" style="font-size:38px;font-weight:900;line-height:1.05">${v}</span>
+      <span class="cond" style="font-size:13px;font-weight:800;letter-spacing:.5px;color:var(--text3);display:flex;justify-content:space-between;gap:4px;min-width:0"><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0">${r.label === 'LONGEST PICK STREAK' ? 'PICK STREAK' : r.label}</span>${tap ? '<span style="color:var(--text4)">›</span>' : ''}</span>
+      <span class="shoulders" style="font-size:38px;font-weight:900;line-height:1.05;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${v}</span>
       <span style="font-size:14px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(who)}</span>
-      <span class="courier" style="font-size:10px;font-weight:700;color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(when)}</span></${tap ? 'button' : 'div'}>`; }).join('')}</div>
+      <span class="courier" style="font-size:10px;font-weight:700;color:var(--text2);line-height:1.35">${esc(when)}</span></${tap ? 'button' : 'div'}>`; }).join('')}</div>
   ${hasInGame ? '' : `<span class="courier meta" style="line-height:1.5;padding:0 2px">In-game records (best half-inning, biggest comeback, longest pick streak) start with the first new-app game.</span>`}`;
 }
 
@@ -4177,7 +4507,6 @@ function recordSheet() {
     case 'WIN STREAK': return 'Ended ' + niceDate(t.date);
     case 'MOST WINS': return 'Wins, all time';
     case 'MOST GAMES': return 'Games, all time';
-    case 'LONGEST PICK STREAK': return 'Right in a row · ' + niceDate(t.date);
     default: return t.date ? niceDate(t.date) : ''; } };
   return `<h2 class="cond" style="margin:0;font-size:28px;font-weight:800">${esc(r.label)}</h2>
   <span class="courier meta">Top ${r.top.length} · ${esc(scopeName())}</span>
@@ -4198,15 +4527,14 @@ function statsH2H(games) {
   const picker = (side, id, color) => `<button class="press cond" ${act('openSheet', 'h2hPick:' + side)} style="flex:1;min-width:0;height:44px;border-radius:12px;background:var(--card);border-bottom:3px solid ${color};font-size:19px;font-weight:800;display:flex;align-items:center;justify-content:center;gap:6px;overflow:hidden;white-space:nowrap">${esc(nameOf(id))} ${ICON.down}</button>`;
   if (!b) return `<div style="display:flex;align-items:center;gap:10px">${picker('a', a, H2H_A)}</div><div class="card" style="padding:18px;color:var(--text2)">${esc(nameOf(a))} hasn't played anyone here yet.</div>`;
   const h = Statistician.h2h(games, a, b);
-  const lead = h.leader ? nameOf(h.leader === 'a' ? a : b) + ' leads' : 'All square';
   const initial = id => esc(nameOf(id)[0].toUpperCase());
   const row = (label, va, vb) => `<div style="display:grid;grid-template-columns:70px 1fr 70px;align-items:center;height:48px;border-top:1px solid var(--line)">
     <span class="shoulders num" style="font-size:24px;font-weight:900">${va}</span><span class="cond" style="text-align:center;font-size:15px;font-weight:800;letter-spacing:.8px;color:var(--text3)">${label}</span><span class="shoulders num" style="text-align:right;font-size:24px;font-weight:900">${vb}</span></div>`;
   const streak = side => (h[side].current ? 'W' + h[side].current : '—');
-  return `<div style="display:flex;align-items:center;gap:10px">${picker('a', a, H2H_A)}<span class="cond" style="font-size:16px;font-weight:800;color:var(--text3)">VS</span>${picker('b', b, H2H_B)}</div>
+  return `<div style="display:flex;align-items:center;gap:10px">${picker('a', a, H2H_A)}<span class="cond onphoto" style="align-self:center;font-size:16px;font-weight:800;color:var(--text3)">VS</span>${picker('b', b, H2H_B)}</div>
   <div style="display:flex;flex-direction:column;align-items:center;gap:4px;padding:6px 0">
     <div style="display:flex;align-items:baseline;gap:16px"><span class="shoulders" style="font-size:80px;font-weight:900;line-height:1;color:${H2H_A}">${h.a.wins}</span><span class="shoulders" style="font-size:36px;font-weight:800;color:var(--text4)">–</span><span class="shoulders" style="font-size:80px;font-weight:900;line-height:1;color:${H2H_B}">${h.b.wins}</span></div>
-    <span class="courier" style="font-size:13px;font-weight:700;color:var(--text2)">${h.games} game${h.games === 1 ? '' : 's'}${h.since ? ' since ' + h.since : ''} · ${esc(lead)}</span></div>
+    <span class="courier onphoto" style="align-self:center;font-size:13px;font-weight:700;color:var(--text2)">${h.games} game${h.games === 1 ? '' : 's'}${h.since ? ' since ' + h.since : ''}</span></div>
   ${h.last10.length ? `<div class="card" style="border-radius:16px;padding:12px 14px;display:flex;flex-direction:column;gap:8px">
     <div style="display:flex;justify-content:space-between"><span class="cond" style="font-size:14px;font-weight:800;letter-spacing:.8px;color:var(--text3)">LAST ${h.last10.length}</span><span class="courier meta">oldest → newest</span></div>
     <div style="display:grid;grid-template-columns:repeat(10,minmax(0,1fr));gap:4px">${h.last10.map(w => `<span class="cond" style="height:30px;border-radius:7px;background:${w === 'a' ? H2H_A : H2H_B};color:#fff;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:800">${initial(w === 'a' ? a : b)}</span>`).join('')}</div></div>` : ''}
@@ -4317,93 +4645,108 @@ SCREENS.addGame = () => {
 };
 
 // ════════════ Share card (a picture made on the phone) ════════════
+// The share card: laid out like the Final page (FINAL · date, headline, big score, line score, the four tiles),
+// with the awards as icons only, and the wordmark + club at the bottom. 1080 wide, as tall as it needs (4:5 or taller).
 async function drawShareCard(g, sum, awards) {
   try { await document.fonts.ready; } catch (e) { /* fonts may not be loaded offline: system fonts are fine */ }
-  const W = 540, H = 675, K = 2, c = document.createElement('canvas'); c.width = W * K; c.height = H * K;
-  const x = c.getContext('2d'); x.scale(K, K);
-  const F = (w, size, fam) => `${w} ${size}px ${fam}`;
   const COND = '"Barlow Condensed", -apple-system, sans-serif', SH = '"Big Shoulders Display", -apple-system, sans-serif', CO = '"Courier Prime", "Courier New", monospace', SYS = '-apple-system, "Helvetica Neue", sans-serif';
+  const F = (w, size, fam) => `${w} ${size}px ${fam}`;
+  const r = sum.result, n = g.players.length, order = g.players.map((_, i) => i).sort((a, b) => r.scores[b] - r.scores[a]);
+  const tiles = sum.tiles || [], ls = sum.lineScore, list = (awards || []).slice(0, 12);
+  const W = 540, lsH = ls ? 32 + n * 36 : 0, rows = Math.ceil(tiles.length / 2), iconRows = Math.ceil(list.length / 8);
+  const need = 150 + 110 + (ls ? lsH + 16 : 0) + rows * 88 + (list.length ? 30 + iconRows * 58 : 0) + 70;
+  const H = Math.max(675, need), K = 2, c = document.createElement('canvas'); c.width = W * K; c.height = H * K;
+  const x = c.getContext('2d'); x.scale(K, K);
   x.fillStyle = '#0B0B0D'; x.fillRect(0, 0, W, H);
   // The game's park photo behind everything: blurred more than in the app and darker, so every number stays crisp
   const photo = parkPhotoFor(g, true);
-  let PANEL = '#17171A';
+  let PANEL = '#1C1C20';
   if (photo) {
     try {
       const img = await new Promise((ok, no) => { const i = new Image(); i.onload = () => ok(i); i.onerror = no; i.src = photo; });
       const s = Math.max(W / img.width, H / img.height), iw = img.width * s, ih = img.height * s;
       x.save(); x.filter = 'blur(9px) brightness(0.42) saturate(1.1)'; x.drawImage(img, (W - iw) / 2 - 20, (H - ih) / 2 - 20, iw + 40, ih + 40); x.restore();
-      const gr = x.createLinearGradient(0, 0, 0, H); gr.addColorStop(0, 'rgba(0,0,0,.35)'); gr.addColorStop(0.5, 'rgba(0,0,0,.1)'); gr.addColorStop(1, 'rgba(0,0,0,.45)');
-      x.fillStyle = gr; x.fillRect(0, 0, W, H); PANEL = 'rgba(16,16,20,.68)';
+      const gr = x.createLinearGradient(0, 0, 0, H); gr.addColorStop(0, 'rgba(0,0,0,.35)'); gr.addColorStop(0.5, 'rgba(0,0,0,.1)'); gr.addColorStop(1, 'rgba(0,0,0,.5)');
+      x.fillStyle = gr; x.fillRect(0, 0, W, H); PANEL = 'rgba(22,22,26,.72)';
     } catch (e) { /* no photo: plain dark card */ }
   }
-  // faint scorebook diamond watermark (the red double tapers into the outline at home plate)
-  x.save(); x.globalAlpha = 0.06; x.translate(W + 120 - 420, -110); x.scale(3.5, 3.5);
-  x.strokeStyle = '#F4F1E8'; x.lineWidth = 3; x.stroke(new Path2D('M60 5L115 60 60 115 5 60z'));
-  x.fillStyle = '#D63A2F'; x.fill(new Path2D('M60 117.12L119.95 60 60 0.05 60 9.95 110.05 60 60 112.88z')); x.restore();
-  const rr = (px, py, w, h, r, fill) => { x.beginPath(); x.roundRect(px, py, w, h, r); x.fillStyle = fill; x.fill(); };
+  const rr = (px, py, w, h, rad, fill) => { x.beginPath(); x.roundRect(px, py, w, h, rad); x.fillStyle = fill; x.fill(); };
   const text = (t, px, py, font, color, align = 'left') => { x.font = font; x.fillStyle = color; x.textAlign = align; x.fillText(t, px, py); };
   const fit = (t, max, font) => { x.font = font; let s = t; while (x.measureText(s).width > max && s.length > 2) s = s.slice(0, -2) + '…'; return s; };
-  // wordmark
-  text('Guess Ball', 36, 70, '36px Norican, cursive', '#F4F1E8');
-  x.save(); x.translate(36, 78); x.scale(160 / 440, 160 / 440); x.strokeStyle = '#D63A2F'; x.lineCap = 'round'; x.lineJoin = 'round';   // swoosh ending in a diamond
-  x.lineWidth = 6; x.stroke(new Path2D('M40 26C150 12 290 9 382 18')); x.lineWidth = 3; x.stroke(new Path2D('M406 36L422 20 406 4 390 20z'));
-  x.lineWidth = 7; x.stroke(new Path2D('M406 36L422 20 406 4')); x.restore();
-  const r = sum.result, n = g.players.length, order = g.players.map((_, i) => i).sort((a, b) => r.scores[b] - r.scores[a]);
-  text('FINAL', W - 36, 52, F(800, 16, COND), '#A1A1AA', 'right');
-  text([niceDate(g.date), whereAt(g)].filter(Boolean).join(' · '), W - 36, 72, F(700, 13, CO), '#A1A1AA', 'right');
-  if (g.mlb && (g.away || g.home)) text(`${shortTeam(g.away) || 'Away'} ${g.mlb.away} · ${shortTeam(g.home) || 'Home'} ${g.mlb.home}`, W - 36, 90, F(700, 13, CO), '#C7C7CC', 'right');
-  // headline + score
   const nm = i => g.players[i].name.toUpperCase();
+  // FINAL · date (and where)
+  text('FINAL', W / 2, 46, F(800, 18, COND), '#A1A1AA', 'center');
+  const meta = [g.away && `${shortTeam(g.away)} ${g.mlb ? g.mlb.away : ''}`.trim(), g.home && `${shortTeam(g.home)} ${g.mlb ? g.mlb.home : ''}`.trim(), whereAt(g), niceDate(g.date)].filter(Boolean).join(' · ');
+  text(fit(meta, W - 72, F(700, 13, CO)), W / 2, 66, F(700, 13, CO), '#A1A1AA', 'center');
+  // headline, big score, the line under it
   const head = r.tie ? r.leaders.map(nm).join(' & ') + ' TIE' : nm(r.winner) + ' WINS';
-  let hs = 54; x.font = F(800, hs, COND); while (x.measureText(head).width > W - 72 && hs > 30) { hs -= 2; x.font = F(800, hs, COND); }
-  text(head, 36, 160, F(800, hs, COND), '#F5F5F7');
-  let y = 250;
-  if (r.tie) { text(`${r.scores[r.leaders[0]]}`, 36, y, F(900, 96, SH), '#F5F5F7'); x.font = F(900, 96, SH); let w = x.measureText(String(r.scores[r.leaders[0]])).width;
-    text('–', 36 + w + 14, y - 10, F(800, 44, SH), '#5E5E66'); text(`${r.scores[r.leaders[1]]}`, 36 + w + 50, y, F(900, 96, SH), '#F5F5F7'); w += 50 + x.measureText(String(r.scores[r.leaders[1]])).width;
-    text('DEAD EVEN', 36 + w + 20, y - 8, F(800, 22, COND), '#8E8E96');
+  let hs = 46; x.font = F(800, hs, COND); while (x.measureText(head).width > W - 72 && hs > 26) { hs -= 2; x.font = F(800, hs, COND); }
+  text(head, W / 2, 122, F(800, hs, COND), '#F5F5F7', 'center');
+  let y = 212;
+  const big = F(900, 86, SH), dash = F(800, 40, SH);
+  if (n === 2 || r.tie) {
+    const [a1, b1] = r.tie ? r.leaders : order, sa = String(r.scores[a1]), sb = String(r.scores[b1]);
+    x.font = big; const wa = x.measureText(sa).width, wb = x.measureText(sb).width, gap = 44, tot = wa + gap + wb, x0 = (W - tot) / 2;
+    text(sa, x0, y, big, '#F5F5F7'); text('–', x0 + wa + gap / 2, y - 14, dash, '#5E5E66', 'center'); text(sb, x0 + wa + gap, y, big, r.tie ? '#F5F5F7' : '#8E8E96');
   } else {
-    const top = String(r.scores[order[0]]); text(top, 36, y, F(900, 96, SH), '#F5F5F7'); x.font = F(900, 96, SH); const w = x.measureText(top).width;
-    if (n === 2) { text('–', 36 + w + 14, y - 10, F(800, 44, SH), '#5E5E66'); text(String(r.scores[order[1]]), 36 + w + 50, y, F(900, 96, SH), '#8E8E96');
-      x.font = F(900, 96, SH); const w2 = x.measureText(String(r.scores[order[1]])).width; text('OVER ' + nm(order[1]), 36 + w + 50 + w2 + 16, y - 8, F(800, 22, COND), '#8E8E96'); }
-    else order.slice(1).forEach((i, k) => { const yy = y - 52 + k * 40; text(fit(`${k ? '3RD' : '2ND'} · ${nm(i)}`, 250, F(800, 20, COND)), 36 + w + 24, yy, F(800, 20, COND), '#A1A1AA'); text(String(r.scores[i]), W - 36, yy + 4, F(900, 30, SH), '#A1A1AA', 'right'); });
+    const cols = order.map(i => String(r.scores[i])), cw = (W - 72) / n;
+    order.forEach((i, k) => { const cx = 36 + cw * k + cw / 2;
+      text(['1ST', '2ND', '3RD', '4TH'][k], cx, y - 74, F(800, 13, COND), k ? '#8E8E96' : '#F2C14E', 'center');
+      text(cols[k], cx, y, F(900, k ? 56 : 86, SH), k ? '#A1A1AA' : '#F5F5F7', 'center');
+      text(fit(g.players[i].name, cw - 8, F(600, 13, SYS)), cx, y + 18, F(600, 13, SYS), '#A1A1AA', 'center'); });
   }
-  y += 22;
-  // line score (app games)
-  if (sum.lineScore) {
-    const ls = sum.lineScore, inns = ls.innings.slice(-9), h = 32 + n * 36;
-    rr(36, y, W - 72, h, 16, PANEL);
-    const x0 = 36 + 14 + 58, colW = (W - 72 - 28 - 58 - 40) / inns.length;
+  const se = sum.series;
+  const sub = r.tie ? 'Dead even' : n === 3 ? (sum.winNumber ? `${g.players[r.winner].name}’s ${ordinal(sum.winNumber)} win` : '')
+    : se ? (se.leader ? `${g.players[se.leader === 'a' ? 0 : 1].name} leads the series ${Math.max(se.a.wins, se.b.wins)}–${Math.min(se.a.wins, se.b.wins)}` : `Series tied ${se.a.wins}–${se.b.wins}`) : '';
+  if (sub && n !== 3) text(fit(sub, W - 72, F(700, 14, CO)), W / 2, y + 30, F(700, 14, CO), '#A1A1AA', 'center');
+  y += n === 3 && !r.tie ? 38 : 50;
+  // line score
+  if (ls) {
+    const inns = ls.innings.slice(-9);
+    rr(36, y, W - 72, lsH, 18, PANEL);
+    const x0 = 36 + 14 + 66, colW = (W - 72 - 28 - 66 - 40) / inns.length;
     inns.forEach((k, j) => text(String(k), x0 + colW * j + colW / 2, y + 22, F(700, 14, COND), '#8E8E96', 'center'));
     text('R', W - 50, y + 22, F(700, 14, COND), '#F5F5F7', 'right');
     g.players.forEach((p, i) => { const yy = y + 32 + i * 36 + 25; const lead = ls.totals[i] === Math.max(...ls.totals);
-      text(fit(p.name, 56, F(700, 15, SYS)), 50, yy, F(lead ? 700 : 600, 15, SYS), lead ? '#F5F5F7' : '#A1A1AA');
+      text(fit(p.name, 64, F(700, 15, SYS)), 50, yy, F(lead ? 700 : 600, 15, SYS), lead ? '#F5F5F7' : '#A1A1AA');
       inns.forEach((k, j) => { const v = ls.rows[i][k - 1]; if (v != null) text(String(v), x0 + colW * j + colW / 2, yy, F(800, 19, SH), '#C7C7CC', 'center'); });
       text(String(ls.totals[i]), W - 50, yy + 1, F(900, 26, SH), lead ? '#F5F5F7' : '#A1A1AA', 'right'); });
-    y += h + 16;
+    y += lsH + 12;
   }
-  // play of the game
-  const top = sum.plays[0];
-  if (top) {
-    rr(36, y, W - 72, 68, 16, PANEL);
-    x.save(); x.translate(50, y + 12); x.scale(44 / 58, 44 / 58); x.strokeStyle = '#5BD27A'; x.lineWidth = 5; x.lineJoin = 'round'; x.stroke(new Path2D('M29 53L53 29 29 5 5 29z')); x.restore();
-    text(top.code, 72, y + 40, F(900, top.code.length > 2 ? 14 : 17, SH), '#F5F5F7', 'center');
-    text('PLAY OF THE GAME', 108, y + 28, F(800, 13, COND), '#8E8E96');
-    text(fit(`${top.text} · +${top.pts}`, W - 72 - 90, F(700, 16, SYS)), 108, y + 50, F(700, 16, SYS), '#F5F5F7');
-    y += 84;
+  // the four tiles (accuracy, Pick 3 bonuses, confidence, best streak) — best in white, like the Final page
+  const tw = (W - 72 - 10) / 2;
+  tiles.forEach((t, k) => {
+    const tx = 36 + (k % 2) * (tw + 10), ty = y + Math.floor(k / 2) * 88;
+    rr(tx, ty, tw, 78, 16, PANEL);
+    const fmt = v => (t.label === 'ACCURACY' ? (v == null ? '—' : Math.round(v * 100) + '%') : t.label === 'CONFIDENCE' ? v.join('–') : String(v));
+    const score = v => (t.label === 'CONFIDENCE' ? v[0] - v[1] : v == null ? -1 : v), top = Math.max(...t.values.map(score));
+    text(t.label, tx + 14, ty + 22, F(800, 13, COND), '#8E8E96');
+    let vx = tx + 14; const vf = F(900, n === 3 ? 20 : 26, SH);
+    order.forEach(i => { const s2 = fmt(t.values[i]); text(s2, vx, ty + 50, vf, score(t.values[i]) === top ? '#F5F5F7' : '#6E6E76'); x.font = vf; vx += x.measureText(s2).width + (n === 3 ? 8 : 12); });
+    text(fit(order.map(i => g.players[i].name).join(n === 3 ? ' · ' : ' vs '), tw - 28, F(700, 12, CO)), tx + 14, ty + 68, F(700, 12, CO), '#A1A1AA');
+  });
+  y += rows * 88;
+  // awards: just the icons
+  if (list.length) {
+    text('EARNED TODAY', 36, y + 14, F(800, 14, COND), '#8E8E96'); y += 26;
+    const size = 50, gapI = (W - 72 - size * 8) / 7;
+    for (let k = 0; k < list.length; k++) {
+      const a = list[k], ix = 36 + (k % 8) * (size + gapI), iy = y + Math.floor(k / 8) * 58;
+      rr(ix, iy, size, size, 14, 'rgba(242,193,78,.14)');
+      const svg = awardIcon(a.award, 34);
+      if (svg.startsWith('<svg')) {
+        try { const img = await new Promise((ok, no) => { const i = new Image(); i.onload = () => ok(i); i.onerror = no; i.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg.replace('<svg ', '<svg xmlns="http://www.w3.org/2000/svg" ')); });
+          x.drawImage(img, ix + (size - 34) / 2, iy + (size - 34) / 2, 34, 34); } catch (e) { /* skip a bad icon */ }
+      } else text(a.award.code || '?', ix + size / 2, iy + size / 2 + 8, F(900, 22, SH), '#F4F1E8', 'center');
+    }
+    y += iconRows * 58;
   }
-  // awards
-  if (awards && awards.length) {
-    text('AWARDS', 36, y + 20, F(800, 13, COND), '#8E8E96');
-    let cx = 100, cy = y;
-    awards.slice(0, 6).forEach(a => {
-      const label = `${a.award.name} · ${a.names.join(', ')}`; x.font = F(600, 13, SYS); const w = Math.min(x.measureText(label).width + 24, W - 72);
-      if (cx + w > W - 36) { cx = 36; cy += 38; }
-      rr(cx, cy, w, 30, 15, PANEL); text(fit(label, w - 24, F(600, 13, SYS)), cx + 12, cy + 20, F(600, 13, SYS), '#F5F5F7'); cx += w + 8;
-    });
-  }
-  // footer: the club name only
+  // footer: the wordmark, and the club
+  text('Guess Ball', 36, H - 30, '28px Norican, cursive', '#F4F1E8');
+  x.save(); x.translate(36, H - 24); x.scale(124 / 440, 124 / 440); x.strokeStyle = '#D63A2F'; x.lineCap = 'round'; x.lineJoin = 'round';
+  x.lineWidth = 7; x.stroke(new Path2D('M40 26C150 12 290 9 382 18')); x.lineWidth = 4; x.stroke(new Path2D('M406 36L422 20 406 4 390 20z')); x.restore();
   const club = (S.clubs.find(k => (g.clubList || []).includes(k.code)) || {}).name;
-  if (club) text(club.toUpperCase(), W / 2, H - 26, F(800, 14, COND), '#5E5E66', 'center');
+  if (club) text(club.toUpperCase(), W - 36, H - 32, F(800, 15, COND), '#8E8E96', 'right');
   return new Promise(res => c.toBlob(res, photo ? 'image/jpeg' : 'image/png', 0.9));
 }
 async function shareGame(g, sum, awards) {
@@ -4722,13 +5065,13 @@ SCREENS.awards = () => {
       if (!items.length) return '';
       return `<div style="display:flex;flex-direction:column;gap:6px">
         <div style="display:flex;align-items:baseline;justify-content:space-between;padding:4px 2px 0"><span class="cond sechead" style="font-size:20px;font-weight:800;letter-spacing:.6px">${c}</span>
-          <span class="shoulders" style="font-size:18px;font-weight:800;color:var(--text2)">${n} / ${all.length}</span></div>
+          <span class="shoulders onphoto" style="align-self:auto;font-size:18px;font-weight:800;color:var(--text2)">${n} / ${all.length}</span></div>
         <div class="list">${items.map(a => awardRow(a)).join('')}</div></div>`;
     }).join('');
     const tools = cat === 'ALL' ? `<div style="display:flex;gap:8px;align-items:center">
         <label class="field search" style="flex:1;min-width:0;height:40px;background:var(--card)">${ICON.search}<input data-model="awq" data-region="awlist" value="${attr(S.awq || '')}" placeholder="Search awards" autocomplete="off"></label>
         <button class="press cond" ${act('awWon')} aria-pressed="${wonOnly}" style="flex-shrink:0;height:40px;padding:0 14px;border-radius:20px;font-size:14px;font-weight:800;letter-spacing:.6px;background:${wonOnly ? 'var(--gold)' : 'var(--card)'};color:${wonOnly ? '#1A1406' : 'var(--text3)'}">WON ONLY</button></div>` : '';
-    body = `${tools}<div data-region="awlist" style="display:flex;flex-direction:column;gap:14px"><span class="courier meta" style="padding:0 2px">${got} of ${list.length} earned · tap one for details</span>${recent}${secs || `<div class="card" style="padding:18px;font-size:15px;color:var(--text2)">${q ? `No awards${wonOnly ? ' you’ve won' : ''} match “${esc(S.awq.trim())}”` : 'No awards won yet'}.</div>`}</div>`;
+    body = `${tools}<div data-region="awlist" style="display:flex;flex-direction:column;gap:14px">${cat === 'ALL' ? `<span class="courier meta" style="padding:0 2px">${got} of ${list.length} earned</span>` : ''}${recent}${secs || `<div class="card" style="padding:18px;font-size:15px;color:var(--text2)">${q ? `No awards${wonOnly ? ' you’ve won' : ''} match “${esc(S.awq.trim())}”` : 'No awards won yet'}.</div>`}</div>`;
   }
   const chips = [['ALL', 'ALL']].concat(AWARD_CATS).map(([c, label]) => `<button class="press cond" ${act('awCat', c)} style="flex-shrink:0;height:30px;padding:0 12px;border-radius:15px;font-size:14px;font-weight:800;letter-spacing:.6px;background:${c === cat ? 'var(--text)' : 'var(--card)'};color:${c === cat ? 'var(--bg)' : 'var(--text5)'}">${label}</button>`).join('');
   return `<div class="page tabbed split">
@@ -4843,7 +5186,7 @@ Object.assign(ACT, {
 // Club card (name, privacy, invite, captain settings) · REQUESTS (captains) · ROSTER · GUESTS · Leave club.
 // Tap a person → Roster member sheet. Tap a guest → Guest sheet (claim link, link to an account, rename).
 const clubOf = code => S.clubs.find(c => c.code === code) || null;
-const initialDot = (name, color = 'var(--card3)', dashed = false) => `<span style="width:32px;height:32px;border-radius:16px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;${dashed ? 'border:1.5px dashed var(--text4)' : 'background:' + color}">${esc((name || '?')[0].toUpperCase())}</span>`;
+const initialDot = (name, color = 'var(--card3)', dashed = false, pid = null) => avatar(pid, name, 32, color, 'var(--text)', dashed);   // (their photo when they have one)
 const baseUrl = () => location.origin + location.pathname.replace(/index\.html$/, '');
 // FIND A CLUB / CREATE A CLUB pinned above the tab bar (and above the LIVE bar during a game)
 const clubDock = () => { const live = typeof liveBar === 'function' && liveBar() ? 56 : 0;
@@ -4887,9 +5230,7 @@ SCREENS.club = () => {
   const cap = amCaptain();
   // Club card
   const years = games.map(g => +g.date.slice(0, 4)), since = years.length ? Math.min(...years) : (c.createdAt ? new Date(c.createdAt).getFullYear() : null);
-  const parks = {}; games.forEach(g => { if (g.park && !g.tv) parks[g.park] = (parks[g.park] || 0) + 1; });
-  const topPark = Object.entries(parks).sort((a, b) => b[1] - a[1])[0];
-  const meta = [since && 'Since ' + since, plural(games.length, 'game'), years.length && plural(new Set(years).size, 'season'), topPark && topPark[0]].filter(Boolean).join(' · ');
+  const meta = [since && 'Since ' + since, plural(games.length, 'game'), years.length && plural(new Set(years).size, 'season')].filter(Boolean).join(' · ');
   const card = `<div class="card" style="padding:16px;display:flex;flex-direction:column;gap:10px">
     <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
       <button class="press cond" ${act('openSwitcher')} style="display:flex;align-items:center;gap:8px;min-width:0;font-size:34px;font-weight:800;letter-spacing:.4px;line-height:1"><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(c.name.toUpperCase())}</span>${ICON.down}</button>
@@ -4921,13 +5262,13 @@ SCREENS.club = () => {
     body = `${reqs}
       <div style="display:flex;align-items:baseline;justify-content:space-between;margin-top:4px"><h2 class="cond h2" data-tip="roster">ROSTER</h2><span class="shoulders" style="font-size:20px;font-weight:800;color:var(--text2)">${people.length}</span></div>
       <div class="list">${people.map(m => `<button class="row press" ${act('openSheet', 'member:' + m.pid)} style="min-height:52px">
-        ${initialDot(m.name, m.pid === S.user.uid ? 'var(--accent)' : 'var(--card3)')}
+        ${initialDot(m.name, m.pid === S.user.uid ? 'var(--accent)' : 'var(--card3)', false, m.pid)}
         <span style="flex-grow:1;min-width:0;font-size:17px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(m.name)}</span>
         ${m.captain ? '<span class="cond tag gold">CAPTAIN</span>' : ''}<span class="courier meta" style="min-width:58px;text-align:right">${loaded ? plural(count(m.pid), 'game') : ''}</span></button>`).join('')}</div>
-      ${guests.length ? `<div style="display:flex;align-items:baseline;justify-content:space-between;margin-top:4px"><h2 class="cond h2">GUESTS</h2><span class="shoulders" style="font-size:20px;font-weight:800;color:var(--text2)">${guests.length}</span></div>
+      ${guests.length ? `<div style="display:flex;align-items:center;justify-content:space-between;margin-top:4px">${info('guestWhy', '<h2 class="cond h2" style="margin:0">GUESTS</h2>', 'Someone who plays on another person’s phone without an account. Tap a guest to send them a claim link — when they sign up, their games move to their account.', '')}<span class="shoulders" style="font-size:20px;font-weight:800;color:var(--text2)">${guests.length}</span></div>
       <div style="display:flex;flex-wrap:wrap;gap:8px">${guests.map(m => `<button class="press" ${act('openSheet', 'guest:' + m.pid)} style="height:36px;padding:0 14px 0 6px;border-radius:18px;background:var(--card);display:flex;align-items:center;gap:8px;font-size:15px;font-weight:600">
         <span style="width:24px;height:24px;border-radius:12px;border:1.5px dashed var(--text4);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700">${esc(m.name[0].toUpperCase())}</span>${esc(m.name)}</button>`).join('')}</div>
-      ${info('guestWhy', '<span class="courier meta">What’s a guest?</span>', 'Someone who plays on another person’s phone without an account. Tap a guest to send them a claim link — when they sign up, their games move to their account.', '')}` : ''}
+      ` : ''}
       <button class="press cond mid-btn" style="margin-top:10px;color:var(--orange);font-size:18px" ${act('openSheet', 'leave')}>LEAVE CLUB</button>`;
   }
   return `<div class="page tabbed" style="--dock:${dockPad()}">
@@ -4973,8 +5314,7 @@ function scoutingReport(games, pid, name) {
     ${r.best.length ? `<div class="cond" style="font-size:13px;font-weight:800;letter-spacing:.8px;color:var(--text3);padding-top:8px">BEST CALLS</div>${r.best.map(c => callRow(c, 'var(--green)')).join('')}` : ''}
     ${r.worst.length ? `<div class="cond" style="font-size:13px;font-weight:800;letter-spacing:.8px;color:var(--text3);padding-top:10px">BLIND SPOTS</div>${r.worst.map(c => callRow(c, 'var(--orange)')).join('')}` : ''}</div>` : ''}
   ${r.p3.halves ? line2('PICK 3', `Bonus hit ${r.p3.hits} of ${plural(r.p3.halves, 'half-inning')}`, pct(r.p3.hits / r.p3.halves)) : ''}
-  ${r.priority != null ? line2('PRIORITY', `Held it for ${pct(r.priority)} of at-bats`, pct(r.priority)) : ''}
-  <span class="courier meta" style="text-align:center">Only games played in the app count · 5+ picks for best calls and blind spots</span>`;
+  ${r.priority != null ? line2('PRIORITY', `Held it for ${pct(r.priority)} of at-bats`, pct(r.priority)) : ''}`;
 }
 function memberSheet() {
   const pid = S.sheet.arg, d = clubData() || { roster: [] }, m = (d.roster || []).find(x => x.pid === pid) || { name: 'Player' };
@@ -4999,7 +5339,7 @@ function memberSheet() {
       <span class="shoulders num" style="font-size:20px;font-weight:900">${sc[i]}–${best}</span></button>`; };
   const since = m.joinedAt ? new Date(m.joinedAt).getFullYear() : null;
   return `<div style="display:flex;align-items:center;gap:12px">
-    <span style="width:52px;height:52px;border-radius:26px;background:var(--card3);display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:800;flex-shrink:0">${esc(m.name[0].toUpperCase())}</span>
+    ${avatar(m.pid, m.name, 52)}
     <div style="display:flex;flex-direction:column;gap:3px;min-width:0"><div style="display:flex;align-items:center;gap:8px"><span class="cond" style="font-size:28px;font-weight:800;line-height:1">${esc(m.name)}</span>${m.captain ? '<span class="cond tag gold">CAPTAIN</span>' : ''}</div>
     <span class="courier meta">In ${esc((clubOf(S.scope) || {}).name || 'the club')}${since ? ' since ' + since : ''}</span></div></div>
   <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px">
@@ -5080,7 +5420,7 @@ SCREENS.clubSettings = () => {
   const people = (d.roster || []).filter(m => !m.guest);
   const caps = people.filter(m => cs.caps[m.pid]), others = people.filter(m => !cs.caps[m.pid]);
   const onlyOne = caps.length <= 1;
-  const capRow = m => `<div class="row" style="min-height:54px">${initialDot(m.name, m.pid === S.user.uid ? 'var(--accent)' : 'var(--card3)')}
+  const capRow = m => `<div class="row" style="min-height:54px">${initialDot(m.name, m.pid === S.user.uid ? 'var(--accent)' : 'var(--card3)', false, m.pid)}
     <span style="flex-grow:1;font-size:17px;font-weight:600">${esc(m.name)}</span>
     <button class="press cond small-btn" style="color:var(--orange);${onlyOne ? 'opacity:.35' : ''}" ${onlyOne ? `${act('toast', 'A club needs at least one captain')}` : act('csCap', m.pid + '|0')}>${m.pid === S.user.uid ? 'STEP DOWN' : 'REMOVE'}</button></div>`;
   return `<div class="page">
@@ -5352,7 +5692,7 @@ SCREENS.appearance = () => {
   const a = ap(), fav = favTeam(), team = a.park || (PARKS[fav] ? fav : null);
   const src = a.bg === 'off' ? null : a.bg === 'mine' ? (myPhoto() || favPhoto()) : favPhoto();
   const pick = team && parkPick(team);
-  const caption = a.bg === 'off' ? 'No background photo' : a.bg === 'mine' ? (myPhoto() ? 'My photo' : 'No photo chosen yet') : pick ? `${PARKS[team].park} · ${pick.label}` : 'Pick a park below';
+  const caption = a.bg === 'off' ? 'No background photo' : a.bg === 'mine' ? (myPhoto() ? 'My photo' : '') : pick ? `${PARKS[team].park} · ${pick.label}` : 'Pick a park below';
   const seg = (key, opts) => `<div class="seg" style="grid-template-columns:repeat(${opts.length},minmax(0,1fr))">${opts.map(([v, l]) => `<button class="${a[key] === v ? 'on' : ''}" ${act('apSet', key + '|' + v)}>${l}</button>`).join('')}</div>`;
   const dot = (k, color, label) => `<button class="press" aria-label="${k}" ${act('apSet', 'accent|' + k)} style="width:38px;height:38px;border-radius:19px;flex-shrink:0;background:${color};display:flex;align-items:center;justify-content:center;color:#fff;font:800 11px 'Barlow Condensed',sans-serif;letter-spacing:.4px;box-shadow:${a.accent === k ? '0 0 0 2px var(--bg), 0 0 0 4px ' + color : 'none'}">${label || ''}</button>`;
   const teamSwatch = fav && TEAM_STYLE[fav] ? dot('team', TEAM_STYLE[fav][1], TEAM_STYLE[fav][0]) : '';
@@ -5364,26 +5704,23 @@ SCREENS.appearance = () => {
       <span class="courier" style="font-size:10px;font-weight:700;line-height:1.25;color:${pick && pick.id === p.id ? 'var(--text)' : 'var(--text3)'}">${esc(p.label)}</span></button>`).join('')}</div>` : ''}` : '';
   const mineRow = a.bg === 'mine' ? `
     <label class="press mid-btn" style="cursor:pointer">${ICON.plus} ${myPhoto() ? 'CHOOSE A DIFFERENT PHOTO' : 'CHOOSE A PHOTO'}<input type="file" accept="image/*" data-photo="1" style="display:none"></label>
-    ${myPhoto() ? `<button class="press cond small-btn" style="align-self:flex-start;color:var(--orange)" ${act('apClearPhoto')}>REMOVE MY PHOTO</button>` : ''}
-    <span class="courier meta" style="line-height:1.5">Stays on this phone only — nobody else sees it, and it isn’t uploaded.</span>` : '';
+    ${myPhoto() ? `<button class="press cond small-btn" style="align-self:flex-start;color:var(--orange)" ${act('apClearPhoto')}>REMOVE MY PHOTO</button>` : ''}` : '';
   return `<div class="page">
   <div class="topbar">${backBtn()}<h1 class="cond h1">APPEARANCE</h1></div>
   <div style="display:flex;flex-direction:column;align-items:center;gap:8px">
     <div style="position:relative;width:120px;height:254px;border-radius:26px;border:3px solid var(--line2);overflow:hidden;background:${src ? `#000 url('${src}') center/cover` : 'var(--bg)'}">${src ? `<div style="position:absolute;inset:0;background:var(--wash)"></div>` : ''}
       ${previewCards(!!src && a.frost)}</div>
-    <span class="courier meta">${esc(caption)}</span></div>
+    ${caption ? `<span class="courier meta">${esc(caption)}</span>` : ''}</div>
   <span class="cond label">BACKGROUND</span>
   ${seg('bg', [['off', 'OFF'], ['stadium', 'STADIUM'], ['mine', 'MY PHOTO']])}
   ${parkRow}${mineRow}
-  ${a.bg !== 'off' ? `<span class="courier meta" style="line-height:1.5">Games at a ballpark show that park’s own photo. Couch games show yours.</span>` : ''}
   <span class="cond label">THEME</span>
   ${seg('theme', [['dark', 'DARK'], ['light', 'LIGHT'], ['auto', 'AUTO']])}
   <div class="list"><div class="row" style="min-height:52px"><div style="flex-grow:1;padding:6px 0">${info('apFrost', '<span style="font-size:16px;font-weight:500;color:var(--text)">Frosted cards</span>', 'Blurs the stadium photo behind each card (you can see it in the preview above). Only shows when a background photo is on. If the app ever feels sticky, turn this off.', '')}</div>${toggle(a.frost, 'apToggleFrost')}</div></div>
   <span class="cond label">ACCENT COLOR</span>
   <div class="card" style="padding:12px;display:flex;gap:10px;flex-wrap:wrap">${Object.entries(ACCENTS).map(([k, c]) => dot(k, c)).join('')}${teamSwatch}</div>
-  ${teamSwatch ? `<span class="courier meta" style="margin-top:-6px">${TEAM_STYLE[fav][0]} = your favorite team’s color.</span>` : ''}
   <span class="cond label">TEXT</span>
-  <div class="list"><div class="row" style="min-height:52px"><div style="flex-grow:1;padding:6px 0">${info('apBig', '<span style="font-size:16px;font-weight:500;color:var(--text)">Larger text</span>', 'Makes text a little bigger everywhere. Easier to read in the sun.', '')}</div>${toggle(S.settings.big, 'setting', 'big')}</div></div>
+  <div class="list"><div class="row" style="min-height:52px"><div style="flex-grow:1;padding:6px 0">${info('apBig', '<span style="font-size:16px;font-weight:500;color:var(--text)">Larger text</span>', 'This is for you Stu', '')}</div>${toggle(S.settings.big, 'setting', 'big')}</div></div>
 </div>`;
 };
 // Two sample cards inside the preview phone, so frosted vs plain is easy to see
@@ -5418,6 +5755,28 @@ async function shrinkPhoto(file) {
     return out;
   } finally { URL.revokeObjectURL(url); }
 }
+// Profile photo: a square, centered crop, small enough to live on your profile (~10 KB)
+async function shrinkPfp(file) {
+  const url = URL.createObjectURL(file);
+  try {
+    const img = await new Promise((ok, no) => { const i = new Image(); i.onload = () => ok(i); i.onerror = no; i.src = url; });
+    const S2 = 192, c = document.createElement('canvas'); c.width = S2; c.height = S2;
+    const x = c.getContext('2d'), s = Math.max(S2 / img.width, S2 / img.height), iw = img.width * s, ih = img.height * s;
+    x.drawImage(img, (S2 - iw) / 2, (S2 - ih) / 2, iw, ih);
+    let q = 0.8, out = c.toDataURL('image/jpeg', q);
+    while (out.length > 28000 && q > 0.3) { q -= 0.1; out = c.toDataURL('image/jpeg', q); }
+    return out;
+  } finally { URL.revokeObjectURL(url); }
+}
+$app().addEventListener('change', async e => {
+  const i = e.target; if (!i.dataset || !i.dataset.pfp || !i.files || !i.files[0]) return;
+  const uid = S.user && S.user.uid, was = Photos.of(uid);
+  try {
+    const d = await shrinkPfp(i.files[0]); i.value = '';
+    Photos.set(uid, d); buzz(); render();
+    await FCab.savePhoto(d); toast('Photo set');
+  } catch (e2) { Photos.set(uid, was); render(); toast('Couldn’t use that photo — try another', true); }
+});
 $app().addEventListener('change', async e => {
   const i = e.target; if (!i.dataset || !i.dataset.photo || !i.files || !i.files[0]) return;
   try { const d = await shrinkPhoto(i.files[0]); localStorage.setItem(sk('gb_myphoto'), d); ap().bg = 'mine'; saveAp(); buzz(); render(); toast('Photo set'); }
@@ -5433,6 +5792,365 @@ Object.assign(ACT, {
   apClearPhoto: () => { Store.removeItem('gb_myphoto'); render(); toast('Removed — using your stadium pick instead'); },
 });
 applyTheme();
+
+// ════════════ Two-phone play ════════════
+// The host still runs the game (results, undo, menu). A player with an account can JOIN the live game on their own
+// phone and make their own picks. Each pick goes into a shared slot for that round (first to Firebase wins — see
+// the security rules); every phone draws its screen from the shared game. With nobody joined, nothing here changes
+// how a one-phone game works (the host's picks still go into the slots, which is how late picks get refused).
+const Two = {
+  inflight: {}, mine: {}, seen: {},                        // "<round>:<player>": picks this phone is still sending / has put in (an out-of-date copy of the game never takes those away)
+  stopWatch: null, stopLive: null,
+  isAccount: p => !!(p && p.id && !/^g_/.test(p.id) && !p.id.includes(':')),
+  // Could anyone else in this game pick on their own phone?
+  multi: () => !!(S.g && (S.g.remote || S.g.game.players.some(p => p.id !== S.user.uid && Two.isAccount(p)))),
+  me: () => (S.g.remote ? S.g.me : S.g.game.players.findIndex(p => p.id === S.user.uid)),
+  // Can Back on this phone take back player j's pick? Only one made on this phone (yours, a PICK FOR, or a player who isn't on their own phone)
+  mayTakeBack(j) {
+    if (!S.g || !Two.multi()) return true;
+    if (S.g.remote) return +j === S.g.me;
+    const k = Two.key() + ':' + j, slot = ((S.g.game.slots || {})[Two.key()] || {})[j];
+    return !!(Two.mine[k] || (slot && slot.by === S.user.uid));
+  },
+  // Is player j picking on this phone? (a joined phone: only its own player; the host's phone: everyone not on their own phone)
+  onThisPhone: j => (S.g.remote ? +j === S.g.me : !(+j !== Two.me() && Two.joined(+j))),
+  // The picks in a round as Firebase last had them (plus what this phone has sent)
+  slotsFor: key => Object.assign({}, ((Two.lastV || {}).slots || {})[key] || {}, ((S.g.game.slots || {})[key]) || {}),
+  // Back right after a Pick 3 was saved: take it back out and reopen the Pick 3 of the last player picking on this phone,
+  // with their picks filled in to change. Everyone else's Pick 3 stays in (Firebase only lets this land on the real last entry).
+  reopenP3() {
+    const g = S.g, ev = G.lastEvent(); if (!ev || ev.type !== 'pick3' || !FCab) return false;
+    if (FCab.isStale(g.game.id)) { Two.reload(); toast('Catching up with the other phone — try again in a moment', true); return true; }
+    const picks = ev.picks || [], mine = G.order().filter(j => Two.onThisPhone(j));
+    const j = mine.length ? mine[mine.length - 1] : undefined; if (j === undefined) return false;
+    const multi = Two.multi();
+    const sent = FCab.undo(g.game, multi ? { only: j } : {});
+    G.replay();
+    g.pending = { p3: {}, picks: {} };
+    picks.forEach((x, k) => { if (k !== j) g.pending.p3[k] = x || null; });   // everyone else's stays in
+    g.p3sel = picks[j] ? picks[j].slice() : []; g.view = null; g.undone = null; S.g.pendKey = Two.key();
+    if (multi) { delete Two.mine[Two.key() + ':' + j]; delete Two.seen[Two.key() + ':' + j]; }
+    Diag.add('app', '2p reopened ' + g.game.players[j].name + '’s Pick 3');
+    render();
+    sent.catch(e => { if (e && (e.code === 'PERMISSION_DENIED' || e.code === 'STALE')) Two.lost(e, 'undo'); else toast(e.message, true); });
+    return true;
+  },
+  // Which phone shows a player's award popup: the one they pick on
+  awardHere(pid) {
+    if (!S.g) return false;
+    const i = S.g.game.players.findIndex(p => p.id === pid);
+    if (S.g.remote) return i === S.g.me;
+    return !(i !== Two.me() && Two.joined(i));
+  },
+  key: () => 'e' + S.g.game.events.length,
+  joined: i => !!(S.g.game.joined && S.g.game.joined[i]),
+  hostName: () => ((S.g.game.players.find(p => p.id === S.g.game.host) || {}).name || 'The host'),
+  // Should the phone in hand wait for player i to pick on their own phone?
+  elsewhere(i) {
+    if (i === undefined || !S.g) return false;
+    if (S.g.remote) return i !== S.g.me;
+    return i !== Two.me() && Two.joined(i) && S.g.pickFor !== i;
+  },
+  // Lock a pick into the shared slot for this round
+  send(i, val) {
+    if (!Two.multi() || i === undefined) return;
+    const g = S.g.game, key = Two.key(), k = key + ':' + i;
+    Two.inflight[k] = true; Two.mine[k] = val; S.g.pendKey = key;
+    if (!S.g.remote && i !== Two.me() && Two.isAccount(g.players[i])) Diag.add('app', `2p host picking for ${g.players[i].name}: ${S.g.pickFor === i ? 'PICK FOR tapped' : Two.joined(i) ? 'JOINED?!' : 'not joined'}`);
+    Diag.add('app', `2p sent ${key}/${i} ${val.pick || (val.p3 ? 'p3 ' + val.p3.join(',') : 'skip')}`);
+    FCab.setSlot(g, key, i, val).then(() => { delete Two.inflight[k]; })
+      .catch(e => { delete Two.inflight[k]; Two.lost(e, 'pick'); });
+  },
+  unsend(i) {
+    if (!Two.multi() || i === undefined) return;
+    delete Two.mine[Two.key() + ':' + i]; delete Two.seen[Two.key() + ':' + i];
+    FCab.clearSlot(S.g.game, Two.key(), i).catch(e => Two.lost(e));
+  },
+  // Firebase said no (someone else's pick got there first, or the round was already saved): show what really happened
+  // kind: 'pick' (a pick), 'save' (what happened / next half-inning), 'undo', 'auto' (a finished Pick 3 this phone saved by itself)
+  async lost(e, kind) {
+    if (!S.g || !e || (e.code !== 'PERMISSION_DENIED' && e.code !== 'STALE')) return toast(e && e.message ? e.message : 'Couldn’t save — try again', true);
+    const m = String(e.message || '').split('\n')[0];
+    if (m && !/^Skipped/.test(m)) Diag.add('app', '2p refused (' + e.code + (kind ? ', ' + kind : '') + '): ' + m.slice(0, 90));   // (the knock-on refusals just add noise to the Problem log)
+    if (kind && Two.lossKind !== 'save' && Two.lossKind !== 'undo') Two.lossKind = kind;   // the most telling reason wins the message
+    await Two.reload();
+  },
+  nameOf: uid => ((S.g.game.players.find(p => p.id === uid) || {}).name || 'The other phone'),
+  // What to tell the phone that lost a race, once it has the real game
+  lossMessage(kind) {
+    const l = G.lastEvent(), who = l && l.by && l.by !== S.user.uid ? Two.nameOf(l.by) : 'The other phone';
+    if (kind === 'auto') return null;
+    if (kind === 'save') return l && l.type === 'play' ? `${who} already entered ${code(l.outcome)}` : l && l.type === 'nextHalf' ? `${who} already started the next half-inning` : 'The other phone got there first';
+    if (kind === 'undo') return 'That was already undone — here’s the game as it is now';
+    return S.g.remote ? 'Too late — that round was already saved' : 'Another phone got there first — check the picks and try again';
+  },
+  async reload(msg) {
+    if (!S.g) return;
+    if (Two.reloading) { Two.reloadAgain = true; return; }   // one catch-up at a time — and one more after it if another refusal came in meanwhile
+    Two.reloading = true;
+    try { await Two.reloadNow(msg); } finally { Two.reloading = false; if (Two.reloadAgain) { Two.reloadAgain = false; setTimeout(() => Two.reload(), 300); } }
+  },
+  retryReload() { clearTimeout(Two.retryT); Two.retryT = setTimeout(() => { if (S.g && FCab.isStale(S.g.game.id)) Two.reload(); }, 5000); },
+  async reloadNow(msg) {
+    const id = S.g.game.id, startedWith = S.g.game.events.length;
+    Diag.add('app', '2p reloading the real game');
+    let fresh = null; try { fresh = await withTimeout(FCab.loadGame(id), 10000); } catch (e) { Diag.add('app', '2p reload failed: ' + (e && e.message)); Two.retryReload(); return toast('Offline — will catch up when you’re back online', true); }
+    if (!S.g || S.g.game.id !== id) return;
+    if (S.g.game.events.length !== startedWith || FCab.status().pending) { Two.reloadAgain = true; return; }   // saved something while this was loading: that copy is already old
+    if (!fresh) return Two.gone('This game was thrown out');
+    if (S.g.remote && fresh.ended) return Two.finish(fresh);
+    const keep = S.g.game, shownLast = JSON.stringify(G.lastEvent() || null), had = keep.events.length;
+    S.g.game = Object.assign(keep, fresh, { events: fresh.events });
+    FCab.adoptLive(S.g.game);
+    S.g.pending = { p3: {}, picks: {} }; S.g.sel = null; S.g.p3sel = []; S.g.pickFor = null; Two.mine = {}; Two.seen = {};
+    const kind = Two.lossKind; Two.lossKind = null;
+    S.g.res = { outcome: null, runs: 0, extraOuts: 0 }; S.g.undone = null;
+    const l = G.lastEvent();
+    // stay on the outcome screen only if it still shows the real last play; a lost save shows the one that won
+    S.g.view = l && l.type === 'play' && ((S.g.view === 'after' && JSON.stringify(l) === shownLast) || kind === 'save') ? 'after' : null;
+    G.replay(); Two.sync(fresh, true);
+    if (S.g && S.g.game.events.length > had) { const l2 = G.lastEvent(); if (l2 && l2.type === 'play') { S.g.view = 'after'; showAwardsAt(had, S.g.game.events.length - 1); render(); } }   // woke up to plays it missed
+    const m = msg || (S.g && Two.lossMessage(kind)); if (m) toast(m, true);
+  },
+  // A new copy of the game arrived from Firebase
+  sync(v, quiet) {
+    try { Two.syncNow(v, quiet); }
+    catch (e) { Diag.add('error', '2p sync: ' + (e && e.message) + ' ' + String((e && e.stack) || '').split('\n').slice(1, 3).join(' ').replace(/\s+/g, ' ').slice(0, 120)); window.__syncErr = (window.__syncErr || 0) + 1; if (!window.__badEv) window.__badEv = JSON.stringify({ v: v && v.events, mine: S.g && S.g.game.events, setup: S.g && S.g.game.setup }); }
+  },
+  syncNow(v, quiet) {
+    if (!S.g) return;
+    if (!v) { if (S.g.remote) Two.gone(Two.hostName() + ' threw out this game'); return; }
+    if (v.id && v.id !== S.g.game.id) return;
+    if (v.ended) return Two.finish(v);                     // ended on another phone: this one shows the final page too
+    Two.lastV = v;
+    if (!S.g.remote) S.g.game.joined = v.joined || null;
+    // The scorebook: any phone in an online game can write it now, so every phone follows Firebase's copy —
+    // except while this phone still has changes on their way (those land in a moment and come back in the next update)
+    const sv = v.events || [], mine = S.g.game.events, lastId = a => (a.length ? (a[a.length - 1] || {}).id || a.length : 0);
+    if ((sv.length !== mine.length || lastId(sv) !== lastId(mine)) && !FCab.status().pending && !Two.reloading) {
+      const before = mine.length, lastBefore = G.lastEvent();
+      if (S.g.remote) S.g.game = Object.assign(S.g.game, v, { events: sv });
+      else { Object.assign(S.g.game, { events: sv, head: v.head || null, closed: v.closed || null, slots: v.slots || null }); FCab.adoptLive(S.g.game); }
+      G.replay();
+      const now = S.g.game.events.length, l = G.lastEvent();
+      Diag.add('app', `2p scorebook now ${now} entries (was ${before})${l && l.by && l.by !== S.user.uid ? ' — ' + Two.nameOf(l.by) : ''}`);
+      S.g.pending = { p3: {}, picks: {} }; S.g.sel = null; S.g.p3sel = []; S.g.pendKey = Two.key(); S.g.res = { outcome: null, runs: 0, extraOuts: 0 }; S.g.pickFor = null;
+      if (now > before && l && l.type === 'play') { S.g.view = 'after'; S.g.undone = null; if (!quiet) { Sound.play(Two.rightFor(l) ? 'right' : 'miss'); showAwardsAt(before, now - 1); } }   // everyone sees how the play went (and their own awards)
+      else if (S.g.view === 'after' && !(l && l.type === 'play')) S.g.view = null;                                     // undone, or the half changed
+      if (now < before && lastBefore && v.head && v.head.by && v.head.by !== S.user.uid && !quiet) toast(`${Two.nameOf(v.head.by)} undid ${lastBefore.type === 'play' ? 'the last at-bat' : lastBefore.type === 'pick3' ? 'Pick 3' : lastBefore.type === 'nextHalf' ? 'the half-inning change' : 'the last change'}`);
+      if (now < before && lastBefore && lastBefore.type === 'play') { S.g.view = null; }
+    } else if (S.g.remote) S.g.game = Object.assign(S.g.game, v, { events: S.g.game.events });
+    if (S.g.remote && S.g.pendKey && S.g.pendKey !== Two.key()) { S.g.pending = { p3: {}, picks: {} }; S.g.sel = null; S.g.p3sel = []; S.g.pendKey = Two.key(); }   // last round's picks never carry over
+    const s = S.g.s; if (!s || s.ended) return render();
+    const key = Two.key(), cur = (v.slots || {})[key] || {};
+    const sig = `2p update: my round ${key}, server has ${(v.events || []).length} entries, slots ${Object.entries(cur).filter(([, x]) => x).map(([i, x]) => i + ':' + (x.pick || (x.skip ? 'skip' : 'p3'))).join(' ') || 'none'}${v.joined ? ', joined ' + Object.keys(v.joined).filter(i => v.joined[i]).join(',') : ''}`;
+    if (sig !== Two.lastSig) { Two.lastSig = sig; Diag.add('app', sig); }
+    const settled = !FCab.status().pending;          // don't take away picks this phone hasn't finished sending
+    const wasP3 = s.needsPick3 ? G.p3Next() : null;
+    // A pick this phone put in stays until Firebase has confirmed it at least once (so an out-of-date copy can't take it away);
+    // after that, if it's gone, someone really took it back (e.g. the host undid Pick 3)
+    Object.keys(cur).forEach(i => { if (cur[i] && Two.mine[key + ':' + i]) Two.seen[key + ':' + i] = true; });
+    const own = i => Two.inflight[key + ':' + i] || (Two.mine[key + ':' + i] && !Two.seen[key + ':' + i]);
+    if (s.needsPick3) {
+      const n = S.g.game.players.length, ok = i => /^\d+$/.test(i) && +i < n;   // only real player numbers
+      const got = {}; Object.entries(cur).forEach(([i, x]) => { if (x && ok(i)) got[i] = x.skip ? null : (x.p3 ? Object.values(x.p3) : null); });
+      if (settled) Object.keys(S.g.pending.p3).forEach(i => { if (!(i in got) && !own(i)) delete S.g.pending.p3[i]; });
+      Object.assign(S.g.pending.p3, got);
+    } else {
+      const n = S.g.game.players.length, ok = i => /^\d+$/.test(i) && +i < n;
+      const got = {}; Object.entries(cur).forEach(([i, x]) => { if (x && x.pick && ok(i)) got[i] = { pick: x.pick, conf: !!x.conf }; });
+      // A pick made here that Firebase had — and now doesn't: someone cleared it (a changed Pick 3 took it). Pick again.
+      if (settled) Object.keys(Two.seen).forEach(k => { const [kk, i] = k.split(':'); if (kk !== key || got[i] || Two.inflight[k]) return;
+        const was = (S.g.pending.picks[i] || Two.mine[k] || {}).pick, lk = Umpire.lockedPicks(s), by = Object.keys(lk).find(o => lk[o] && lk[o].pick === was);
+        delete Two.seen[k]; delete Two.mine[k];
+        Diag.add('app', `2p ${S.g.game.players[i].name}’s pick was cleared by the other phone`);
+        toast(was && by !== undefined ? `${S.g.game.players[by].name} took ${code(was)} in their Pick 3 — pick again` : 'Your pick was cleared — pick again', true); });
+      if (settled) Object.keys(S.g.pending.picks).forEach(i => { if (!got[i] && !own(i)) delete S.g.pending.picks[i]; });
+      Object.assign(S.g.pending.picks, got);
+    }
+    const pf = S.g.pickFor;
+    if (pf != null && (s.needsPick3 ? pf in S.g.pending.p3 : S.g.pending.picks[pf])) S.g.pickFor = null;
+    // Host: the last Pick 3 just arrived from another phone → save the round
+    if (!S.g.remote && s.needsPick3 && wasP3 !== undefined && G.p3Next() === undefined) { afterP3Choice(); return; }
+    render();
+  },
+  // The host's phone is about to ask you to pick for another player with an account. Their phone may have joined a
+  // moment ago and the live update hasn't arrived yet (iPhones can lag after waking up) — so check the real game once.
+  checkTurn(i) {
+    if (S.g && !S.g.remote && FCab && !Two.stopWatch && Two.multi()) Two.watch();   // always listening in a two-phone game
+    if (i === undefined || !S.g || S.g.remote || !FCab || i === Two.me() || S.g.pickFor === i) return;
+    const p = S.g.game.players[i]; if (!Two.isAccount(p)) return;
+    const k = S.g.game.id + ':' + Two.key() + ':' + i; if (Two.checked === k) return; Two.checked = k;
+    withTimeout(FCab.peekGame(S.g.game.id), 6000).then(v => {
+      if (!v || !S.g || S.g.game.id !== v.id) return;
+      Diag.add('app', `2p check before picking for ${p.name}: joined ${!!(v.joined && v.joined[i])}`);
+      Two.sync(v, true);
+    }).catch(() => {});
+  },
+  rightFor(ev) { const i = Two.me(); return ev.picks && ev.picks[i] && ev.picks[i].pick === ev.outcome; },
+  watch() {
+    Two.stop();
+    if (!S.g || !FCab || !S.user || !Two.multi()) return;   // (the app can open a saved live game before Firebase is ready — afterSignIn starts it then)
+    const id = S.g.game.id;
+    if (Two.mineFor !== id) { Two.mine = {}; Two.seen = {}; Two.mineFor = id; }   // (round names start over in every game)
+    // Firebase hands news over instantly — even in the middle of this phone saving its own pick, or inside this very call.
+    // So news is handled a moment later, once whatever the phone was doing has finished (only the latest copy counts).
+    let latest, due = false;
+    Two.stopWatch = () => {};                        // (watching already — news arriving during the call below mustn't start a second watch)
+    const stop = FCab.watchGame(id, v => { latest = v; if (due) return; due = true;
+      setTimeout(() => { due = false; if (S.g && S.g.game.id === id && Two.stopWatch === stopper) Two.sync(latest); }, 0); });
+    const stopper = () => stop();
+    Two.stopWatch = stopper;
+  },
+  stop() { if (Two.stopWatch) { Two.stopWatch(); Two.stopWatch = null; } },
+  // The host ended the game: this phone gets the same final page (and share card)
+  finish(v) {
+    Two.stop(); if (!S.g) return;
+    FCab.forgetLive(S.g.game);                             // (the host's phone: clears everyone's live-game marker)
+    const hist = S.g.history || [];
+    const done = { ...S.g.game, ...v, events: v.events || S.g.game.events, ended: true };
+    S.invite = null; Awake.off(); Popup.clear(); S.sheet = null;
+    Diag.add('app', '2p the game ended — final page');
+    showFinal(done, hist);
+  },
+  gone(msg) {
+    Two.stop(); const was = S.g && S.g.remote; if (!was) return;
+    S.g = null; S.invite = null; Awake.off(); Popup.clear();
+    if (S.screen === 'game') { S.stack = []; go('home', {}, false); }
+    toast(msg); loadHome(); Two.checkInvite();
+  },
+  // Someone started a game you're in (heard live, the moment they tap PLAY BALL)
+  async checkInvite() {
+    if (!FCab || !S.user || (S.g && !S.g.remote)) return;
+    try { S.invite = await withTimeout(FCab.myInvite(), 8000); } catch (e) { return; }
+    render();
+  },
+  listen() { if (Two.stopLive) Two.stopLive(); Two.stopLive = FCab.watchLive(() => Two.checkInvite()); },
+};
+
+// Backstop: while a screen is waiting on the other phone, re-check Firebase every few seconds. If the live connection went
+// quiet (iPhones can drop it in the background), the game still moves on — and the Problem log says the backstop was needed.
+setInterval(() => {
+  if (!S.g || !FCab || document.visibilityState !== 'visible' || !Two.multi()) return;
+  if (FCab.isStale(S.g.game.id) && !Two.reloading) { Diag.add('app', '2p backstop: this phone’s copy was out of date — reloading'); return Two.reload(); }
+  if (S.screen !== 'game') return;
+  let v; try { v = G.view(); } catch (e) { return; }
+  if (v !== 'wait' && !(S.g.remote && v === 'after')) return;
+  const id = S.g.game.id, before = Two.lastSig;
+  FCab.peekGame(id).then(g => {
+    if (!g || !S.g || S.g.game.id !== id) return;
+    Two.sync(g);
+    if (Two.lastSig !== before) Diag.add('app', '2p backstop caught an update the live connection missed');
+  }).catch(() => {});
+}, 4000);
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && S.g && FCab) { Two.watch(); if (S.g.remote) Two.reload(); } });
+
+// ── Home: "Zach started a game — JOIN" ──
+function inviteCard() {
+  const inv = S.invite; if (!inv || (S.g && !S.g.remote)) return '';
+  if (S.g && S.g.remote) return '';                // already in it: the LIVE card / bar takes you back
+  const back = inv.game.joined && inv.game.joined[inv.me];
+  return `<div class="card" style="border-radius:22px;padding:14px 18px 16px;display:flex;flex-direction:column;gap:8px;border:1.5px solid rgba(255,90,80,.45)">
+    <div style="display:flex;align-items:center;gap:7px"><span class="live" style="width:8px;height:8px;border-radius:4px;background:var(--live)"></span>
+      <span class="cond" style="font-size:16px;font-weight:800;letter-spacing:.8px;color:var(--livetext)">${esc(inv.hostName.toUpperCase())} STARTED A GAME</span></div>
+    <span style="font-size:15px;line-height:1.4;color:var(--text2)">${back ? 'You’re picking in this game on this phone.' : 'You’re in it. Make your own picks from this phone — or ' + esc(inv.hostName) + ' can pick for you.'}</span>
+    <button class="press cond big-btn" style="margin-top:4px;height:50px;font-size:21px" ${act('joinGame')}>${back ? 'BACK TO THE GAME' : 'JOIN GAME'}</button></div>`;
+}
+
+// ── The "waiting" screen: someone else is picking, or the host is saving ──
+SCREENS.wait = () => {
+  const s = S.g.s, g = S.g.game, rem = !!S.g.remote;
+  const n = s.needsPick3 ? G.p3Next() : G.pickNext();
+  const nm = i => esc((g.players[i] || {}).name || '?'), NM = i => nm(i).toUpperCase();   // never trips over a bad player number
+  const host = esc(Two.hostName()), HOST = host.toUpperCase();
+  const me = Two.me();
+  const myP3 = S.g.pending.p3[me], myPick = S.g.pending.picks[me];
+  const mine = s.needsPick3 ? (me in S.g.pending.p3 ? (myP3 ? 'Your Pick 3: ' + myP3.map(code).join(' · ') : 'You skipped Pick 3') : '')
+    : (myPick ? 'Your pick: ' + code(myPick.pick) + (myPick.conf ? ' · confident' : '') : '');
+  const taken = Object.entries(S.g.pending.picks).map(([j, v]) => `${code(v.pick)} (${nm(j)})`).join(', ');
+  let title, label, head, text, btns = '';
+  if (n === undefined) {
+    title = s.needsPick3 ? 'PICK 3 IS IN' : 'PICKS ARE IN'; label = 'LIVE';
+    head = 'SAVING…';
+    text = (mine ? mine + '. ' : '') + 'Your screen updates the moment it’s saved.';
+  } else if (s.needsPick3 && Two.lastV && Two.lastV.head && Two.lastV.head.undid && Two.lastV.head.by === (g.players[n] || {}).id) {
+    title = `${NM(n)} IS CHANGING THEIR PICK 3`; label = 'PICK 3'; head = `WAITING ON ${NM(n)}`;
+    text = (mine ? mine + '. ' : '') + 'Your Pick 3 stays in. Pick 3 saves again the moment they lock it.';
+  } else if (rem) {
+    title = `${NM(n)} IS PICKING…`; label = n === s.priority ? 'PRIORITY PICKS FIRST' : 'WAITING';
+    head = `WAITING ON ${NM(n)}`; text = (mine ? mine + '. ' : '') + (n === s.priority ? `${nm(n)} has priority, so they pick first.` : 'Your turn comes after.');
+  } else {
+    title = `${NM(n)} IS PICKING…`; label = `ON ${NM(n)}’S PHONE`; head = `WAITING ON ${NM(n)}`;
+    text = `${nm(n)} is picking on their own phone.` + (taken ? ' Taken so far: ' + taken + '.' : '');
+    btns = `<button class="press cond mid-btn" style="margin-top:4px;height:46px;font-size:17px" ${act('pickFor', n)}>PICK FOR ${NM(n)}</button>`;
+  }
+  if (rem && (s.needsPick3 ? me in S.g.pending.p3 : myPick)) btns += `<button class="press cond mid-btn" style="margin-top:4px;height:42px;font-size:16px" ${act('changeMyPick')}>CHANGE MY PICK</button>`;
+  const lastPlay = [...g.events].reverse().find(e => e.type === 'play');
+  return `<div class="fixedpage" style="gap:12px">
+  ${gameTop(backBtn('gBack'), halfName(s) + (s.needsPick3 ? ' · PICK 3' : ''))}
+  ${rem ? `<div style="align-self:center;display:flex;align-items:center;gap:7px;padding:5px 12px;border-radius:14px;background:var(--card);font-size:13px;font-weight:700;color:var(--text2)"><span style="width:7px;height:7px;border-radius:4px;background:var(--green)"></span>${host}’s game · you’re in</div>` : ''}
+  ${scoreCard()}
+  ${lastPlay ? `<span class="courier onphoto" style="font-size:13px;font-weight:700;color:var(--text2)">Last play: ${code(lastPlay.outcome)}${lastPlay.runs ? ' · ' + lastPlay.runs + ' run' + (lastPlay.runs > 1 ? 's' : '') : ''}</span>` : ''}
+  <h1 class="cond onphoto" style="margin:-2px 0 0;font-size:36px;font-weight:800;line-height:1">${title}</h1>
+  <div class="card" style="flex-shrink:0;border-radius:18px;padding:14px 16px;display:flex;flex-direction:column;gap:6px;border:1.5px solid rgba(122,171,255,.5)">
+    <span class="cond" style="font-size:13px;font-weight:800;letter-spacing:.9px;color:var(--link)">${label}</span>
+    <span class="cond" style="font-size:26px;font-weight:800;line-height:1.05">${head}</span>
+    <span style="font-size:14px;line-height:1.4;color:var(--text2)">${text}</span>${btns}</div>
+  <div class="grow"></div>
+</div>`;
+};
+
+Object.assign(ACT, {
+  joinGame: async () => {
+    const inv = S.invite; if (!inv) return;
+    if (S.g && !S.g.remote) return toast('You have your own live game going');
+    try { await FCab.setJoined(inv.game, inv.me, true); } catch (e) { S.invite = null; render(); return toast('That game has ended', true); }
+    let g = inv.game; try { g = (await withTimeout(FCab.loadGame(inv.game.id), 8000)) || g; } catch (e) { /* use what we have */ }
+    S.g = { game: g, remote: true, me: inv.me, s: null, pending: { p3: {}, picks: {} }, sel: null, p3sel: [], res: { outcome: null, runs: 0, extraOuts: 0 }, view: null, history: null, popup: null };
+    G.replay(); Two.sync(g, true); Two.watch();
+    S.stack = []; S.screen = 'game'; render(); Awake.on();
+    loadGameHistory();                                   // (for award popups on this phone)
+    Diag.add('app', 'joined ' + inv.hostName + '’s game');
+  },
+  twoLeave: () => ACT.gLeave('home'),
+  twoNext: () => { S.g.view = null; Popup.clear(); render(); },   // a joined player moves on at their own pace                 // the game keeps going; RETURN on Home / the LIVE bar brings you back
+  stopPicking: async () => {
+    const g = S.g; if (!g || !g.remote) return;
+    S.sheet = null;
+    try { await FCab.setJoined(g.game, g.me, false); } catch (e) { /* the game may have ended */ }
+    Two.gone(Two.hostName() + ' will pick for you from here');
+  },
+  pickFor: i => { S.g.pickFor = +i; buzz(); render(); },
+  changeMyPick: () => {
+    const g = S.g, me = g.me, s = g.s;
+    if (s.needsPick3) { delete g.pending.p3[me]; g.p3sel = []; } else { g.sel = g.pending.picks[me] || null; delete g.pending.picks[me]; }
+    Two.unsend(me); render();
+  },
+});
+
+// ── Hooks into the one-phone game (so every pick also lands in the shared slot) ──
+(() => {
+  const wrap = (name, f) => { const orig = ACT[name]; ACT[name] = function (...a) { return f(orig, ...a); }; };
+  const settle = () => { S.g.sel = null; S.g.p3sel = []; S.g.pickFor = null; render(); toast('Their pick just came in from their phone'); };
+  wrap('p3Lock', orig => { const i = G.p3Next(); if ((S.g.p3sel || []).filter(Boolean).length < 3) return render(); if (i === undefined || (Two.elsewhere(i) && S.g.pickFor !== i) || (S.g.shownP3 != null && S.g.shownP3 !== i)) return settle();
+    const picks = (S.g.p3sel || []).slice(0, 3); Two.send(i, { p3: picks }); S.g.pickFor = null; return orig(); });
+  wrap('p3Skip', orig => { const i = G.p3Next(); if (i === undefined || (S.g.shownP3 != null && S.g.shownP3 !== i)) return settle(); Two.send(i, { skip: true }); S.g.pickFor = null; return orig(); });
+  wrap('pickLock', orig => { const i = G.pickNext(), sel = S.g.sel; if (i === undefined || !sel) return settle();
+    if (S.g.shownFor != null && S.g.shownFor !== i) { S.g.sel = null; render(); return toast('Their pick just came in — now it’s ' + S.g.game.players[i].name + '’s turn'); }
+    Two.send(i, { pick: sel.pick, conf: !!sel.conf }); S.g.pickFor = null; return orig(); });
+  wrap('gBack', orig => {
+    if (S.g && S.g.pickFor != null) { S.g.pickFor = null; return render(); }   // "Pick for her" → back to waiting
+    const before = { ...S.g.pending.p3 }, beforeP = { ...S.g.pending.picks }, key = Two.key();
+    const r = orig();
+    if (S.g && Two.key() === key) {                                 // (Back that stepped into an earlier entry handled its own slots)
+      Object.keys(before).forEach(i => { if (!(i in S.g.pending.p3)) Two.unsend(+i); });
+      Object.keys(beforeP).forEach(i => { if (!S.g.pending.picks[i]) Two.unsend(+i); });
+    }
+    return r;
+  });
+  wrap('resume', orig => { const r = orig(); Two.watch(); return r; });
+  wrap('startGame', async orig => { const r = await orig(); if (S.g && !S.g.remote) Two.watch(); return r; });
+})();
 
 // ════════════ Tips for first-timers ════════════
 // Every tip shows once per account, the first time that moment comes up (on the phone running the game).
@@ -5461,6 +6179,7 @@ const Tips = {
   isNew() { const a = S.account; return !!a && (!a.createdAt || a.createdAt >= TIPS_SINCE); },
   seenMap() { const a = S.account || {}; return Object.assign({}, a.tips || {}, (S.user && Store.json('gb_tips_' + S.user.uid, {})) || {}); },
   want(id) {
+    if (S.g && S.g.remote && ['after', 'newGame'].includes(id)) return false;   // host-only tips
     if (window.__noTips || !S.user || !S.account || !TIP[id.split(':')[0]]) return false;   // __noTips: the automated tests
     if (S.settings.tipsAgain) { this.replay = this.replay || Store.json('gb_tipreplay', {}); return !this.replay[id]; }
     return this.isNew() && !this.seenMap()[id];
@@ -5562,25 +6281,51 @@ ACT.tipsAgain = () => {
 // Photo runs up behind the clock (see-through status bar). Some iPhones then report the home-screen app's
 // window 47pt too short (e.g. 797 instead of 844), which cut off the tab bar in build 2 — so size the app
 // from the real screen height when that happens.
+// Some iPhones report a home-screen app's window shorter than the real screen (the tab bar then floats up with a black
+// band below it). The fix doesn't guess per phone model: as a home-screen app, upright, with no keyboard open, the app
+// always fills the whole screen. (With the keyboard open it keeps its last size, so sheets still lift above the keys.)
+const safeTop = () => { const p = document.createElement('div'); p.style.cssText = 'position:fixed;visibility:hidden;padding-top:env(safe-area-inset-top)';
+  document.body.appendChild(p); const t = parseFloat(getComputedStyle(p).paddingTop) || 0; p.remove(); return t; };
+const typing = () => { const el = document.activeElement; return !!(el && (/^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName) || el.isContentEditable)) || !!(window.visualViewport && innerHeight - visualViewport.height > 120); };
+let lastShort = 0, fill = false;
+// Build 14: iOS can shrink the window a moment AFTER the app opens, without telling the app (seen in live logs on
+// Zach's and Hailey's iPhones: fix 0 while the window was 47/62pt short). So an iPhone home-screen app held upright
+// ALWAYS fills the real screen — no measuring needed — and everything is re-checked a few times after opening.
 const shortBy = () => {
-  const portrait = innerHeight > innerWidth, standalone = navigator.standalone === true || (window.matchMedia && matchMedia('(display-mode: standalone)').matches);
-  const probe = document.createElement('div'); probe.style.cssText = 'position:fixed;visibility:hidden;padding-top:env(safe-area-inset-top)';
-  document.body.appendChild(probe); const top = parseFloat(getComputedStyle(probe).paddingTop) || 0; probe.remove();   // app drawn under the clock?
+  if (typing()) return lastShort;                                    // keyboard up: leave the size alone
+  const portrait = innerHeight > innerWidth, iosApp = navigator.standalone === true,
+    standalone = iosApp || (window.matchMedia && matchMedia('(display-mode: standalone)').matches);
+  fill = iosApp && portrait;
   const d = screen.height - innerHeight;
-  // Only a gap the size of the status bar (never a keyboard). It differs by phone: 47pt on older notched iPhones,
-  // 59pt on 14/15 Pro, 62pt on the iPhone 16 Pro (the old 60pt limit missed it, so Hailey's tab bar floated up).
-  return standalone && portrait && top > 0 && d > 0 && d <= Math.max(60, top + 4) ? d : 0;
+  lastShort = standalone && portrait && d > 0 && d < screen.height * 0.25 ? d : 0;   // (a quarter of the screen or more would be a keyboard)
+  return lastShort;
 };
 function sizeApp() {
   const miss = shortBy();
-  document.documentElement.style.setProperty('--apph', miss ? screen.height + 'px' : '100%');
+  document.documentElement.style.setProperty('--apph', (fill || miss) ? screen.height + 'px' : '100%');
+  if (!typing() && (window.scrollY || window.scrollX)) window.scrollTo(0, 0);   // iOS can leave the whole page nudged up: put it back
+  logLayout();
 }
-sizeApp(); addEventListener('resize', sizeApp); addEventListener('orientationchange', () => setTimeout(sizeApp, 300));
+const recheck = () => [0, 300, 1000, 2500].forEach(t => setTimeout(sizeApp, t));
+let seenWin = innerWidth + 'x' + innerHeight;
+setInterval(() => { const w = innerWidth + 'x' + innerHeight; if (w !== seenWin) { seenWin = w; sizeApp(); } }, 1500);   // a quiet size change: catch it
+// For the Problem log (and live logs in Guess Ball Next): what size the phone says it is, and what the app did about it
+function logLayout() {
+  clearTimeout(logLayout.t); logLayout.t = setTimeout(() => {
+    const v = window.visualViewport, app = document.getElementById('app');
+    const line = `layout: screen ${screen.width}×${screen.height}, window ${innerWidth}×${innerHeight}${v ? ', visible ' + Math.round(v.height) : ''}, top ${safeTop()}, ios app ${navigator.standalone === true ? 'yes' : 'no'}, fill ${fill ? 'yes' : 'no'}, app ${app ? app.offsetHeight : '?'}, scrolled ${Math.round(window.scrollY)}`;
+    if (line !== logLayout.last && typeof Diag !== 'undefined') { logLayout.last = line; Diag.add('app', line); }
+  }, 600);
+}
+sizeApp(); recheck(); addEventListener('resize', sizeApp); addEventListener('orientationchange', () => setTimeout(sizeApp, 300));
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') recheck(); });
+document.addEventListener('focusout', () => setTimeout(sizeApp, 350));   // keyboard closed
 // When the keyboard opens, lift sheets so their lists stay above it
 if (window.visualViewport) {
   const kb = () => {
     const v = visualViewport, open = innerHeight - v.height - v.offsetTop;
-    const gap = Math.max(0, open > 100 ? open + shortBy() : open);
+    const appEl = document.getElementById('app'), extra = Math.max(0, (appEl ? appEl.offsetHeight : innerHeight) - innerHeight);   // app taller than the window: lift by that too
+    const gap = Math.max(0, open > 100 ? open + extra : open);
     document.documentElement.style.setProperty('--kb', gap + 'px');
     document.documentElement.style.setProperty('--vh', v.height + 'px');
   };
