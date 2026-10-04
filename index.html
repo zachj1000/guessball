@@ -1959,7 +1959,7 @@ const FilingCabinet = (() => {
 // ════════════════════════════════════════════════════════════════
 // Which copy of the app this is: the real app, or Guess Ball Next (QA, with its own test data)
 const ENV = {"name":"live","data":"v2","store":"gb_"};
-const VERSION = ENV.name === 'qa' ? '2.0 · QA build 18 · 10-04 04:43 UTC' : '2.0';
+const VERSION = ENV.name === 'qa' ? '2.0 · QA build 19 · 10-04 05:02 UTC' : '2.0';
 const RULES_JSON = {
   "rules": {
     "v2": {
@@ -2323,7 +2323,10 @@ const LOADING_LINES = ['Mowing the outfield...', 'Chalking the foul lines...', '
   'Rubbing up the baseballs...', 'Shagging fly balls...', 'Heckling the visiting bullpen...', 'Pulling the tarp...',
   'Loading the T-shirt cannon...', 'Tracing the diamond...', 'Blaming the sun...', 'Tuning the stadium organ...',
   'Spitting sunflower seeds...', 'Starting the wave...', 'Racing the mascots...', 'Bribing the official scorer...',
-  'Calling for the cutoff man...', 'Doing the Jah...', 'Glazing Shohei Ohtani...'];
+  'Calling for the cutoff man...', 'Doing the Jah...', 'Glazing Shohei Ohtani...',
+  'Grilling the Dodger Dogs...', 'Leaving in the 7th to beat traffic...', 'Pouring one out for Vin...', 'Practicing the Kershaw curveball...',
+  'Asking Freddie for a hug...', 'Stealing signs (allegedly)...', 'Paying $40 to park...', "Channeling Gibby's limp...",
+  "Copying Mookie's batting stance...", 'Pretending to understand the WAR stat...', "Rooting for whoever's playing the Giants..."];
 
 // ── Phone storage (never crashes if Safari blocks it). QA keeps its own keys so it never touches the real app's. ──
 const sk = k => (k.startsWith('gb_') ? ENV.store + k.slice(3) : k);
@@ -2451,7 +2454,7 @@ const SCREENS = {};
 
 SCREENS.loading = () => `<div class="fixedpage" style="align-items:center;justify-content:center;gap:26px">
   <div data-brand style="display:flex;flex-direction:column;align-items:center"><span class="script" style="font-size:64px;line-height:1.05;color:var(--cream)">Guess Ball</span>${ICON.swoosh(300)}</div>
-  <span class="courier fade splash-line" style="font-size:15px;font-weight:700;color:var(--text2)">${esc(S.loadingLine.replace(/\.+$/, ''))}<span class="dots"><i>.</i><i>.</i><i>.</i></span></span></div>`;
+  <span class="courier fade splash-line" style="font-size:min(15px, calc((min(100vw, 520px) - 48px) / ${(S.loadingLine.replace(/\.+$/, '').length + 3) * 0.6}));white-space:nowrap;font-weight:700;color:var(--text2)">${esc(S.loadingLine.replace(/\.+$/, ''))}<span class="dots"><i>.</i><i>.</i><i>.</i></span></span></div>`;
 
 SCREENS.signin = () => `<div class="fixedpage" style="align-items:center;padding-left:24px;padding-right:24px">
   <div class="grow"></div>
@@ -2590,7 +2593,8 @@ SCREENS.home = () => {
     <div style="display:flex;align-items:baseline;justify-content:space-between;margin-top:8px"><h2 class="cond h2">STANDINGS</h2><a class="cond" ${act('tab', 'stats')} style="font-size:16px;font-weight:800;letter-spacing:.6px">SEE ALL ›</a></div>
     <div class="card" style="padding:0 16px">${h.rows.slice(0, 3).map((r, i) => `<div style="display:flex;align-items:center;gap:12px;height:46px;${i ? 'border-top:1px solid var(--line)' : ''}">
       <span class="shoulders num" style="width:16px;font-size:20px;font-weight:800;color:var(--text3)">${i + 1}</span>
-      <span style="flex-grow:1;font-size:17px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(r.name)}</span>
+      ${avatar(r.id, r.name, 30)}
+      <span style="flex-grow:1;margin-left:-2px;font-size:17px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(r.name)}</span>
       <span class="shoulders num" style="font-size:21px;font-weight:800;color:var(--text2)">${r.w}–${r.l}${r.t ? '–' + r.t : ''}</span>
       <span class="shoulders num" style="width:50px;text-align:right;font-size:21px;font-weight:900">${pct3(r.winPct)}</span></div>`).join('')}</div>
     <h2 class="cond h2" style="margin-top:8px">RECENT</h2>
@@ -4409,17 +4413,18 @@ function statsStandings(games) {
   const yr = S.statSeason || 'ALL TIME';
   const rows = Statistician.standings(games, yr === 'ALL TIME' ? {} : { season: +yr });
   const ties = rows.some(r => r.t);
-  const cols = ties ? '24px 1fr 34px 34px 34px 18px' : '24px 1fr 40px 40px 18px';
+  const cols = ties ? '24px 40px 1fr 34px 34px 34px 18px' : '24px 40px 1fr 40px 40px 18px';
   return `<div style="display:flex;align-items:center;justify-content:space-between">
     <button class="press cond" ${act('openSheet', 'season')} style="height:36px;padding:0 14px;border-radius:18px;background:var(--card);font-size:19px;font-weight:800;letter-spacing:.6px;display:flex;align-items:center;gap:6px">${esc(yr)} ${ICON.down}</button>
     </div>
   <div class="card" style="padding:0 14px">
-    <div class="cond" style="display:grid;grid-template-columns:${cols};height:32px;align-items:center;font-size:13px;font-weight:800;letter-spacing:.8px;color:var(--text3);border-bottom:1px solid var(--line)"><span></span><span>PLAYER</span><span style="text-align:center">W</span><span style="text-align:center">L</span>${ties ? '<span style="text-align:center">T</span>' : ''}<span></span></div>
+    <div class="cond" style="display:grid;grid-template-columns:${cols};height:32px;align-items:center;font-size:13px;font-weight:800;letter-spacing:.8px;color:var(--text3);border-bottom:1px solid var(--line)"><span></span><span style="grid-column:span 2">PLAYER</span><span style="text-align:center">W</span><span style="text-align:center">L</span>${ties ? '<span style="text-align:center">T</span>' : ''}<span></span></div>
     ${rows.map((r, i) => {
       const open = S.statOpen === r.id;
       return `<button class="press" ${act('standOpen', r.id)} style="width:100%;display:block;text-align:left;${i ? 'border-top:1px solid var(--line)' : ''}">
         <div style="display:grid;grid-template-columns:${cols};height:46px;align-items:center">
           <span class="shoulders" style="font-size:18px;font-weight:800;color:var(--text3)">${i + 1}</span>
+          ${avatar(r.id, r.name, 30)}
           <span style="font-size:17px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(r.name)}</span>
           <span class="shoulders num" style="text-align:center;font-size:22px;font-weight:900">${r.w}</span>
           <span class="shoulders num" style="text-align:center;font-size:22px;font-weight:800;color:var(--text2)">${r.l}</span>
