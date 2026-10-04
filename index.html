@@ -956,6 +956,26 @@ const Statistician = (() => {
     A('opening_day', 'Opening Day', 'CALENDAR', 'Play in the first week of the season', { scope: 'all' }),
     A('doubleheader', 'Doubleheader', 'CALENDAR', 'Play two games in one day', { scope: 'all' }),
     A('iron_man', 'Iron Man', 'CALENDAR', 'Play games 3 days in a row', { scope: 'all' }),
+
+    // ── Build 20 (2026-10): 18 new awards. None count old games — app games only, from the 2.0 launch on. ──
+    A('welcome_show', 'Welcome to the Show', 'WINS & GAMES', 'Play your first game'),
+    A('rookie_mistake', 'Rookie Mistake', 'WINS & GAMES', 'Lose your first game'),
+    A('full_house', 'Full House', 'WINS & GAMES', 'Play a 3-player game'),
+    A('long_distance', 'Long Distance', 'WINS & GAMES', 'Win an online game'),
+    A('phone_tag', 'Phone Tag', 'WINS & GAMES', 'Play online games', T([5, 10, 25])),
+    A('spoiler', 'Spoiler', 'RIVALRIES', 'Snap someone’s win streak of 3+'),
+    A('creature_habit', 'Creature of Habit', 'STREAKS & ACCURACY', 'Pick the same outcome 5 at-bats in a row'),
+    A('chaos_theory', 'Chaos Theory', 'BIG PLAYS', 'Call 3 different rare plays in one game (3B, HBP, BU, SB, DP)'),
+    A('couch_potato', 'Couch Potato', 'TRAVEL', 'Play couch games', T([5, 10, 25, 50])),
+    A('double_dip', 'Double Dip', 'THE REAL GAME', 'Your favorite team wins and you win'),
+    A('silver_lining', 'Silver Lining', 'THE REAL GAME', 'Your favorite team loses, you still win'),
+    A('slugfest', 'Slugfest', 'THE REAL GAME', 'The real game has 5+ home runs'),
+    A('barn_burner', 'Barn Burner', 'THE REAL GAME', 'The real game has 12+ total runs'),
+    A('pitchers_duel', 'Pitchers’ Duel', 'THE REAL GAME', 'The real game ends with 3 or fewer total runs'),
+    A('no_no', 'No-No', 'THE REAL GAME', 'A team gets no hits all game (logged from the 1st inning)'),
+    A('perfecto', 'Perfecto', 'THE REAL GAME', 'A team never reaches base (logged from the 1st inning)'),
+    A('blanked', 'Blanked', 'THE REAL GAME', 'A team scores 0 in the real game'),
+    A('marathon', 'Marathon', 'THE REAL GAME', 'The real game goes 12+ innings'),
   ];
   const AWARD = Object.fromEntries(AWARDS.map(a => [a.id, a]));
 
@@ -970,6 +990,7 @@ const Statistician = (() => {
     const P = id => book[id] || (book[id] = {
       earned: {}, counts: {}, games: 0, wins: 0, points: 0, parks: {}, seasons: new Set(),
       vs: {}, lastLossTo: null, confRun: 0, p3Run: 0, confUsed: false, dates: {}, seasonGames: {},
+      appGames: 0, onlineGames: 0, couchGames: 0, appWinRun: 0,
     });
     const give = (pid, g, id, tier = 1, at = null) => {
       const e = P(pid).earned[id] || (P(pid).earned[id] = []);
@@ -1050,9 +1071,47 @@ const Statistician = (() => {
         p.p3Run = hit ? p.p3Run + 1 : 0;
         if (p.p3Run >= 3) give(pl.id, g, 'clairvoyant');
       });
+
+      // Build 20 awards (app games only)
+      if (inGame) {
+        const online = !!(g.joined && Object.values(g.joined).some(Boolean));
+        const runsBefore = g.players.map(pl => P(pl.id).appWinRun);
+        const real = realGame(g, r);
+        g.players.forEach((pl, i) => {
+          const p = P(pl.id), o = outcomeFor(g, i);
+          p.appGames++;
+          if (p.appGames === 1) { give(pl.id, g, 'welcome_show'); if (o === 'L') give(pl.id, g, 'rookie_mistake'); }
+          if (g.players.length === 3) give(pl.id, g, 'full_house');
+          if (online) { p.onlineGames++; count(pl.id, g, 'phone_tag', p.onlineGames); if (o === 'W') give(pl.id, g, 'long_distance'); }
+          if (g.tv) { p.couchGames++; count(pl.id, g, 'couch_potato', p.couchGames); }
+          if (o === 'W' && g.players.some((op, j) => j !== i && runsBefore[j] >= 3)) give(pl.id, g, 'spoiler');
+          if (real.final && o === 'W' && pl.fav && (pl.fav === g.away || pl.fav === g.home)) {
+            const favWon = pl.fav === g.home ? real.home > real.away : real.away > real.home;
+            give(pl.id, g, favWon ? 'double_dip' : 'silver_lining');
+          }
+          if (real.total >= 12) give(pl.id, g, 'barn_burner');
+          if (real.final && real.total <= 3) give(pl.id, g, 'pitchers_duel');
+          if (real.final && (real.away === 0 || real.home === 0)) give(pl.id, g, 'blanked');
+          if (real.final && real.fromStart && (real.noHit.t || real.noHit.b)) give(pl.id, g, 'no_no');
+          if (real.final && real.fromStart && (real.perfect.t || real.perfect.b)) give(pl.id, g, 'perfecto');
+        });
+        g.players.forEach((pl, i) => { const p = P(pl.id); p.appWinRun = outcomeFor(g, i) === 'W' ? p.appWinRun + 1 : 0; });
+      }
     });
     bookCache.set(games, book);
     return book;
+  }
+
+  // What happened in the real MLB game, from the plays the players logged (and any MLB score fixes).
+  // final = the real game reached its end (9+ innings); fromStart = they logged it from the top of the 1st.
+  function realGame(g, r) {
+    const st = r.state, away = (st.mlb && st.mlb.away) || 0, home = (st.mlb && st.mlb.home) || 0;
+    const HITS = ['single', 'double', 'triple', 'home_run'], CLEAN = ['strikeout', 'in_play_out'];
+    const noHit = { t: true, b: true }, perfect = { t: true, b: true };
+    r.plays.forEach(p => { if (p.voided) return; const side = p.half.endsWith('b') ? 'b' : 't';
+      if (HITS.includes(p.outcome)) noHit[side] = false;
+      if (!CLEAN.includes(p.outcome) || p.runs || (p.ev && p.ev.extraOuts)) perfect[side] = false; });
+    return { away, home, total: away + home, final: !!U.mlbGameOver(st), fromStart: !!(r.halves[0] && r.halves[0].half === '1t'), noHit, perfect };
   }
 
   function inGameAwards(g, r, give, count, P) {
@@ -1071,6 +1130,7 @@ const Statistician = (() => {
     const cycle = g.players.map(() => new Set()), kPick = g.players.map(() => ({ right: 0, wrong: 0 }));
     const halfK = {}, halfOnlyK = {}; let leader = null, leadChanges = 0, extras = false; const innings = [];
     const p3Hits = {}, halfPrioChanges = {}, maxLead = Array(n).fill(-Infinity), ninthPts = Array(n).fill(0);
+    const lastPick = Array(n).fill(null), pickRun = Array(n).fill(0), rare = g.players.map(() => new Set()); let homers = 0, marathon = false;
 
     r.plays.forEach((p, k) => {
       const at = p.index;
@@ -1079,6 +1139,10 @@ const Statistician = (() => {
         halfK[p.half] = Array(n).fill(0); halfOnlyK[p.half] = true; p3Hits[p.half] = g.players.map(() => []); halfPrioChanges[p.half] = 0; }
       // Hot Potato: priority changed hands 5 times this half-inning
       if (p.priorityAfter !== p.priorityBefore && ++halfPrioChanges[p.half] === 5) ids.forEach(pid => give(pid, g, 'hot_potato', 1, at));
+      // Marathon: the real game reached the 12th inning
+      if (!marathon && parseInt(p.half, 10) >= 12) { marathon = true; ids.forEach(pid => give(pid, g, 'marathon', 1, at)); }
+      // Slugfest: the 5th home run of the real game
+      if (p.outcome === 'home_run' && !p.voided && ++homers === 5) ids.forEach(pid => give(pid, g, 'slugfest', 1, at));
       // Free Baseball: the game reached the 10th inning
       if (!extras && parseInt(p.half, 10) >= 10) { extras = true; ids.forEach(pid => give(pid, g, 'free_baseball', 1, at)); }
       // By Way of the K: every out this half-inning has to be a strikeout
@@ -1090,6 +1154,10 @@ const Statistician = (() => {
       p.log.forEach(e => {
         const i = e.player, pid = ids[i], P0 = P(pid);
         abPts[i] += e.pts; halfPts[p.half][i] += e.pts; halfPicks[p.half][i]++; if (e.correct) halfRight[p.half][i]++;
+        // Creature of Habit: the same pick 5 at-bats in a row
+        if (e.pick) { pickRun[i] = e.pick === lastPick[i] ? pickRun[i] + 1 : 1; lastPick[i] = e.pick; if (pickRun[i] >= 5) give(pid, g, 'creature_habit', 1, at); }
+        // Chaos Theory: 3 different rare plays called right in one game
+        if (e.correct && ['triple', 'hbp', 'bunt', 'stolen_base', 'double_play'].includes(e.outcome)) { rare[i].add(e.outcome); if (rare[i].size >= 3) give(pid, g, 'chaos_theory', 1, at); }
         // streaks
         if (e.correct) { streak[i]++; miss[i] = 0; } else { streak[i] = 0; miss[i]++; }
         [[5, 'on_fire'], [7, 'wave'], [10, 'unstoppable'], [20, 'twenty_straight']].forEach(([t, id]) => { if (streak[i] >= t) give(pid, g, id, 1, at); });
@@ -1423,7 +1491,7 @@ const FilingCabinet = (() => {
       name = name.trim();
       if (!name || name.length > 16) throw new Error('Names are 1–16 characters');
       const first = !(await get('users/' + uid));
-      const ch = { ['users/' + uid + '/name']: name, ['users/' + uid + '/team']: team,
+      const ch = { ['users/' + uid + '/name']: name, ['users/' + uid + '/team']: team, ['profiles/' + uid + '/team']: team,
         ['profiles/' + uid + '/name']: name, ['profiles/' + uid + '/account']: true };
       if (first) { ch['users/' + uid + '/createdAt'] = now(); ch['profiles/' + uid + '/createdAt'] = now(); }
       await queue(ch);
@@ -1431,6 +1499,9 @@ const FilingCabinet = (() => {
     // Profile photo: one small square JPEG on your profile (everyone in your clubs sees it). A new one replaces the old; null removes it.
     async function savePhoto(dataUrl) { need(); await queue({ ['profiles/' + uid + '/photo']: dataUrl || null }); }
     const photoOf = pid => get('profiles/' + pid + '/photo');
+    // Favorite teams are public on the profile (so a game can note each player's team for the Double Dip / Silver Lining awards)
+    const teamOf = pid => get('profiles/' + pid + '/team');
+    async function syncTeam(team) { need(); if (((await get('profiles/' + uid + '/team')) || null) !== (team || null)) await queue({ ['profiles/' + uid + '/team']: team || null }); }
     // Tips this account has already seen (users/<uid>/tips/<id> = true)
     // Guess Ball Next only: this phone's Problem log, for watching a test live. Straight to Firebase (never queued — old logs don't matter).
     function saveDiag(log) { if (!uid) return Promise.resolve(); return db.update({ [R('diag/' + uid)]: { log, at: now() } }).catch(() => {}); }
@@ -1686,7 +1757,7 @@ const FilingCabinet = (() => {
       const t = now();
       const clubList = await clubsFor(players.map(p => p.id));
       const g = { id: db.newId(), host: uid, device: deviceId, era: 'app', date: localDate(t), seq: t, startedAt: t,
-        players: players.map(p => ({ id: p.id, name: p.name })), setup: colors ? { priority, colors } : { priority }, events: [],
+        players: players.map(p => (p.fav ? { id: p.id, name: p.name, fav: p.fav } : { id: p.id, name: p.name })), setup: colors ? { priority, colors } : { priority }, events: [],
         away, home, park, clubList, ended: false, ...(tv ? { tv: true } : {}) };
       const ch = { ['games/' + g.id]: g, ...indexChanges(g, { date: g.date, seq: g.seq }) };
       players.forEach(p => { ch['live/' + p.id] = { gameId: g.id, host: uid, at: t }; });
@@ -1902,7 +1973,7 @@ const FilingCabinet = (() => {
         : { ...ev, picks: Array.from({ length: n }, (_, i) => (ev.picks && ev.picks[i] ? Object.values(ev.picks[i]) : null)) };
       return games.map(g => ({ ...g, events: g.events ? Object.values(g.events).map(ev => fix(ev, g.players.length)) : undefined,
         players: g.players.map(p => { const c = canon(p.id);
-          return { id: c, name: (nick[c] && nick[c].name) || (acct[c] && acct[c].name) || p.name }; }) }));
+          const out = { id: c, name: (nick[c] && nick[c].name) || (acct[c] && acct[c].name) || p.name }; if (p.fav) out.fav = p.fav; return out; }) }));
     }
 
     // ════════════ Admin (Xaq only) ════════════
@@ -1925,7 +1996,7 @@ const FilingCabinet = (() => {
 
     return { setUser, onStatus: f => { listeners.add(f); f(status()); return () => listeners.delete(f); }, status, flush,
       onRefused: f => { refusedFns.add(f); return () => refusedFns.delete(f); }, roundKey, setSlot, clearSlot, setJoined, watchGame, watchLive, myInvite, loadGame, peekGame, forgetLive, isStale, adoptLive,
-      myAccount, saveProfile, savePhoto, photoOf, unlinkAccount, profiles, tipSeen, saveDiag,
+      myAccount, saveProfile, savePhoto, photoOf, teamOf, syncTeam, unlinkAccount, profiles, tipSeen, saveDiag,
       createClub, findClubs, myClubs, clubInfo, roster, joinClub, requests, answerRequest, leaveClub, setCaptain, removeMember, updateClub,
       addGuest, renameGuest, claimGuest, answerClaim, myAliases, accounts, offerGuest, myOffers, dismissOffer, myClaims,
       startGame, liveGame, findLiveGame, addEvent, undo, takeOver, updateGameInfo, endGame, discardGame, addHandGame, editHandGame, deleteGame, setWhere,
@@ -1959,7 +2030,7 @@ const FilingCabinet = (() => {
 // ════════════════════════════════════════════════════════════════
 // Which copy of the app this is: the real app, or Guess Ball Next (QA, with its own test data)
 const ENV = {"name":"live","data":"v2","store":"gb_"};
-const VERSION = ENV.name === 'qa' ? '2.0 · QA build 19 · 10-04 05:02 UTC' : '2.0';
+const VERSION = ENV.name === 'qa' ? '2.0 · QA build 20 · 10-04 05:33 UTC' : '2.0';
 const RULES_JSON = {
   "rules": {
     "v2": {
@@ -2991,6 +3062,7 @@ async function loadClubs() {
   S.scope = ok(saved) ? saved : 'mine';            // first sign-in on a phone: All my games; after that, whatever you last picked
 }
 async function loadHome() {
+  if (!loadHome.synced && S.account && typeof FCab !== 'undefined' && FCab.syncTeam) { loadHome.synced = true; FCab.syncTeam(S.account.team).catch(() => { loadHome.synced = false; }); }   // favorite team on the public profile (once per open)
   const key = 'gb_home_' + S.user.uid + '_' + S.scope;
   const cached = Store.json(key, null);
   S.home = cached ? { ...cached, loading: true } : { loading: true, rows: [], recent: [], games: 0 };
@@ -4203,7 +4275,10 @@ Object.assign(ACT, {
   startGame: async () => {
     const n = S.ng; S.busy = true; render();
     try {
-      const game = await FCab.startGame({ players: n.players.map(p => ({ id: p.id, name: p.name })), priority: n.priority,
+      // Each account player's favorite team goes on the game (Double Dip / Silver Lining awards). Guests have none.
+      const favs = await Promise.all(n.players.map(p => p.id === S.user.uid ? Promise.resolve(S.account.team || null)
+        : p.guest || /^g_|:/.test(p.id) ? Promise.resolve(null) : withTimeout(FCab.teamOf(p.id), 4000).catch(() => null)));
+      const game = await FCab.startGame({ players: n.players.map((p, i) => (favs[i] ? { id: p.id, name: p.name, fav: favs[i] } : { id: p.id, name: p.name })), priority: n.priority,
         colors: n.players.map((p, i) => p.color || PCOLORS[i][0]),
         away: n.away, home: n.home, park: n.park || TEAMS[n.home] || '', tv: !!n.tv });
       S.busy = false; openGame(game); S.stack = []; S.screen = 'game'; render(); Awake.on();
@@ -4958,6 +5033,25 @@ const AWARD_ART = {
   sunrise: ["#FFD23F", "M2 18h20M6 18a6 6 0 0112 0M12 4v3M4.5 9.5l2 1.5M19.5 9.5l-2 1.5M1.5 14h2.5M20 14h2.5M9 21h6"],
   twoballs: ["#FF8A65", "M8 7a5.5 5.5 0 110 11A5.5 5.5 0 018 7zM5 9c1.1 1.8 1.1 5.2 0 7M11 9c-1.1 1.8-1.1 5.2 0 7M16 6a5.5 5.5 0 110 11M19 8c-1.1 1.8-1.1 5.2 0 7"],
   dumbbell: ["#9AA6BA", "M7 12h10M4.5 7.5h2.5v9H4.5zM17 7.5h2.5v9H17zM2 10v4M22 10v4"],
+  // build 20 awards
+  couch_potato: ['#C79A6B', 'M5 11V8a2 2 0 012-2h10a2 2 0 012 2v3M3 12a2 2 0 014 0v3h10v-3a2 2 0 014 0v5H3zM6 17v2M18 17v2'],
+  long_distance: ['#7AABFF', 'M2.5 6h5v12h-5zM16.5 6h5v12h-5zM4.5 15.5h1M18.5 15.5h1M9.5 12h1M13.5 12h1'],
+  phone_tag: ['#5BD27A', 'M7 3h8v18H7zM10 18h2M18 8.5a5 5 0 010 7M20.5 6a8.5 8.5 0 010 12'],
+  welcome_show: ['#4FA3F7', 'M12 3l2.6 5.5 6 .8-4.4 4.2 1.1 6L12 16.6 6.7 19.5l1.1-6L3.4 9.3l6-.8z'],
+  rookie_mistake: ['#FFC94D', 'M12 3a9 9 0 110 18 9 9 0 010-18zM9 9.5v1M15 9.5v1M12 14a1.8 1.8 0 110 3.6 1.8 1.8 0 010-3.6z'],
+  full_house: ['#C7C7CC', 'M6.5 9a2 2 0 110-4 2 2 0 010 4zM17.5 9a2 2 0 110-4 2 2 0 010 4zM12 8.3a2.4 2.4 0 110-4.8 2.4 2.4 0 010 4.8zM2.5 18c0-3 1.8-5 4-5M21.5 18c0-3-1.8-5-4-5M7.5 20c0-3.8 2-6.5 4.5-6.5s4.5 2.7 4.5 6.5'],
+  spoiler: ['#FF5A4E', 'M11 3a5 5 0 015 5c0 3.5-3 6-5 6s-5-2.5-5-6a5 5 0 015-5zM11 14l-1 2h2zM11 16c0 2 2 3 1 5M21 2.5l-4.5 4.5M19 9.5l2.2.8M17.5 4.5l1-2'],
+  creature_habit: ['#C7C7CC', 'M4 11V9.5A3.5 3.5 0 017.5 6H19M16 3l3 3-3 3M20 13v1.5a3.5 3.5 0 01-3.5 3.5H5M8 21l-3-3 3-3'],
+  chaos_theory: ['#B39DFF', 'M3 4.5h18M5 8.5h14M7.5 12.5h9M9.5 16.5h5M11.5 20.5h1'],
+  double_dip: ['#FF9BB3', 'M8 12l4 9.5 4-9.5M7 12h10M8 12a4 4 0 018 0M9.5 7.5a2.5 2.5 0 015 0'],
+  silver_lining: ['#C9CCD3', 'M7 16.5a4 4 0 01-.4-8A5.5 5.5 0 0117.2 7a4.3 4.3 0 01-.2 9.5zM4 20h16'],
+  slugfest: ['#FF8A3D', 'M4 20.5l1.6-1.6M5.6 18.9l9-9a2.3 2.3 0 013.3 3.3l-9 9-3.3-3.3zM18.5 2.5a2 2 0 110 4 2 2 0 010-4zM14 3.5l1 1M21.5 9l-1.2-.4'],
+  barn_burner: ['#FF5A4E', 'M3 10h18v10H3zM12 10v10M6.5 14h2.5M15 14h2.5M6.5 17h2.5M15 17h2.5M12 2c.6 1.5 2 2.3 2 4a2 2 0 01-4 0c0-.9.5-1.4 1-1.8 0 .8.4 1.2 1 1.3C12 4.6 11.6 3.3 12 2z'],
+  pitchers_duel: ['#6FD6FF', 'M6.5 8a4 4 0 110 8 4 4 0 010-8zM17.5 8a4 4 0 110 8 4 4 0 010-8zM4.4 9.8c1 1.2 1 3.2 0 4.4M19.6 9.8c-1 1.2-1 3.2 0 4.4M12.6 8.5L11.2 12h1.8l-1.4 3.5'],
+  no_no: ['#E8E8EA', 'M12 3a9 9 0 110 18 9 9 0 010-18zM5.6 5.6l12.8 12.8M8.3 4c1.6 2 1.6 4.5.4 6.5M15.7 20c-1.6-2-1.6-4.5-.4-6.5'],
+  perfecto: ['#F2C14E', 'M12 7.5a4.5 4.5 0 110 9 4.5 4.5 0 010-9zM5.5 5c-2.8 3.5-2.6 10 1.5 13.5M18.5 5c2.8 3.5 2.6 10-1.5 13.5M3.8 9.5l1.7.8M3.6 13.5l1.8.3M20.2 9.5l-1.7.8M20.4 13.5l-1.8.3M10 21h4'],
+  blanked: ['#E8E8EA', 'M12 3c3.6 0 6 5.3 6 10a6 6 0 01-12 0c0-4.7 2.4-10 6-10z'],
+  marathon: ['#9BE0FF', 'M6.5 3h11M6.5 21h11M8 3c0 4.5 8 5 8 9s-8 4.5-8 9M16 3c0 4.5-8 5-8 9s8 4.5 8 9M10 18.5h4'],
 };
 const AWARD_PIC = {
   wins: 'medal', games: 'ticket', season_ticket: 'stadium', points: 'star',
@@ -4980,6 +5074,7 @@ const AWARD_PIC = {
   hot_potato: 'potato', collapse: 'collapse', early_bird: 'bird', clutch: 'stopwatch', every_frame: 'filmstrip', oaf_king: 'crookedcrown',
   punchout_king: 'glove', twin_killing: 'chainlinks', bases_clearing: 'broom',
   october_baseball: 'pumpkin', opening_day: 'sunrise', doubleheader: 'twoballs', iron_man: 'dumbbell',
+  couch_potato: 'couch_potato', long_distance: 'long_distance', phone_tag: 'phone_tag', welcome_show: 'welcome_show', rookie_mistake: 'rookie_mistake', full_house: 'full_house', spoiler: 'spoiler', creature_habit: 'creature_habit', chaos_theory: 'chaos_theory', double_dip: 'double_dip', silver_lining: 'silver_lining', slugfest: 'slugfest', barn_burner: 'barn_burner', pitchers_duel: 'pitchers_duel', no_no: 'no_no', perfecto: 'perfecto', blanked: 'blanked', marathon: 'marathon'
 };
 const AWARD_OFF = '#6E6E76';
 // The award's picture. on = earned (in color) or not yet (gray).
@@ -4994,7 +5089,7 @@ function awardIcon(a, px = 32, on = true) {
     + (art[5] ? `<path d="${art[5]}" stroke="${c(art[6])}" stroke-width="2.6"/>` : '') + '</svg>';
 }
 const AWARD_CATS = [['WINS & GAMES', 'WINS'], ['RIVALRIES', 'RIVALRIES'], ['BIG CALLS', 'BIG CALLS'], ['PICK 3', 'PICK 3'], ['STREAKS & ACCURACY', 'STREAKS'],
-  ['PRIORITY', 'PRIORITY'], ['GAME MOMENTS', 'MOMENTS'], ['BIG PLAYS', 'BIG PLAYS'], ['CAREER CALLS', 'CAREER'], ['TRAVEL', 'TRAVEL'], ['CALENDAR', 'CALENDAR']];
+  ['PRIORITY', 'PRIORITY'], ['GAME MOMENTS', 'MOMENTS'], ['BIG PLAYS', 'BIG PLAYS'], ['THE REAL GAME', 'REAL GAME'], ['CAREER CALLS', 'CAREER'], ['TRAVEL', 'TRAVEL'], ['CALENDAR', 'CALENDAR']];
 const tierNum = n => (n >= 1000 ? (n / 1000) + 'K' : String(n));
 const TIER_NAMES = ['', 'Bronze', 'Silver', 'Gold', 'Platinum', 'Diamond', 'Hall of Fame'];
 // Long ladders show 3 tiers at a time: the last one earned, the one you're chasing, and the one after
