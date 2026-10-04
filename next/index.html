@@ -2030,7 +2030,7 @@ const FilingCabinet = (() => {
 // ════════════════════════════════════════════════════════════════
 // Which copy of the app this is: the real app, or Guess Ball Next (QA, with its own test data)
 const ENV = {"name":"qa","data":"qa","store":"gbqa_"};
-const VERSION = ENV.name === 'qa' ? '2.0 · QA build 20 · 10-04 05:25 UTC' : '2.0';
+const VERSION = ENV.name === 'qa' ? '2.0 · QA build 21 · 10-04 05:51 UTC' : '2.0';
 const RULES_JSON = {
   "rules": {
     "v2": {
@@ -3916,8 +3916,8 @@ SCREENS.final = () => {
   const f = S.final, g = f.game, sum = f.sum, r = sum.result, n = g.players.length;
   const order = g.players.map((_, i) => i).sort((a, b) => r.scores[b] - r.scores[a]);
   const names = i => esc(g.players[i].name.toUpperCase());
-  const meta = [g.away && `${shortTeam(g.away)} ${g.mlb ? g.mlb.away : ''}`.trim(), g.home && `${shortTeam(g.home)} ${g.mlb ? g.mlb.home : ''}`.trim(), whereAt(g),
-    new Date(g.startedAt || Date.now()).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })].filter(Boolean).join(' · ');
+  const meta = [g.away && `${shortTeam(g.away)} ${g.mlb ? g.mlb.away : ''}`.trim(), g.home && `${shortTeam(g.home)} ${g.mlb ? g.mlb.home : ''}`.trim(), whereAt(g)].filter(Boolean);
+  const day = new Date(g.startedAt || Date.now()).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }).toUpperCase();
   let headline, scoreRow, sub;
   if (r.tie) {
     const tied = r.leaders;
@@ -3952,8 +3952,8 @@ SCREENS.final = () => {
   return `<div class="page" style="padding-bottom:calc(var(--safe-bot) + 110px)">
   <div class="finalhead">
   <div style="display:flex;flex-direction:column;align-items:center;gap:2px;padding-top:6px">
-    <span class="cond" style="font-size:18px;font-weight:800;letter-spacing:2px;color:var(--text2)">FINAL</span>
-    <span class="courier" style="font-size:13px;font-weight:700;color:var(--text2);text-align:center">${esc(meta)}</span></div>
+    <span class="cond" style="font-size:18px;font-weight:800;letter-spacing:2px;color:var(--text2)">FINAL · ${esc(day)}</span>
+    <span class="courier" style="font-size:13px;font-weight:700;color:var(--text2);text-align:center">${meta.map(m => `<span style="white-space:nowrap">${esc(m)}</span>`).join(' · ')}</span></div>
   <div class="rise" style="display:flex;flex-direction:column;align-items:center;gap:6px;padding:10px 0 6px">
     <span class="cond" style="font-size:${headline.length > 22 ? 30 : headline.length > 16 ? 36 : 44}px;font-weight:800;letter-spacing:.6px;line-height:1.05;text-align:center;max-width:100%;overflow-wrap:anywhere">${headline}</span>${scoreRow}
     ${sub ? `<span class="courier" style="font-size:13px;font-weight:700;color:var(--text2);text-align:center">${sub}</span>` : ''}</div></div>
