@@ -2030,7 +2030,7 @@ const FilingCabinet = (() => {
 // ════════════════════════════════════════════════════════════════
 // Which copy of the app this is: the real app, or Guess Ball Next (QA, with its own test data)
 const ENV = {"name":"live","data":"v2","store":"gb_"};
-const VERSION = ENV.name === 'qa' ? '2.0 · QA build 21 · 10-04 05:51 UTC' : '2.0';
+const VERSION = ENV.name === 'qa' ? '2.0 · QA build 22 · 10-05 00:09 UTC' : '2.0';
 const RULES_JSON = {
   "rules": {
     "v2": {
@@ -2516,6 +2516,13 @@ const avatar = (pid, name, px, bg = 'var(--card3)', color = 'var(--text)', dashe
   return ph ? `<span style="${base};display:block;background:#000 url('${ph}') center/cover"></span>`
     : `<span style="${base};display:flex;align-items:center;justify-content:center;font-size:${Math.round(px * 0.42)}px;font-weight:700;color:${color};${dashed ? 'border:1.5px dashed var(--text4)' : 'background:' + bg}">${esc((name || '?').trim()[0] ? (name || '?').trim()[0].toUpperCase() : '?')}</span>`;
 };
+// One look for each kind of thing, everywhere (build 22):
+//  a club's name = condensed caps label; a game's type = a STADIUM / COUCH tag (the park's name is plain text where it's shown);
+//  a section = big white condensed heading, with its small courier note on the right.
+const clubLabel = name => name ? `<span class="cond" style="font-size:14px;font-weight:800;letter-spacing:.8px;color:var(--text2)">${esc(name.toUpperCase())}</span>` : '';
+const gameTag = g => (g && (g.tv || g.tag === 'COUCH GAME') ? '<span class="cond tag">COUCH</span>' : g && g.park ? '<span class="cond tag">STADIUM</span>' : '');
+const sectionHead = (title, note = '') => `<div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-top:4px"><span class="cond" style="font-size:22px;font-weight:800;letter-spacing:.4px">${title}</span>${note ? `<span class="courier meta" style="white-space:nowrap">${note}</span>` : ''}</div>`;
+const signed0 = n => (n < 0 ? '−' + Math.abs(n) : String(n));
 const backBtn = (a = 'back') => `<button class="back press" aria-label="Back" ${act(a)}>${ICON.back}</button>`;
 const toggle = (on, a, arg) => `<button class="toggle ${on ? 'on' : ''}" aria-pressed="${on}" ${act(a, arg)}><span></span></button>`;
 const progress = (n, of) => `<div style="display:flex;gap:6px">${Array.from({ length: of }, (_, i) => `<span style="width:22px;height:5px;border-radius:3px;background:${i < n ? 'var(--text)' : 'var(--card3)'}"></span>`).join('')}</div>`;
@@ -2669,15 +2676,7 @@ SCREENS.home = () => {
       <span class="shoulders num" style="font-size:21px;font-weight:800;color:var(--text2)">${r.w}–${r.l}${r.t ? '–' + r.t : ''}</span>
       <span class="shoulders num" style="width:50px;text-align:right;font-size:21px;font-weight:900">${pct3(r.winPct)}</span></div>`).join('')}</div>
     <h2 class="cond h2" style="margin-top:8px">RECENT</h2>
-    <div style="display:flex;flex-direction:column;gap:10px">${h.recent.slice(0, 2).map(g => {
-      const [w, l] = g.players; const d = g.date.split('-');
-      return `<button class="card press" ${act('openGame', g.id)} style="width:100%;text-align:left;padding:10px 16px;display:flex;align-items:center;gap:14px">
-        <div style="width:40px;display:flex;flex-direction:column;align-items:center"><span class="cond" style="font-size:14px;font-weight:800;color:var(--text3);letter-spacing:.6px">${MONTHS[+d[1] - 1]}</span><span class="shoulders num" style="font-size:26px;font-weight:900;line-height:1">${+d[2]}</span></div>
-        <div style="flex-grow:1;min-width:0;display:flex;flex-direction:column">
-          <div style="display:flex;justify-content:space-between;align-items:center;height:26px"><span style="font-size:16px;font-weight:700">${esc(w.name)}</span><span class="shoulders num" style="font-size:22px;font-weight:900">${w.score}</span></div>
-          <div style="display:flex;justify-content:space-between;align-items:center;height:26px;color:var(--text2)"><span style="font-size:16px;font-weight:500">${esc(l.name)}${g.players.length > 2 ? ' +' + (g.players.length - 2) : ''}</span><span class="shoulders num" style="font-size:22px;font-weight:800">${l.score}</span></div>
-        </div></button>`;
-    }).join('')}</div>`;
+    <div style="display:flex;flex-direction:column;gap:10px">${h.recent.slice(0, 2).map(gameCard).join('')}</div>`;
   return `<div class="page tabbed">
     <div style="display:flex;align-items:center;justify-content:space-between">
       <div data-brand style="display:flex;flex-direction:column;align-items:center"><span class="script" style="font-size:40px;line-height:1.05;color:var(--cream)">Guess Ball</span>${ICON.swoosh(200)}</div>
@@ -3517,6 +3516,26 @@ const onColor = hex => { const [r, g, b] = [1, 3, 5].map(k => parseInt(hex.slice
 const tint = (hex, a) => { const [r, g, b] = [1, 3, 5].map(k => parseInt(hex.slice(k, k + 2), 16)); return `rgba(${r},${g},${b},${a})`; };
 const freeColor = players => (PCOLORS.find(([k]) => !players.some(p => p.color === k)) || PCOLORS[0])[0];
 const pcol = i => { const c = S.g && S.g.game.setup && S.g.game.setup.colors; return PCOLOR[(c && c[i]) || PCOLORS[i % PCOLORS.length][0]] || PCOLORS[0][1]; };
+// A game's player color (any game, not just the live one), and a version that reads as text on the current background
+const gcol = (g, i) => { const c = g && g.setup && g.setup.colors; return PCOLOR[(c && c[i]) || PCOLORS[i % PCOLORS.length][0]] || PCOLORS[0][1]; };
+const textCol = (hex, onDark = document.documentElement.dataset.theme !== 'light') => {
+  const [r, g, b] = [1, 3, 5].map(k => parseInt(hex.slice(k, k + 2), 16)), lum = 0.299 * r + 0.587 * g + 0.114 * b;
+  const mix = (t, a) => '#' + [r, g, b].map(v => Math.round(v + (t - v) * a).toString(16).padStart(2, '0')).join('');
+  return onDark ? (lum < 140 ? mix(255, 0.38) : hex) : (lum > 150 ? mix(0, 0.4) : hex); };
+// The 2×2 comparison tiles (Final page and past games): each player's number in their color, the leader full strength,
+// the rest faded; the names line underneath uses the same colors so it reads as a key.
+function compareTiles(g, list, order) {
+  const n = g.players.length;
+  return (list || []).map(t => {
+    const fmt = v => (t.label === 'ACCURACY' ? (v == null ? '—' : Math.round(v * 100) + '%') : t.label === 'CONFIDENCE' ? v.join('–') : v);
+    const score = v => (t.label === 'CONFIDENCE' ? v[0] - v[1] : v == null ? -1 : v);
+    const top = Math.max(...t.values.map(score));
+    return `<div class="card" style="border-radius:16px;padding:12px 14px;display:flex;flex-direction:column;gap:2px">
+      <span class="cond" style="font-size:13px;font-weight:800;letter-spacing:.8px;color:var(--text3)">${t.label}</span>
+      <div style="display:flex;align-items:baseline;gap:${n === 3 ? 7 : 10}px;white-space:nowrap">${order.map(i => `<span class="shoulders" style="font-size:${n === 3 ? 20 : 28}px;font-weight:900;color:${textCol(gcol(g, i))};opacity:${score(t.values[i]) === top ? 1 : 0.45}">${fmt(t.values[i])}</span>`).join('')}</div>
+      <span class="courier meta" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${order.map(i => `<span style="color:${textCol(gcol(g, i))}">${esc(g.players[i].name)}</span>`).join(n === 3 ? ' · ' : ' vs ')}</span></div>`;
+  }).join('');
+}
 const signed = n => (n > 0 ? '+' + n : n < 0 ? '−' + Math.abs(n) : '0');
 
 // ── Game state on screen ──
@@ -3592,7 +3611,7 @@ function lineScoreCard(big = true, game = null) {
     <div class="cond" style="display:grid;grid-template-columns:${cols};align-items:center;font-size:15px;font-weight:600;color:var(--text3);height:26px;border-bottom:1px solid var(--line2)">
       <span></span>${inns.map(n => `<span style="text-align:center;color:${n === cur ? 'var(--text)' : 'var(--text3)'}">${n}</span>`).join('')}<span style="text-align:right;color:var(--text);font-weight:700">R</span></div>
     ${gm.players.map((p, i) => `<div style="display:grid;grid-template-columns:${cols};align-items:center;height:${big ? 44 : 40}px;${i < gm.players.length - 1 ? 'border-bottom:1px solid var(--line)' : ''}">
-      <span style="font-size:15px;font-weight:700;color:${ls.totals[i] === lead ? 'var(--text)' : 'var(--text2)'};overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(p.name)}</span>
+      <span style="font-size:15px;font-weight:700;color:${textCol(gcol(gm, i))};overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(p.name)}</span>
       ${inns.map(n => { const v = ls.rows[i][n - 1]; return `<span class="shoulders num" style="text-align:center;font-size:${String(v).length > 2 ? 15 : 19}px;font-weight:800;height:${big ? 44 : 40}px;line-height:${big ? 44 : 40}px;border-left:1px solid var(--line);color:${v == null ? 'transparent' : 'var(--text5)'};background:${n === cur && !s.ended ? 'rgba(122,171,255,.08)' : 'transparent'}">${v == null ? '·' : v}</span>`; }).join('')}
       <span class="shoulders num" style="text-align:right;font-size:${big ? 30 : 26}px;font-weight:900;color:${ls.totals[i] === lead ? 'var(--text)' : 'var(--text2)'}">${ls.totals[i]}</span></div>`).join('')}</div>`;
 }
@@ -3916,7 +3935,7 @@ SCREENS.final = () => {
   const f = S.final, g = f.game, sum = f.sum, r = sum.result, n = g.players.length;
   const order = g.players.map((_, i) => i).sort((a, b) => r.scores[b] - r.scores[a]);
   const names = i => esc(g.players[i].name.toUpperCase());
-  const meta = [g.away && `${shortTeam(g.away)} ${g.mlb ? g.mlb.away : ''}`.trim(), g.home && `${shortTeam(g.home)} ${g.mlb ? g.mlb.home : ''}`.trim(), whereAt(g)].filter(Boolean);
+  const meta = [g.away && `${shortTeam(g.away)} ${g.mlb ? g.mlb.away : ''}`.trim(), g.home && `${shortTeam(g.home)} ${g.mlb ? g.mlb.home : ''}`.trim(), g.tv ? '' : (g.park || '')].filter(Boolean);
   const day = new Date(g.startedAt || Date.now()).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }).toUpperCase();
   let headline, scoreRow, sub;
   if (r.tie) {
@@ -3938,21 +3957,13 @@ SCREENS.final = () => {
     const se = sum.series;
     sub = se ? (se.leader ? `${esc(g.players[se.leader === 'a' ? 0 : 1].name)} leads the series ${Math.max(se.a.wins, se.b.wins)}–${Math.min(se.a.wins, se.b.wins)}` : `Series tied ${se.a.wins}–${se.b.wins}`) : '';
   }
-  const tiles = (sum.tiles || []).map(t => {
-    const fmt = v => (t.label === 'ACCURACY' ? (v == null ? '—' : Math.round(v * 100) + '%') : t.label === 'CONFIDENCE' ? v.join('–') : v);
-    const score = v => (t.label === 'CONFIDENCE' ? v[0] - v[1] : v == null ? -1 : v);
-    const top = Math.max(...t.values.map(score));
-    return `<div class="card" style="border-radius:16px;padding:12px 14px;display:flex;flex-direction:column;gap:2px">
-      <span class="cond" style="font-size:13px;font-weight:800;letter-spacing:.8px;color:var(--text3)">${t.label}</span>
-      <div style="display:flex;align-items:baseline;gap:${n === 3 ? 7 : 10}px;white-space:nowrap">${order.map(i => `<span class="shoulders" style="font-size:${n === 3 ? 20 : 28}px;font-weight:900;color:${score(t.values[i]) === top ? 'var(--text)' : 'var(--dim)'}">${fmt(t.values[i])}</span>`).join('')}</div>
-      <span class="courier meta" style="color:var(--text2)">${order.map(i => esc(g.players[i].name)).join(n === 3 ? ' · ' : ' vs ')}</span></div>`;
-  }).join('');
+  const tiles = compareTiles(g, sum.tiles, order);
   const plays = sum.plays || [], top = plays[0];
   const awards = f.awards || [];
   return `<div class="page" style="padding-bottom:calc(var(--safe-bot) + 110px)">
   <div class="finalhead">
   <div style="display:flex;flex-direction:column;align-items:center;gap:2px;padding-top:6px">
-    <span class="cond" style="font-size:18px;font-weight:800;letter-spacing:2px;color:var(--text2)">FINAL · ${esc(day)}</span>
+    <span class="cond" style="font-size:18px;font-weight:800;letter-spacing:2px;color:var(--text2)">FINAL · ${esc(day)}</span>${gameTag(g) ? `<div style="margin:2px 0 3px">${gameTag(g)}</div>` : ''}
     <span class="courier" style="font-size:13px;font-weight:700;color:var(--text2);text-align:center">${meta.map(m => `<span style="white-space:nowrap">${esc(m)}</span>`).join(' · ')}</span></div>
   <div class="rise" style="display:flex;flex-direction:column;align-items:center;gap:6px;padding:10px 0 6px">
     <span class="cond" style="font-size:${headline.length > 22 ? 30 : headline.length > 16 ? 36 : 44}px;font-weight:800;letter-spacing:.6px;line-height:1.05;text-align:center;max-width:100%;overflow-wrap:anywhere">${headline}</span>${scoreRow}
@@ -4518,23 +4529,25 @@ function seasonSheet() {
   <div class="list">${list.map(y => `<button class="row press" ${act('pickSeason', y)}><span class="cond" style="flex-grow:1;font-size:20px;font-weight:800;letter-spacing:.4px">${y}</span>${ICON.check(y === cur ? 'var(--link)' : 'transparent')}</button>`).join('')}</div>`;
 }
 
+// One card for a finished game, used by History and Home's Recent (same tags, same layout everywhere)
+function gameCard(g) {
+  const d = g.date.split('-');
+  // tags: STADIUM or COUCH GAME (where it was watched), plus PRE-APP / BETA / ADDED BY for older games; the teams say which park
+  const tags = [g.tag === 'COUCH GAME' ? 'COUCH' : g.park ? 'STADIUM' : '', g.tag !== 'COUCH GAME' ? g.tag : ''].filter(Boolean);
+  const tag = tags.map(t => `<span class="cond tag" style="font-size:10px;flex-shrink:0">${esc(t)}</span>`).join('');
+  const meta = [g.doubleheader, g.away && g.home ? `${shortTeam(g.away)} at ${shortTeam(g.home)}` : ''].filter(Boolean).join(' · ');
+  return `<button class="card press" ${act('openGame', g.id)} style="width:100%;border-radius:18px;padding:10px 16px;display:flex;align-items:center;gap:14px;text-align:left">
+    <div style="width:40px;display:flex;flex-direction:column;align-items:center;flex-shrink:0"><span class="cond" style="font-size:14px;font-weight:800;color:var(--text3);letter-spacing:.6px">${MONTHS[+d[1] - 1]}</span><span class="shoulders num" style="font-size:26px;font-weight:900;line-height:1">${+d[2]}</span></div>
+    <div style="flex-grow:1;min-width:0;display:flex;flex-direction:column;gap:1px">
+      ${g.players.map((p, i) => `<div style="display:flex;justify-content:space-between;align-items:center;height:24px;color:${i === 0 && !g.tie ? 'var(--text)' : (g.tie && p.outcome === 'T' ? 'var(--text)' : 'var(--text2)')}">
+        <span style="font-size:16px;font-weight:${i === 0 ? 700 : 500};overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(p.name)}</span><span class="shoulders num" style="font-size:21px;font-weight:900">${p.score}</span></div>`).join('')}
+      ${tag || meta ? `<div style="display:flex;align-items:center;gap:6px;margin-top:3px;min-width:0">${tag}<span class="courier meta" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(meta)}</span></div>` : ''}
+    </div></button>`;
+}
 function statsHistory(games) {
   const hist = Statistician.history(games);
   const total = games.length;
-  const card = g => {
-    const d = g.date.split('-');
-    // tags: STADIUM or COUCH GAME (where it was watched), plus PRE-APP / BETA / ADDED BY for older games; the teams say which park
-    const tags = [g.tag === 'COUCH GAME' ? 'COUCH' : g.park ? 'STADIUM' : '', g.tag !== 'COUCH GAME' ? g.tag : ''].filter(Boolean);
-    const tag = tags.map(t => `<span class="cond tag" style="font-size:10px;flex-shrink:0">${esc(t)}</span>`).join('');
-    const meta = [g.doubleheader, g.away && g.home ? `${shortTeam(g.away)} at ${shortTeam(g.home)}` : ''].filter(Boolean).join(' · ');
-    return `<button class="card press" ${act('openGame', g.id)} style="width:100%;border-radius:18px;padding:10px 16px;display:flex;align-items:center;gap:14px;text-align:left">
-      <div style="width:40px;display:flex;flex-direction:column;align-items:center;flex-shrink:0"><span class="cond" style="font-size:14px;font-weight:800;color:var(--text3);letter-spacing:.6px">${MONTHS[+d[1] - 1]}</span><span class="shoulders num" style="font-size:26px;font-weight:900;line-height:1">${+d[2]}</span></div>
-      <div style="flex-grow:1;min-width:0;display:flex;flex-direction:column;gap:1px">
-        ${g.players.map((p, i) => `<div style="display:flex;justify-content:space-between;align-items:center;height:24px;color:${i === 0 && !g.tie ? 'var(--text)' : (g.tie && p.outcome === 'T' ? 'var(--text)' : 'var(--text2)')}">
-          <span style="font-size:16px;font-weight:${i === 0 ? 700 : 500};overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(p.name)}</span><span class="shoulders num" style="font-size:21px;font-weight:900">${p.score}</span></div>`).join('')}
-        ${tag || meta ? `<div style="display:flex;align-items:center;gap:6px;margin-top:3px;min-width:0">${tag}<span class="courier meta" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(meta)}</span></div>` : ''}
-      </div></button>`;
-  };
+  const card = gameCard;
   return `${hist.map((s, k) => `<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:${k ? 8 : 0}px"><h2 class="cond" style="margin:0;font-size:30px;font-weight:800;flex-shrink:0">${s.season}</h2>
     <span class="courier meta" style="white-space:nowrap">${s.games.length} game${s.games.length > 1 ? 's' : ''}${k === 0 ? ' · ' + total + ' all time' : ''}</span></div>
     <div style="display:flex;flex-direction:column;gap:10px">${s.games.map(card).join('')}</div>`).join('')}
@@ -4589,7 +4602,7 @@ function recordSheet() {
     case 'MOST GAMES': return 'Games, all time';
     default: return t.date ? niceDate(t.date) : ''; } };
   return `<h2 class="cond" style="margin:0;font-size:28px;font-weight:800">${esc(r.label)}</h2>
-  <span class="courier meta">Top ${r.top.length} · ${esc(scopeName())}</span>
+  <div style="display:flex;align-items:baseline;gap:6px"><span class="courier meta">Top ${r.top.length} ·</span>${clubLabel(scopeName())}</div>
   <div class="list">${r.top.map((t, i) => `<${t.gameId ? 'button' : 'div'} class="row${t.gameId ? ' press' : ''}" ${t.gameId ? act('recordGame', t.gameId) : ''} style="min-height:56px;gap:12px">
     <span class="shoulders" style="width:18px;font-size:22px;font-weight:900;color:${['var(--gold)', 'var(--silver)', 'var(--bronze)'][i] || 'var(--text3)'}">${i + 1}</span>
     <div style="flex-grow:1;min-width:0;display:flex;flex-direction:column;gap:2px"><span style="font-size:16px;font-weight:700">${esc(t.who)}</span><span class="courier meta" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(sub(t))}</span></div>
@@ -4636,7 +4649,7 @@ function h2hPickSheet() {
   const cur = side === 'a' ? S.h2hA : S.h2hB;
   const aName = (people.find(p => p.id === S.h2hA) || {}).name || '';
   return `<h2 class="cond" style="margin:0;font-size:28px;font-weight:800">${side === 'a' ? 'PICK A PLAYER' : esc(aName.toUpperCase()) + ' VS…'}</h2>
-  ${side === 'b' ? `<span class="courier meta">Only people ${esc(aName)} has played · ${esc(scopeName())}</span>` : ''}
+  ${side === 'b' ? `<div style="display:flex;align-items:baseline;gap:6px;flex-wrap:wrap"><span class="courier meta">Only people ${esc(aName)} has played ·</span>${clubLabel(scopeName())}</div>` : ''}
   <div class="list">${list.map(p => `<button class="row press" ${act('h2hPick', side + '|' + p.id)} style="min-height:56px">
     <span style="width:32px;height:32px;border-radius:16px;background:var(--card3);display:flex;align-items:center;justify-content:center;font-weight:700;flex-shrink:0">${esc(p.name[0].toUpperCase())}</span>
     <div style="flex-grow:1;min-width:0;display:flex;flex-direction:column"><span style="font-size:17px;font-weight:600">${esc(p.name)}</span><span class="courier meta">${esc(p.sub)}</span></div>
@@ -4657,7 +4670,7 @@ SCREENS.pastGame = () => {
   const headline = r.tie ? r.leaders.map(nm).join(' & ') + ' TIE' : nm(r.winner) + ' WINS';
   const mlb = g.mlb ? `${shortTeam(g.away) || 'Away'} ${g.mlb.away} at ${shortTeam(g.home) || 'Home'} ${g.mlb.home}` : (g.away && g.home ? `${shortTeam(g.away)} at ${shortTeam(g.home)}` : '');
   const host = g.era === 'app' ? (g.players.find(p => p.id === g.host) || {}).name : '';
-  const meta = [mlb, whereAt(g), host && 'hosted by ' + host, g.era === 'hand' && 'added by ' + g.addedBy].filter(Boolean).join(' · ');
+  const meta = [mlb, g.tv ? '' : g.park, host && 'hosted by ' + host, g.era === 'hand' && 'added by ' + g.addedBy].filter(Boolean).join(' · ');
   const mine = S.clubs.filter(c => c.captain).map(c => c.code);
   const canDelete = S.admin || (g.clubList || []).some(c => mine.includes(c)) || (g.era === 'hand' && g.host === S.user.uid);
   const canEdit = g.era === 'hand' && (g.host === S.user.uid || S.admin);
@@ -4670,13 +4683,9 @@ SCREENS.pastGame = () => {
     ${n === 3 && !r.tie ? `<div style="display:flex;align-items:flex-end;gap:22px">${order.map((i, k) => `<div style="display:flex;flex-direction:column;align-items:center"><span class="shoulders" style="font-size:${k ? 44 : 64}px;font-weight:900;line-height:1;color:${k ? 'var(--text2)' : 'var(--text)'}">${r.scores[i]}</span><span style="font-size:13px;font-weight:600;color:var(--text2)">${esc(g.players[i].name)}</span></div>`).join('')}</div>`
       : `<div style="display:flex;align-items:baseline;gap:14px"><span class="shoulders" style="font-size:68px;font-weight:900;line-height:1">${r.scores[order[0]]}</span><span class="shoulders" style="font-size:32px;color:var(--text4)">–</span><span class="shoulders" style="font-size:68px;font-weight:900;line-height:1;color:${r.tie ? 'var(--text)' : 'var(--text2)'}">${r.scores[order[1]]}</span></div>`}
     ${meta ? `<span class="courier" style="font-size:12px;font-weight:700;color:var(--text2);text-align:center">${esc(meta)}</span>` : ''}
-    ${g.era !== 'app' ? `<span class="cond tag" style="margin-top:4px">${g.era === 'beta' ? 'BETA' : g.era === 'hand' ? 'ADDED BY HAND' : 'PRE-APP'}</span>` : ''}</div>
+    ${gameTag(g) || g.era !== 'app' ? `<div style="display:flex;gap:6px;margin-top:2px">${gameTag(g)}${g.era !== 'app' ? `<span class="cond tag">${g.era === 'beta' ? 'BETA' : g.era === 'hand' ? 'ADDED BY HAND' : 'PRE-APP'}</span>` : ''}</div>` : ''}</div>
   ${sum.lineScore ? lineScoreCard(false, g) : ''}
-  ${sum.tiles ? `<div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px">${sum.tiles.map(t => {
-    const fmt = v => (t.label === 'ACCURACY' ? pctText(v) : t.label === 'CONFIDENCE' ? v.join('–') : v);
-    const sc = v => (t.label === 'CONFIDENCE' ? v[0] - v[1] : v == null ? -1 : v); const top = Math.max(...t.values.map(sc));
-    return `<div class="card" style="border-radius:16px;padding:10px 14px"><span class="cond" style="font-size:13px;font-weight:800;letter-spacing:.8px;color:var(--text3)">${t.label}</span>
-      <div style="display:flex;gap:${n === 3 ? 7 : 10}px;white-space:nowrap">${order.map(i => `<span class="shoulders" style="font-size:${n === 3 ? 20 : 26}px;font-weight:900;color:${sc(t.values[i]) === top ? 'var(--text)' : 'var(--dim)'}">${fmt(t.values[i])}</span>`).join('')}</div></div>`; }).join('')}</div>` : ''}
+  ${sum.tiles ? `<div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px">${compareTiles(g, sum.tiles, order)}</div>` : ''}
   ${sum.plays.length ? `<h2 class="cond" style="margin:6px 0 0;font-size:22px;font-weight:800">PLAYS OF THE GAME</h2>
   <div class="card" style="padding:0 16px">${sum.plays.map((m, k) => `<div style="display:flex;align-items:center;gap:12px;padding:10px 0;${k ? 'border-top:1px solid var(--line)' : ''}"><span class="shoulders" style="width:40px;font-size:22px;font-weight:900">${m.code}</span>
     <div style="flex-grow:1;display:flex;flex-direction:column;gap:1px"><span style="font-size:15px;font-weight:600">${esc(m.text)}</span><span class="courier meta" style="color:var(--text2)">${m.when}${m.context ? ' · ' + m.context : ''}</span></div>
@@ -4755,9 +4764,15 @@ async function drawShareCard(g, sum, awards) {
   const fit = (t, max, font) => { x.font = font; let s = t; while (x.measureText(s).width > max && s.length > 2) s = s.slice(0, -2) + '…'; return s; };
   const nm = i => g.players[i].name.toUpperCase();
   // FINAL · date (and where)
-  text('FINAL', W / 2, 46, F(800, 18, COND), '#A1A1AA', 'center');
-  const meta = [g.away && `${shortTeam(g.away)} ${g.mlb ? g.mlb.away : ''}`.trim(), g.home && `${shortTeam(g.home)} ${g.mlb ? g.mlb.home : ''}`.trim(), whereAt(g), niceDate(g.date)].filter(Boolean).join(' · ');
-  text(fit(meta, W - 72, F(700, 13, CO)), W / 2, 66, F(700, 13, CO), '#A1A1AA', 'center');
+  const day = new Date((g.date || '') + 'T12:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }).toUpperCase();
+  const tag = g.tv ? 'COUCH' : g.park ? 'STADIUM' : '';
+  x.font = F(800, 18, COND); x.letterSpacing = '2px'; const fw = x.measureText('FINAL · ' + day).width; x.font = F(800, 11, COND); x.letterSpacing = '1px';
+  const tw0 = tag ? x.measureText(tag).width + 14 : 0, fx = (W - fw - (tag ? tw0 + 10 : 0)) / 2;
+  x.letterSpacing = '2px'; text('FINAL · ' + day, fx, 46, F(800, 18, COND), '#A1A1AA'); x.letterSpacing = '0px';
+  if (tag) { const tx0 = fx + fw + 10; x.beginPath(); x.roundRect(tx0, 32, tw0, 18, 5); x.strokeStyle = 'rgba(161,161,170,.7)'; x.lineWidth = 1.2; x.stroke();
+    x.letterSpacing = '1px'; text(tag, tx0 + tw0 / 2, 45, F(800, 11, COND), '#C7C7CC', 'center'); x.letterSpacing = '0px'; }
+  const meta = [g.away && `${shortTeam(g.away)} ${g.mlb ? g.mlb.away : ''}`.trim(), g.home && `${shortTeam(g.home)} ${g.mlb ? g.mlb.home : ''}`.trim(), g.tv ? '' : (g.park || '')].filter(Boolean).join(' · ');
+  if (meta) text(fit(meta, W - 72, F(700, 13, CO)), W / 2, 68, F(700, 13, CO), '#A1A1AA', 'center');
   // headline, big score, the line under it
   const head = r.tie ? r.leaders.map(nm).join(' & ') + ' TIE' : nm(r.winner) + ' WINS';
   let hs = 46; x.font = F(800, hs, COND); while (x.measureText(head).width > W - 72 && hs > 26) { hs -= 2; x.font = F(800, hs, COND); }
@@ -4788,7 +4803,7 @@ async function drawShareCard(g, sum, awards) {
     inns.forEach((k, j) => text(String(k), x0 + colW * j + colW / 2, y + 22, F(700, 14, COND), '#8E8E96', 'center'));
     text('R', W - 50, y + 22, F(700, 14, COND), '#F5F5F7', 'right');
     g.players.forEach((p, i) => { const yy = y + 32 + i * 36 + 25; const lead = ls.totals[i] === Math.max(...ls.totals);
-      text(fit(p.name, 64, F(700, 15, SYS)), 50, yy, F(lead ? 700 : 600, 15, SYS), lead ? '#F5F5F7' : '#A1A1AA');
+      text(fit(p.name, 64, F(700, 15, SYS)), 50, yy, F(700, 15, SYS), textCol(gcol(g, i), true));
       inns.forEach((k, j) => { const v = ls.rows[i][k - 1]; if (v != null) text(String(v), x0 + colW * j + colW / 2, yy, F(800, 19, SH), '#C7C7CC', 'center'); });
       text(String(ls.totals[i]), W - 50, yy + 1, F(900, 26, SH), lead ? '#F5F5F7' : '#A1A1AA', 'right'); });
     y += lsH + 12;
@@ -4802,8 +4817,9 @@ async function drawShareCard(g, sum, awards) {
     const score = v => (t.label === 'CONFIDENCE' ? v[0] - v[1] : v == null ? -1 : v), top = Math.max(...t.values.map(score));
     text(t.label, tx + 14, ty + 22, F(800, 13, COND), '#8E8E96');
     let vx = tx + 14; const vf = F(900, n === 3 ? 20 : 26, SH);
-    order.forEach(i => { const s2 = fmt(t.values[i]); text(s2, vx, ty + 50, vf, score(t.values[i]) === top ? '#F5F5F7' : '#6E6E76'); x.font = vf; vx += x.measureText(s2).width + (n === 3 ? 8 : 12); });
-    text(fit(order.map(i => g.players[i].name).join(n === 3 ? ' · ' : ' vs '), tw - 28, F(700, 12, CO)), tx + 14, ty + 68, F(700, 12, CO), '#A1A1AA');
+    order.forEach(i => { const s2 = fmt(t.values[i]); x.globalAlpha = score(t.values[i]) === top ? 1 : 0.45; text(s2, vx, ty + 50, vf, textCol(gcol(g, i), true)); x.globalAlpha = 1; x.font = vf; vx += x.measureText(s2).width + (n === 3 ? 8 : 12); });
+    let nx = tx + 14; order.forEach((i, k) => { if (k) { const sep = n === 3 ? ' · ' : ' vs '; text(sep, nx, ty + 68, F(700, 12, CO), '#8E8E96'); x.font = F(700, 12, CO); nx += x.measureText(sep).width; }
+      const nmx = fit(g.players[i].name, (tw - 28) / n, F(700, 12, CO)); text(nmx, nx, ty + 68, F(700, 12, CO), textCol(gcol(g, i), true)); x.font = F(700, 12, CO); nx += x.measureText(nmx).width; });
   });
   y += rows * 88;
   // awards: just the icons
@@ -5266,7 +5282,7 @@ function awardSheet() {
 function awPlayerSheet() {
   const cur = (S.aw && S.aw.pid) || S.user.uid;
   return `<h2 class="cond" style="margin:0;font-size:28px;font-weight:800">WHOSE AWARDS?</h2>
-  <span class="courier meta">${esc(scopeName())} · most games first</span>
+  <div style="display:flex;align-items:baseline;gap:6px">${clubLabel(scopeName())}<span class="courier meta">· most games first</span></div>
   <div class="list">${awardPeople().map(p => `<button class="row press" ${act('awPick', p.id)} style="min-height:56px">
     <span style="width:32px;height:32px;border-radius:16px;background:var(--card3);display:flex;align-items:center;justify-content:center;font-weight:700;flex-shrink:0">${esc(p.name[0].toUpperCase())}</span>
     <div style="flex-grow:1;min-width:0;display:flex;flex-direction:column"><span style="font-size:17px;font-weight:600">${esc(p.name)}${p.id === S.user.uid ? ' <span class="courier meta">(you)</span>' : ''}</span><span class="courier meta">${p.earned} award${p.earned === 1 ? '' : 's'}</span></div>
@@ -5383,9 +5399,9 @@ function clubPicker() {
   <h1 class="cond" style="margin:0;font-size:34px;font-weight:800;letter-spacing:.4px">CLUB</h1>
   <span style="font-size:15px;line-height:1.45;color:var(--text2)">You’re looking at All my games. ${mine.length ? 'Pick a club to see its roster.' : 'You’re not in a club yet.'}</span>
   ${mine.length || pending.length ? `<div class="list">${mine.map(c => `<button class="row press" ${act('clubOpen', c.code)} style="min-height:58px">
-    <div style="flex-grow:1;min-width:0;display:flex;flex-direction:column;gap:2px"><span style="font-size:17px;font-weight:700">${esc(c.name)}</span><span class="courier meta">${c.public ? 'Public' : 'Private'}${c.captain ? ' · you’re a captain' : ''}</span></div>
+    <div style="flex-grow:1;min-width:0;display:flex;flex-direction:column;gap:2px"><span class="cond" style="font-size:20px;font-weight:800;letter-spacing:.4px">${esc(c.name.toUpperCase())}</span><span class="courier meta">${c.public ? 'Public' : 'Private'}${c.captain ? ' · you’re a captain' : ''}</span></div>
     ${c.requests ? `<span class="cond" style="min-width:22px;height:22px;border-radius:11px;background:var(--goldfill);color:#1A1406;font-size:14px;font-weight:800;display:flex;align-items:center;justify-content:center;padding:0 6px">${c.requests}</span>` : ''}${ICON.chev}</button>`).join('')}
-    ${pending.map(c => `<div class="row" style="min-height:58px;opacity:.6"><div style="flex-grow:1;display:flex;flex-direction:column;gap:2px"><span style="font-size:17px;font-weight:700">${esc(c.name)}</span><span class="courier meta">Request sent · waiting for a captain</span></div><span class="cond tag">PENDING</span></div>`).join('')}</div>` : ''}
+    ${pending.map(c => `<div class="row" style="min-height:58px;opacity:.6"><div style="flex-grow:1;display:flex;flex-direction:column;gap:2px"><span class="cond" style="font-size:20px;font-weight:800;letter-spacing:.4px">${esc(c.name.toUpperCase())}</span><span class="courier meta">Request sent · waiting for a captain</span></div><span class="cond tag">PENDING</span></div>`).join('')}</div>` : ''}
 </div>${clubDock()}${tabbar('club')}${liveBar()}`;
 }
 
@@ -5393,28 +5409,29 @@ function clubPicker() {
 // ── Scouting report (bottom of a player's profile) — built from games played in the app ──
 function scoutingReport(games, pid, name) {
   const r = Statistician.scouting(games, pid);
-  const head = `<div style="display:flex;justify-content:space-between;align-items:baseline;margin-top:4px"><span class="cond" style="font-size:22px;font-weight:800;letter-spacing:.4px">SCOUTING REPORT</span>${r.ready ? `<span class="courier meta">${plural(r.games, 'app game')} · ${r.picks} picks</span>` : ''}</div>`;
+  const streak = games.filter(g => g.era === 'app' && g.ended !== false && g.players.some(p => p.id === pid)).reduce((m, g) => { const k = g.players.findIndex(p => p.id === pid), nn = Statistician.gameNumbers(g); return Math.max(m, (nn && nn[k] && nn[k].bestStreak) || 0); }, 0);
+  const head = sectionHead('SCOUTING REPORT');
   if (!r.ready) return head + `<div style="background:var(--sheetcard);border-radius:16px;padding:14px 16px;font-size:15px;color:var(--text2);line-height:1.45">Not enough to go on yet. The scouts need a full game played in the app${r.picks ? ` (${r.picks} picks so far)` : ''} — old games didn't record every pick.</div>`;
-  const card = (label, big, small) => `<div style="background:var(--sheetcard);border-radius:16px;padding:10px 12px;display:flex;flex-direction:column;gap:2px;min-width:0"><span class="cond" style="font-size:13px;font-weight:800;letter-spacing:.8px;color:var(--text3)">${label}</span><span class="shoulders num" style="font-size:28px;font-weight:900;line-height:1.05">${big}</span><span class="courier meta" style="font-size:11px">${small}</span></div>`;
+  const card = (label, big, small) => `<div style="background:var(--sheetcard);border-radius:16px;padding:10px 12px;display:flex;flex-direction:column;gap:2px;min-width:0"><span class="cond" style="font-size:13px;font-weight:800;letter-spacing:.8px;color:var(--text3)">${label}</span><span class="shoulders num" style="font-size:28px;font-weight:900;line-height:1.05">${big}</span><span class="courier meta" style="font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${small}</span></div>`;
   const pct = x => Math.round(x * 100) + '%';
   const ord = n => n + (n === 1 ? 'st' : n === 2 ? 'nd' : n === 3 ? 'rd' : 'th');
   const callRow = (c, color) => `<div style="display:flex;align-items:center;gap:12px;padding:9px 0;border-top:1px solid var(--line)">
       <span class="shoulders" style="width:44px;font-size:22px;font-weight:900">${c.code}</span>
       <div style="flex-grow:1;min-width:0"><div style="display:flex;justify-content:space-between;align-items:baseline"><span style="font-size:15px;font-weight:600">${esc(c.name)} · ${c.right} of ${c.n}</span><span class="shoulders num" style="font-size:18px;font-weight:900;color:${color}">${pct(c.pct)}</span></div>
       <div style="height:5px;border-radius:3px;background:var(--card3);overflow:hidden;margin-top:4px"><div style="height:5px;border-radius:3px;background:${color};width:${Math.max(2, Math.round(c.pct * 100))}%"></div></div></div></div>`;
-  const line2 = (label, sub, big) => `<div style="background:var(--sheetcard);border-radius:16px;padding:12px 14px;display:flex;justify-content:space-between;align-items:center;gap:10px"><div style="display:flex;flex-direction:column;gap:2px"><span class="cond" style="font-size:13px;font-weight:800;letter-spacing:.8px;color:var(--text3)">${label}</span><span class="courier meta" style="font-size:11px">${sub}</span></div><span class="shoulders num" style="font-size:26px;font-weight:900">${big}</span></div>`;
   return head + `
   <div style="background:var(--sheetcard);border-radius:16px;padding:12px 14px;box-shadow:inset 0 0 0 1.5px rgba(242,193,78,.35)"><span class="cond" style="font-size:13px;font-weight:800;letter-spacing:.8px;color:var(--gold)">THE BOOK ON ${esc(name.toUpperCase())}</span>
     <div style="font-size:17px;font-weight:600;line-height:1.35;margin-top:4px">${esc(r.line)}</div></div>
   <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px">
     ${card('GO-TO CALL', r.go.code, pct(r.go.share) + ' of picks')}
-    ${card('CONFIDENCE', r.conf.perGame.toFixed(1), 'per game' + (r.conf.pct == null ? '' : ' · ' + pct(r.conf.pct) + ' hit'))}
-    ${card('HEATS UP', r.inning ? ord(r.inning.inning) : '—', r.inning ? r.inning.avg.toFixed(1) + ' pts avg' : 'not enough yet')}</div>
+    ${card('CONFIDENCE', r.conf.pct == null ? '—' : pct(r.conf.pct), r.conf.perGame.toFixed(1) + ' a game')}
+    ${card('HEATS UP', r.inning ? ord(r.inning.inning) : '—', r.inning ? r.inning.avg.toFixed(1) + ' pts avg' : 'not enough yet')}
+    ${card('PICK 3', r.p3.halves ? pct(r.p3.hits / r.p3.halves) : '—', r.p3.halves ? `${r.p3.hits} of ${r.p3.halves}` : 'never tried')}
+    ${card('PRIORITY', r.priority != null ? pct(r.priority) : '—', 'of at-bats')}
+    ${card('BEST STREAK', streak, 'in a row')}</div>
   ${r.best.length || r.worst.length ? `<div style="background:var(--sheetcard);border-radius:16px;padding:4px 14px 6px">
     ${r.best.length ? `<div class="cond" style="font-size:13px;font-weight:800;letter-spacing:.8px;color:var(--text3);padding-top:8px">BEST CALLS</div>${r.best.map(c => callRow(c, 'var(--green)')).join('')}` : ''}
-    ${r.worst.length ? `<div class="cond" style="font-size:13px;font-weight:800;letter-spacing:.8px;color:var(--text3);padding-top:10px">BLIND SPOTS</div>${r.worst.map(c => callRow(c, 'var(--orange)')).join('')}` : ''}</div>` : ''}
-  ${r.p3.halves ? line2('PICK 3', `Bonus hit ${r.p3.hits} of ${plural(r.p3.halves, 'half-inning')}`, pct(r.p3.hits / r.p3.halves)) : ''}
-  ${r.priority != null ? line2('PRIORITY', `Held it for ${pct(r.priority)} of at-bats`, pct(r.priority)) : ''}`;
+    ${r.worst.length ? `<div class="cond" style="font-size:13px;font-weight:800;letter-spacing:.8px;color:var(--text3);padding-top:10px">BLIND SPOTS</div>${r.worst.map(c => callRow(c, 'var(--orange)')).join('')}` : ''}</div>` : ''}`;
 }
 function memberSheet() {
   const pid = S.sheet.arg, d = clubData() || { roster: [] }, m = (d.roster || []).find(x => x.pid === pid) || { name: 'Player' };
@@ -5435,20 +5452,21 @@ function memberSheet() {
     const others = g.players.filter((_, k) => k !== i), best = Math.max(...sc.filter((_, k) => k !== i));
     return `<button class="row press" ${act('memberGame', g.id)} style="min-height:52px;gap:12px">
       <span class="cond" style="width:16px;font-size:18px;font-weight:800;color:${o === 'W' ? 'var(--green)' : o === 'L' ? 'var(--orange)' : 'var(--text2)'}">${o}</span>
-      <div style="flex-grow:1;min-width:0;display:flex;flex-direction:column"><span style="font-size:15px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">vs ${esc(others.map(p => p.name).join(', '))}</span><span class="courier meta">${niceDate(g.date)}${g.park ? ' · ' + esc(g.park) : ''}</span></div>
-      <span class="shoulders num" style="font-size:20px;font-weight:900">${sc[i]}–${best}</span></button>`; };
+      <div style="flex-grow:1;min-width:0;display:flex;flex-direction:column"><span style="font-size:15px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">vs ${esc(others.map(p => p.name).join(', '))}</span><div style="display:flex;align-items:center;gap:6px;min-width:0"><span class="courier meta">${niceDate(g.date)}</span>${gameTag(g)}</div></div>
+      <span style="display:flex;align-items:baseline;gap:6px;white-space:nowrap"><span class="shoulders num" style="font-size:20px;font-weight:900">${signed0(sc[i])}</span><span class="courier meta">vs</span><span class="shoulders num" style="font-size:20px;font-weight:900;color:var(--text3)">${signed0(best)}</span></span></button>`; };
   const since = m.joinedAt ? new Date(m.joinedAt).getFullYear() : null;
+  const sc0 = Statistician.scouting(games, pid), appCount = sc0.games ? `${plural(sc0.games, 'game')} · ${sc0.picks} picks` : '';
   return `<div style="display:flex;align-items:center;gap:12px">
     ${avatar(m.pid, m.name, 52)}
     <div style="display:flex;flex-direction:column;gap:3px;min-width:0"><div style="display:flex;align-items:center;gap:8px"><span class="cond" style="font-size:28px;font-weight:800;line-height:1">${esc(m.name)}</span>${m.captain ? '<span class="cond tag gold">CAPTAIN</span>' : ''}</div>
-    <span class="courier meta">In ${esc((clubOf(S.scope) || {}).name || 'the club')}${since ? ' since ' + since : ''}</span></div></div>
+    <div style="display:flex;align-items:baseline;gap:6px">${clubLabel((clubOf(S.scope) || {}).name || 'the club')}${since ? `<span class="courier meta">since ${since}</span>` : ''}</div></div></div>
   <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px">
     ${tile('RECORD', `${row.w}–${row.l}${row.t ? '–' + row.t : ''}`, plural(row.games, 'game'))}${tile('WIN %', row.winPct == null ? '—' : Math.round(row.winPct * 100) + '%', 'All seasons')}
     ${tile('AVG POINTS', row.avgPts == null ? '—' : row.avgPts.toFixed(1), 'Per game')}${tile('ACCURACY', row.accuracy == null ? '—' : Math.round(row.accuracy * 100) + '%', 'Correct calls')}</div>
   ${vs}
+  ${recent.length ? sectionHead('RECENT GAMES', appCount) + `<div class="list" style="background:var(--sheetcard)">${recent.map(line).join('')}</div>` : ''}
   ${scoutingReport(games, pid, m.name)}
-  ${recent.length ? `<span class="cond label" style="padding:0">RECENT GAMES</span><div class="list">${recent.map(line).join('')}</div>` : ''}
-  <span class="courier meta">${esc((clubOf(S.scope) || {}).name || '')} games only</span>
+  <div style="display:flex;align-items:baseline;gap:6px"><span class="courier meta">Counting</span>${clubLabel((clubOf(S.scope) || {}).name || '')}<span class="courier meta">games only</span></div>
   ${cap && pid !== me ? `<button class="press cond mid-btn" style="background:var(--sheetcard);color:var(--orange);font-size:17px" ${act('openSheet', 'removeMember:' + pid)}>REMOVE FROM CLUB <span class="cond tag gold" style="font-size:10px;margin-left:4px">CAPTAINS</span></button>` : ''}`;
 }
 function removeMemberSheet() {
@@ -5465,7 +5483,7 @@ function guestSheet() {
   const row = Statistician.standings(scopeGames() || []).find(r => r.id === pid) || { w: 0, l: 0, t: 0, games: 0, points: 0 };
   const gi = S.guestInfo && S.guestInfo.pid === pid ? S.guestInfo : null;
   const cap = amCaptain(), open = S.guestOpen;
-  const tile = (big, label) => `<div style="background:var(--sheetcard);border-radius:14px;padding:8px 12px;display:flex;flex-direction:column"><span class="shoulders num" style="font-size:26px;font-weight:900;line-height:1.1">${big}</span><span class="cond" style="font-size:13px;font-weight:800;letter-spacing:.8px;color:var(--text3)">${label}</span></div>`;
+  const tile = (big, label) => `<div style="background:var(--sheetcard);border-radius:16px;padding:10px 12px;display:flex;flex-direction:column;gap:2px;min-width:0"><span class="cond" style="font-size:13px;font-weight:800;letter-spacing:.8px;color:var(--text3)">${label}</span><span class="shoulders num" style="font-size:28px;font-weight:900;line-height:1.05">${big}</span></div>`;
   const q = (S.gq || '').trim().toLowerCase();
   const inClub = new Set((d.roster || []).filter(x => !x.guest).map(x => x.pid));
   const accts = (S.accounts || []).filter(a => !q || a.name.toLowerCase().includes(q));
@@ -5486,8 +5504,8 @@ function guestSheet() {
   const waiting = ((d.req || {}).claims || []).find(c => c.guest === pid);
   return `<div style="display:flex;align-items:center;gap:12px">
     <span style="width:52px;height:52px;border-radius:26px;border:2px dashed var(--text4);display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:800;flex-shrink:0">${esc(m.name[0].toUpperCase())}</span>
-    <div style="display:flex;flex-direction:column;gap:3px;min-width:0"><div style="display:flex;align-items:center;gap:8px"><span class="cond" style="font-size:30px;font-weight:800;line-height:1">${esc(m.name.toUpperCase())}</span><span class="cond tag">GUEST</span></div>
-    <span class="courier meta">${gi && gi.by ? 'Added by ' + esc(gi.by) + ' · ' : ''}${esc((clubOf(S.scope) || {}).name || '')}</span></div></div>
+    <div style="display:flex;flex-direction:column;gap:3px;min-width:0"><div style="display:flex;align-items:center;gap:8px"><span class="cond" style="font-size:28px;font-weight:800;line-height:1">${esc(m.name)}</span><span class="cond tag">GUEST</span></div>
+    <div style="display:flex;align-items:baseline;gap:6px">${clubLabel((clubOf(S.scope) || {}).name || '')}${gi && gi.by ? `<span class="courier meta">added by ${esc(gi.by)}</span>` : ''}</div></div></div>
   <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px">${tile(row.games, row.games === 1 ? 'GAME' : 'GAMES')}${tile(`${row.w}–${row.l}${row.t ? '–' + row.t : ''}`, 'RECORD')}${tile(row.points, 'POINTS')}</div>
   ${waiting ? `<div class="card" style="background:var(--sheetcard);padding:10px 14px;border:1.5px solid rgba(242,193,78,.45);font-size:14px;line-height:1.4"><b>${esc(waiting.name)}</b> says this is them — waiting for a captain in the Club tab’s REQUESTS.</div>` : ''}
   <div class="list">
