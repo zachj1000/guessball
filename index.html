@@ -219,6 +219,14 @@ html[data-theme="light"] .dock button { border-color: rgba(0,0,0,.06); box-shado
 .spinner { width: 22px; height: 22px; }
 body.bigtext .page { zoom: 1.08; }
 
+/* Quick reactions: bubbles drop in under the game's top bar, stack, and fade after 2.5 seconds */
+#reactLayer { position: fixed; top: calc(var(--safe-top) + 62px); left: 0; right: 0; z-index: 60; display: flex; flex-direction: column; align-items: center; gap: 6px; pointer-events: none; }
+.react-bubble { display: flex; align-items: center; gap: 8px; padding: 6px 14px 6px 6px; border-radius: 26px; background: var(--toastbg); box-shadow: 0 10px 30px rgba(0,0,0,.35);
+  animation: reactIn .22s cubic-bezier(.2,.9,.3,1.3); transition: opacity .3s, transform .3s; }
+.react-bubble.out { opacity: 0; transform: translateY(-8px); }
+.react-emoji { font-size: 30px; line-height: 1; }
+@keyframes reactIn { from { opacity: 0; transform: translateY(-12px) scale(.8); } to { opacity: 1; transform: none; } }
+
 </style>
 </head>
 <body>
@@ -631,6 +639,20 @@ const Statistician = (() => {
       winPct: pct(r.w, r.games), avgPts: pct(r.points, r.games), accuracy: pct(r.right, r.picks) }))
       .sort((a, b) => b.w - a.w || a.l - b.l || b.games - a.games || a.name.localeCompare(b.name));
   }
+  // ── Season title race: ranked by games over .500 (wins − losses), then more wins, then head-to-head, then name.
+  // A season is decided on Nov 15 (after the World Series); until then its #1 is the LEADER, after it the CHAMPION.
+  const CROWN_DAY = '11-15';
+  const seasonDone = (y, today) => +String(today).slice(0, 4) > y || String(today).slice(5) >= CROWN_DAY;
+  function seasonRace(games, y) {
+    const list = games.filter(g => g.ended !== false && season(g) === y);
+    const rows = standings(list).map(r => ({ ...r, over: r.w - r.l }));
+    const h2hWin = (a, b) => { const h = h2h(list, a.id, b.id); return h.b.wins - h.a.wins; };
+    return rows.sort((a, b) => b.over - a.over || b.w - a.w || h2hWin(a, b) || a.name.localeCompare(b.name));
+  }
+  // Every decided season's champion, newest first: [{ season, id, name, w, l, t, over }]
+  function champions(games, today) {
+    return seasons(games).filter(y => seasonDone(y, today)).map(y => { const top = seasonRace(games, y)[0]; return top && { season: y, ...top }; }).filter(Boolean);
+  }
   // Seasons that have games, newest first (for the season dropdown)
   const seasons = games => [...new Set(games.map(season))].sort((a, b) => b - a);
 
@@ -976,6 +998,16 @@ const Statistician = (() => {
     A('perfecto', 'Perfecto', 'THE REAL GAME', 'A team never reaches base (logged from the 1st inning)'),
     A('blanked', 'Blanked', 'THE REAL GAME', 'A team scores 0 in the real game'),
     A('marathon', 'Marathon', 'THE REAL GAME', 'The real game goes 12+ innings'),
+
+    // ── Build 23: quick reactions in online games (🔥 😂 😬 🧢 👏 💀 + a wildcard of your choice) ──
+    A('trash_talker', 'Trash Talker', 'TRASH TALK', 'Send 💩 from your wildcard'),
+    A('jinx', 'Jinx', 'TRASH TALK', 'Send 😬, then everyone else misses the next pick'),
+    A('called_it', 'Called It', 'TRASH TALK', 'Send 🔥, then get your next pick right'),
+    A('cap', 'Cap', 'TRASH TALK', 'Send 🧢 and they get the next one right anyway'),
+    A('sore_loser', 'Sore Loser', 'TRASH TALK', 'Send 💀 right after a play drops you to last'),
+    A('hype_man', 'Hype Man', 'TRASH TALK', 'Send 25 reactions in one game'),
+    A('silent_treatment', 'Silent Treatment', 'TRASH TALK', 'Win an online game without sending a reaction'),
+    A('emoji_artist', 'Emoji Artist', 'TRASH TALK', 'Use 10 different wildcard emoji'),
   ];
   const AWARD = Object.fromEntries(AWARDS.map(a => [a.id, a]));
 
@@ -990,7 +1022,7 @@ const Statistician = (() => {
     const P = id => book[id] || (book[id] = {
       earned: {}, counts: {}, games: 0, wins: 0, points: 0, parks: {}, seasons: new Set(),
       vs: {}, lastLossTo: null, confRun: 0, p3Run: 0, confUsed: false, dates: {}, seasonGames: {},
-      appGames: 0, onlineGames: 0, couchGames: 0, appWinRun: 0,
+      appGames: 0, onlineGames: 0, couchGames: 0, appWinRun: 0, wild: new Set(),
     });
     const give = (pid, g, id, tier = 1, at = null) => {
       const e = P(pid).earned[id] || (P(pid).earned[id] = []);
@@ -1096,6 +1128,7 @@ const Statistician = (() => {
           if (real.final && real.fromStart && (real.perfect.t || real.perfect.b)) give(pl.id, g, 'perfecto');
         });
         g.players.forEach((pl, i) => { const p = P(pl.id); p.appWinRun = outcomeFor(g, i) === 'W' ? p.appWinRun + 1 : 0; });
+        reactionAwards(g, r, online, give, P);
       }
     });
     bookCache.set(games, book);
@@ -1112,6 +1145,34 @@ const Statistician = (() => {
       if (HITS.includes(p.outcome)) noHit[side] = false;
       if (!CLEAN.includes(p.outcome) || p.runs || (p.ev && p.ev.extraOuts)) perfect[side] = false; });
     return { away, home, total: away + home, final: !!U.mlbGameOver(st), fromStart: !!(r.halves[0] && r.halves[0].half === '1t'), noHit, perfect };
+  }
+
+  // Quick reactions: { s: seat, e: emoji, n: scorebook length when sent } under g.reacts. The six fixed ones; anything else came
+  // from the wildcard. "Next play" = the first play saved after the reaction; "last play" = the one just before it.
+  const FIXED_REACTS = ['🔥', '😂', '😬', '🧢', '👏', '💀'];
+  function reactionAwards(g, r, online, give, P) {
+    const list = Object.values(g.reacts || {}).filter(x => x && typeof x.e === 'string' && g.players[x.s])
+      .sort((a, b) => (a.n || 0) - (b.n || 0) || (a.at || 0) - (b.at || 0));
+    const sent = g.players.map(() => 0);
+    list.forEach(x => {
+      const i = x.s, pid = g.players[i].id, n = x.n || 0;
+      const next = r.plays.find(p => p.index >= n && !p.voided), prev = r.plays.filter(p => p.index < n).pop();
+      sent[i]++;
+      if (sent[i] === 25) give(pid, g, 'hype_man', 1, next ? next.index : null);
+      if (!FIXED_REACTS.includes(x.e)) { const p = P(pid); p.wild.add(x.e); if (p.wild.size >= 10) give(pid, g, 'emoji_artist'); }
+      if (x.e === '💩') give(pid, g, 'trash_talker', 1, prev ? prev.index : null);
+      if (next) {
+        const mine = next.log.find(e => e.player === i), others = next.log.filter(e => e.player !== i);
+        if (x.e === '🔥' && mine && mine.correct) give(pid, g, 'called_it', 1, next.index);
+        if (x.e === '😬' && others.length && others.every(e => !e.correct)) give(pid, g, 'jinx', 1, next.index);
+        if (x.e === '🧢' && others.some(e => e.correct)) give(pid, g, 'cap', 1, next.index);
+      }
+      if (x.e === '💀' && prev && g.players.length > 1) {
+        const low = sc => sc[i] < Math.min(...sc.filter((_, j) => j !== i));
+        if (low(prev.scoresAfter) && !low(prev.scoresBefore)) give(pid, g, 'sore_loser', 1, prev.index);
+      }
+    });
+    if (online && r.ended) g.players.forEach((pl, i) => { if (!sent[i] && outcomeFor(g, i) === 'W') give(pl.id, g, 'silent_treatment'); });
   }
 
   function inGameAwards(g, r, give, count, P) {
@@ -1386,7 +1447,7 @@ const Statistician = (() => {
       priority: abs ? held / abs : null, line };
   }
 
-  return { AWARDS, CODES, result, outcomeFor, replay, gameNumbers, lineScore, standings, seasons, history,
+  return { AWARDS, CODES, result, outcomeFor, replay, gameNumbers, lineScore, standings, seasons, seasonRace, FIXED_REACTS, champions, seasonDone, history,
            records, h2h, opponents, summary, awardBook, awardsFor, awardsInGame, whoHas, scouting };
 })();
 
@@ -1501,6 +1562,8 @@ const FilingCabinet = (() => {
     const photoOf = pid => get('profiles/' + pid + '/photo');
     // Favorite teams are public on the profile (so a game can note each player's team for the Double Dip / Silver Lining awards)
     const teamOf = pid => get('profiles/' + pid + '/team');
+    // Quick reactions in an online game: { s: seat, e: emoji, n: how many scorebook entries there were, at } — awards read them later
+    async function sendReact(g, seat, e) { need(); const k = db.newId(), v = { s: seat, e, n: (g.events || []).length, at: now() }; await queue({ ['games/' + g.id + '/reacts/' + k]: v }); return { k, v }; }
     async function syncTeam(team) { need(); if (((await get('profiles/' + uid + '/team')) || null) !== (team || null)) await queue({ ['profiles/' + uid + '/team']: team || null }); }
     // Tips this account has already seen (users/<uid>/tips/<id> = true)
     // Guess Ball Next only: this phone's Problem log, for watching a test live. Straight to Firebase (never queued — old logs don't matter).
@@ -1996,7 +2059,7 @@ const FilingCabinet = (() => {
 
     return { setUser, onStatus: f => { listeners.add(f); f(status()); return () => listeners.delete(f); }, status, flush,
       onRefused: f => { refusedFns.add(f); return () => refusedFns.delete(f); }, roundKey, setSlot, clearSlot, setJoined, watchGame, watchLive, myInvite, loadGame, peekGame, forgetLive, isStale, adoptLive,
-      myAccount, saveProfile, savePhoto, photoOf, teamOf, syncTeam, unlinkAccount, profiles, tipSeen, saveDiag,
+      myAccount, saveProfile, savePhoto, photoOf, teamOf, syncTeam, sendReact, unlinkAccount, profiles, tipSeen, saveDiag,
       createClub, findClubs, myClubs, clubInfo, roster, joinClub, requests, answerRequest, leaveClub, setCaptain, removeMember, updateClub,
       addGuest, renameGuest, claimGuest, answerClaim, myAliases, accounts, offerGuest, myOffers, dismissOffer, myClaims,
       startGame, liveGame, findLiveGame, addEvent, undo, takeOver, updateGameInfo, endGame, discardGame, addHandGame, editHandGame, deleteGame, setWhere,
@@ -2030,7 +2093,7 @@ const FilingCabinet = (() => {
 // ════════════════════════════════════════════════════════════════
 // Which copy of the app this is: the real app, or Guess Ball Next (QA, with its own test data)
 const ENV = {"name":"live","data":"v2","store":"gb_"};
-const VERSION = ENV.name === 'qa' ? '2.0 · QA build 22 · 10-05 00:09 UTC' : '2.0';
+const VERSION = ENV.name === 'qa' ? '2.0 · QA build 23 · 10-06 04:52 UTC' : '2.0';
 const RULES_JSON = {
   "rules": {
     "v2": {
@@ -2157,6 +2220,12 @@ const RULES_JSON = {
           "head": {
             ".write": "(((root.child('v2').child('games').child($gid).child('players/0/id').val() === auth.uid) && (root.child('v2').child('games').child($gid).child('joined/0').val() === true)) || ((root.child('v2').child('games').child($gid).child('players/1/id').val() === auth.uid) && (root.child('v2').child('games').child($gid).child('joined/1').val() === true)) || ((root.child('v2').child('games').child($gid).child('players/2/id').val() === auth.uid) && (root.child('v2').child('games').child($gid).child('joined/2').val() === true)) || ((root.child('v2').child('games').child($gid).child('players/3/id').val() === auth.uid) && (root.child('v2').child('games').child($gid).child('joined/3').val() === true))) && (root.child('v2').child('games').child($gid).child('ended').val() === false)",
             ".validate": "(!data.exists()) || ((newData.child('last').val() === data.child('next').val()) && (!data.parent().child('events').child(data.child('next').val()).exists()) && (newData.parent().child('events').child(data.child('next').val()).exists()) && (newData.parent().child('events').child(data.child('next').val()).child('id').val() === newData.child('id').val())) || ((newData.child('undid').val() === data.child('id').val()) && (!newData.parent().child('events').child(data.child('last').val()).exists()) && (newData.child('next').val() === data.child('last').val()) && ((newData.child('last').val() === '-1') || (newData.parent().child('events').child(newData.child('last').val()).child('id').val() === newData.child('id').val())))"
+          },
+          "reacts": {
+            "$k": {
+              ".write": "((((root.child('v2').child('games').child($gid).child('players/0/id').val() === auth.uid) && (root.child('v2').child('games').child($gid).child('joined/0').val() === true)) || ((root.child('v2').child('games').child($gid).child('players/1/id').val() === auth.uid) && (root.child('v2').child('games').child($gid).child('joined/1').val() === true)) || ((root.child('v2').child('games').child($gid).child('players/2/id').val() === auth.uid) && (root.child('v2').child('games').child($gid).child('joined/2').val() === true)) || ((root.child('v2').child('games').child($gid).child('players/3/id').val() === auth.uid) && (root.child('v2').child('games').child($gid).child('joined/3').val() === true))) || (root.child('v2').child('games').child($gid).child('host').val() === auth.uid)) && (root.child('v2').child('games').child($gid).child('ended').val() === false) && (!data.exists()) && (newData.exists())",
+              ".validate": "(newData.child('s').isNumber()) && (newData.child('e').isString()) && (newData.child('e').val().length > 0) && (newData.child('e').val().length <= 16) && (newData.child('n').isNumber()) && (((newData.child('s').val() === 0) && (root.child('v2').child('games').child($gid).child('players/0/id').val() === auth.uid)) || ((newData.child('s').val() === 1) && (root.child('v2').child('games').child($gid).child('players/1/id').val() === auth.uid)) || ((newData.child('s').val() === 2) && (root.child('v2').child('games').child($gid).child('players/2/id').val() === auth.uid)) || ((newData.child('s').val() === 3) && (root.child('v2').child('games').child($gid).child('players/3/id').val() === auth.uid)))"
+            }
           },
           "joined": {
             "$i": {
@@ -2320,6 +2389,12 @@ const RULES_JSON = {
             ".write": "(((root.child('qa').child('games').child($gid).child('players/0/id').val() === auth.uid) && (root.child('qa').child('games').child($gid).child('joined/0').val() === true)) || ((root.child('qa').child('games').child($gid).child('players/1/id').val() === auth.uid) && (root.child('qa').child('games').child($gid).child('joined/1').val() === true)) || ((root.child('qa').child('games').child($gid).child('players/2/id').val() === auth.uid) && (root.child('qa').child('games').child($gid).child('joined/2').val() === true)) || ((root.child('qa').child('games').child($gid).child('players/3/id').val() === auth.uid) && (root.child('qa').child('games').child($gid).child('joined/3').val() === true))) && (root.child('qa').child('games').child($gid).child('ended').val() === false)",
             ".validate": "(!data.exists()) || ((newData.child('last').val() === data.child('next').val()) && (!data.parent().child('events').child(data.child('next').val()).exists()) && (newData.parent().child('events').child(data.child('next').val()).exists()) && (newData.parent().child('events').child(data.child('next').val()).child('id').val() === newData.child('id').val())) || ((newData.child('undid').val() === data.child('id').val()) && (!newData.parent().child('events').child(data.child('last').val()).exists()) && (newData.child('next').val() === data.child('last').val()) && ((newData.child('last').val() === '-1') || (newData.parent().child('events').child(newData.child('last').val()).child('id').val() === newData.child('id').val())))"
           },
+          "reacts": {
+            "$k": {
+              ".write": "((((root.child('qa').child('games').child($gid).child('players/0/id').val() === auth.uid) && (root.child('qa').child('games').child($gid).child('joined/0').val() === true)) || ((root.child('qa').child('games').child($gid).child('players/1/id').val() === auth.uid) && (root.child('qa').child('games').child($gid).child('joined/1').val() === true)) || ((root.child('qa').child('games').child($gid).child('players/2/id').val() === auth.uid) && (root.child('qa').child('games').child($gid).child('joined/2').val() === true)) || ((root.child('qa').child('games').child($gid).child('players/3/id').val() === auth.uid) && (root.child('qa').child('games').child($gid).child('joined/3').val() === true))) || (root.child('qa').child('games').child($gid).child('host').val() === auth.uid)) && (root.child('qa').child('games').child($gid).child('ended').val() === false) && (!data.exists()) && (newData.exists())",
+              ".validate": "(newData.child('s').isNumber()) && (newData.child('e').isString()) && (newData.child('e').val().length > 0) && (newData.child('e').val().length <= 16) && (newData.child('n').isNumber()) && (((newData.child('s').val() === 0) && (root.child('qa').child('games').child($gid).child('players/0/id').val() === auth.uid)) || ((newData.child('s').val() === 1) && (root.child('qa').child('games').child($gid).child('players/1/id').val() === auth.uid)) || ((newData.child('s').val() === 2) && (root.child('qa').child('games').child($gid).child('players/2/id').val() === auth.uid)) || ((newData.child('s').val() === 3) && (root.child('qa').child('games').child($gid).child('players/3/id').val() === auth.uid)))"
+            }
+          },
           "joined": {
             "$i": {
               ".write": "(auth != null) && (root.child('qa').child('games').child($gid).child('players').child($i).child('id').val() === auth.uid) && (root.child('qa').child('games').child($gid).child('ended').val() === false)",
@@ -2461,6 +2536,9 @@ const act = (name, arg) => `data-act="${name}"${arg !== undefined ? ` data-arg="
 const pct3 = v => (v == null ? '—' : v >= 1 ? '1.000' : v.toFixed(3).replace(/^0/, ''));
 const MONTHS = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
 
+// Today as YYYY-MM-DD on this phone (window.__today lets previews pretend it's another day)
+const todayStr = () => window.__today || (d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`)(new Date());
+const crownIcon = (px = 18, color = 'var(--gold)') => `<svg width="${px}" height="${px}" viewBox="0 0 24 24" fill="${color}" stroke="none" style="flex-shrink:0"><path d="M3 8l4.5 4L12 5l4.5 7L21 8l-2 10H5z"/><rect x="5" y="19.5" width="14" height="2" rx="1"/></svg>`;
 const ICON = {
   back: '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3L5 8l5 5"/></svg>',
   x: '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3.5 3.5l9 9M12.5 3.5l-9 9"/></svg>',
@@ -2528,6 +2606,16 @@ const toggle = (on, a, arg) => `<button class="toggle ${on ? 'on' : ''}" aria-pr
 const progress = (n, of) => `<div style="display:flex;gap:6px">${Array.from({ length: of }, (_, i) => `<span style="width:22px;height:5px;border-radius:3px;background:${i < n ? 'var(--text)' : 'var(--card3)'}"></span>`).join('')}</div>`;
 
 // ════════════ Screens ════════════
+// Home in the off-season: last season's champion, until the club plays a game in a newer season
+function homeChampion() {
+  const games = scopeGames(); if (!games || !games.length) return '';
+  const c = Statistician.champions(games, todayStr())[0]; if (!c || Statistician.seasons(games)[0] > c.season) return '';
+  return `<button class="card press" ${act('openSheet', 'member:' + c.id)} style="width:100%;text-align:left;padding:12px 16px;display:flex;align-items:center;gap:14px;box-shadow:inset 0 0 0 1.5px rgba(242,193,78,.45)">
+    ${avatar(c.id, c.name, 44)}
+    <div style="flex-grow:1;min-width:0;display:flex;flex-direction:column;gap:1px"><span class="cond" style="display:flex;align-items:center;gap:6px;font-size:14px;font-weight:800;letter-spacing:.8px;color:var(--gold)">${crownIcon(15)}${c.season} CHAMPION</span>
+      <span class="cond" style="font-size:26px;font-weight:800;line-height:1.05">${esc(c.name.toUpperCase())}</span></div>
+    <div style="display:flex;flex-direction:column;align-items:flex-end"><span class="shoulders num" style="font-size:22px;font-weight:900">${c.w}–${c.l}${c.t ? '–' + c.t : ''}</span><span class="courier meta">${c.over > 0 ? '+' + c.over : c.over} over .500</span></div></button>`;
+}
 const SCREENS = {};
 
 SCREENS.loading = () => `<div class="fixedpage" style="align-items:center;justify-content:center;gap:26px">
@@ -2668,6 +2756,7 @@ SCREENS.home = () => {
       ${noClubs ? `<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:4px"><button class="press cond small-btn" style="height:42px;border-radius:21px" ${act('go', 'findClub')}>FIND A CLUB</button><button class="press cond small-btn" style="height:42px;border-radius:21px" ${act('go', 'createClub')}>CREATE A CLUB</button></div>` : ''}
     </div>`;
   else body = `
+    ${homeChampion()}
     <div style="display:flex;align-items:baseline;justify-content:space-between;margin-top:8px"><h2 class="cond h2">STANDINGS</h2><a class="cond" ${act('tab', 'stats')} style="font-size:16px;font-weight:800;letter-spacing:.6px">SEE ALL ›</a></div>
     <div class="card" style="padding:0 16px">${h.rows.slice(0, 3).map((r, i) => `<div style="display:flex;align-items:center;gap:12px;height:46px;${i ? 'border-top:1px solid var(--line)' : ''}">
       <span class="shoulders num" style="width:16px;font-size:20px;font-weight:800;color:var(--text3)">${i + 1}</span>
@@ -3399,8 +3488,15 @@ function wire() {
     const ox = getComputedStyle(n).overflowX; if (ox === 'auto' || ox === 'scroll') return;   // rows built to scroll sideways (chips, color swatches…) are left alone
     n.scrollLeft = 0;
   }, { capture: true, passive: true });
+  let longT = null;
+  const longStop = () => { clearTimeout(longT); longT = null; };
+  el.addEventListener('pointerdown', e => { const b = e.target.closest('[data-long]'); if (!b) return; longStop();
+    longT = setTimeout(() => { longT = null; b.dataset.longFired = '1'; buzz(); const fn = ACT[b.dataset.long]; if (fn) fn(b.dataset.arg, b); }, 480); });
+  ['pointerup', 'pointercancel', 'pointerleave'].forEach(t => el.addEventListener(t, longStop));
+  el.addEventListener('contextmenu', e => { if (e.target.closest('[data-long]')) e.preventDefault(); });
   el.addEventListener('click', e => {
     const b = e.target.closest('[data-act]');
+    if (b && b.dataset.longFired) { delete b.dataset.longFired; e.preventDefault(); return; }   // a long-press already did its thing
     if (!b || b.disabled || !el.contains(b)) return;
     const fn = ACT[b.dataset.act];
     if (!fn) return;
@@ -3571,7 +3667,7 @@ const teamAbbr = (t, side) => (t && typeof TEAM_STYLE !== 'undefined' && TEAM_ST
 const mlbScore = () => { const g = S.g.game, m = S.g.s.mlb, c = w => `color:var(--${w ? 'text' : 'text2'})`;
   return `<span class="cond" data-mlbscore style="font-size:17px;font-weight:800;letter-spacing:.6px;white-space:nowrap"><span style="${c(m.away > m.home)}">${esc(teamAbbr(g.away, 'AWAY'))} ${m.away}</span><span style="color:var(--text3)"> &nbsp;·&nbsp; </span><span style="${c(m.home > m.away)}">${esc(teamAbbr(g.home, 'HOME'))} ${m.home}</span></span>`; };
 const gameTop = (left, title) => `<div class="topbar" style="justify-content:space-between;min-height:36px">${left}
-  <div class="onphoto" style="display:flex;flex-direction:column;align-items:center;gap:1px;min-width:0"><div style="display:flex;align-items:center;gap:10px"><span class="cond" style="font-size:20px;font-weight:700;letter-spacing:.6px">${title}</span>${outsDots(S.g.s.outs)}</div>${mlbScore()}</div>${menuBtn()}</div>`;
+  <div class="onphoto" style="display:flex;flex-direction:column;align-items:center;gap:1px;min-width:0"><div style="display:flex;align-items:center;gap:10px"><span class="cond" style="font-size:20px;font-weight:700;letter-spacing:.6px">${title}</span>${outsDots(S.g.s.outs)}</div>${mlbScore()}</div><div style="display:flex;gap:8px">${typeof reactBtn === 'function' ? reactBtn() : ''}${menuBtn()}</div></div>`;
 const badge = (t, color, border) => `<span class="cond tag" style="color:${color};border-color:${border}">${t}</span>`;
 const PRI = () => badge('PRIORITY', 'var(--link)', 'var(--link)');
 const CONFB = full => badge(full ? 'CONFIDENCE' : 'CONF', 'var(--gold)', 'rgba(242,193,78,.55)');
@@ -4497,28 +4593,35 @@ SCREENS.stats = () => {
 function statsStandings(games) {
   const seasons = Statistician.seasons(games);
   const yr = S.statSeason || 'ALL TIME';
-  const rows = Statistician.standings(games, yr === 'ALL TIME' ? {} : { season: +yr });
+  const race = yr !== 'ALL TIME', rows = race ? Statistician.seasonRace(games, +yr) : Statistician.standings(games);
+  const done = race && Statistician.seasonDone(+yr, todayStr());
   const ties = rows.some(r => r.t);
-  const cols = ties ? '24px 40px 1fr 34px 34px 34px 18px' : '24px 40px 1fr 40px 40px 18px';
+  const cols = (ties ? '24px 40px 1fr 34px 34px 34px' : '24px 40px 1fr 38px 38px') + (race ? ' 40px' : '') + ' 18px';
   return `<div style="display:flex;align-items:center;justify-content:space-between">
     <button class="press cond" ${act('openSheet', 'season')} style="height:36px;padding:0 14px;border-radius:18px;background:var(--card);font-size:19px;font-weight:800;letter-spacing:.6px;display:flex;align-items:center;gap:6px">${esc(yr)} ${ICON.down}</button>
     </div>
+  ${race && rows.length ? `<div class="card" style="padding:10px 14px;display:flex;align-items:center;gap:12px;${done ? 'box-shadow:inset 0 0 0 1.5px rgba(242,193,78,.45)' : ''}">
+    ${done ? crownIcon(26) : ''}<div style="flex-grow:1;min-width:0;display:flex;flex-direction:column;gap:1px">
+      <span class="cond" style="font-size:13px;font-weight:800;letter-spacing:.8px;color:${done ? 'var(--gold)' : 'var(--text3)'}">${done ? yr + ' CHAMPION' : yr + ' LEADER'}</span>
+      <span class="cond" style="font-size:22px;font-weight:800;line-height:1.05">${esc(rows[0].name.toUpperCase())}</span></div>
+    <span class="courier meta" style="text-align:right">${done ? 'Most games over .500' : 'Champion crowned Nov 15'}</span></div>` : ''}
   <div class="card" style="padding:0 14px">
-    <div class="cond" style="display:grid;grid-template-columns:${cols};height:32px;align-items:center;font-size:13px;font-weight:800;letter-spacing:.8px;color:var(--text3);border-bottom:1px solid var(--line)"><span></span><span style="grid-column:span 2">PLAYER</span><span style="text-align:center">W</span><span style="text-align:center">L</span>${ties ? '<span style="text-align:center">T</span>' : ''}<span></span></div>
+    <div class="cond" style="display:grid;grid-template-columns:${cols};height:32px;align-items:center;font-size:13px;font-weight:800;letter-spacing:.8px;color:var(--text3);border-bottom:1px solid var(--line)"><span></span><span style="grid-column:span 2">PLAYER</span><span style="text-align:center">W</span><span style="text-align:center">L</span>${ties ? '<span style="text-align:center">T</span>' : ''}${race ? '<span style="text-align:right">+/−</span>' : ''}<span></span></div>
     ${rows.map((r, i) => {
       const open = S.statOpen === r.id;
-      return `<button class="press" ${act('standOpen', r.id)} style="width:100%;display:block;text-align:left;${i ? 'border-top:1px solid var(--line)' : ''}">
+      return `<div style="${i ? 'border-top:1px solid var(--line)' : ''}"><button class="press" ${act('standOpen', r.id)} style="width:100%;display:block;text-align:left">
         <div style="display:grid;grid-template-columns:${cols};height:46px;align-items:center">
-          <span class="shoulders" style="font-size:18px;font-weight:800;color:var(--text3)">${i + 1}</span>
+          ${race && i === 0 && done ? `<span style="display:flex">${crownIcon(18)}</span>` : `<span class="shoulders" style="font-size:18px;font-weight:800;color:var(--text3)">${i + 1}</span>`}
           ${avatar(r.id, r.name, 30)}
           <span style="font-size:17px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(r.name)}</span>
           <span class="shoulders num" style="text-align:center;font-size:22px;font-weight:900">${r.w}</span>
           <span class="shoulders num" style="text-align:center;font-size:22px;font-weight:800;color:var(--text2)">${r.l}</span>
           ${ties ? `<span class="shoulders num" style="text-align:center;font-size:22px;font-weight:800;color:var(--text2)">${r.t}</span>` : ''}
-          <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="var(--text4)" stroke-width="1.8" stroke-linecap="round" style="transform:rotate(${open ? 180 : 0}deg)"><path d="M3 4.5l3 3 3-3"/></svg></div>
+          ${race ? `<span class="shoulders num" style="text-align:right;font-size:20px;font-weight:900;color:${r.over > 0 ? 'var(--green)' : r.over < 0 ? 'var(--orange)' : 'var(--text3)'}">${r.over > 0 ? '+' + r.over : r.over < 0 ? '−' + Math.abs(r.over) : '0'}</span>` : ''}
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="var(--text4)" stroke-width="1.8" stroke-linecap="round" style="transform:rotate(${open ? 180 : 0}deg)"><path d="M3 4.5l3 3 3-3"/></svg></div></button>
         ${open ? `<div class="fade" style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;padding:0 0 12px 24px">${[[pct3(r.winPct), 'WIN %'], [r.avgPts == null ? '—' : r.avgPts.toFixed(1), 'AVG PTS'], [pctText(r.accuracy), 'ACCURACY'], [r.games, 'GAMES']]
-          .map(([v, k]) => `<div style="background:var(--card2);border-radius:10px;padding:6px 8px;display:flex;flex-direction:column"><span class="shoulders" style="font-size:20px;font-weight:900">${v}</span><span class="cond" style="font-size:11px;font-weight:800;letter-spacing:.6px;color:var(--text3)">${k}</span></div>`).join('')}</div>` : ''}
-      </button>`;
+          .map(([v, k]) => `<div style="background:var(--card2);border-radius:10px;padding:6px 8px;display:flex;flex-direction:column;min-width:0"><span class="cond" style="font-size:11px;font-weight:800;letter-spacing:.6px;color:var(--text3);white-space:nowrap">${k}</span><span class="shoulders" style="font-size:20px;font-weight:900">${v}</span></div>`).join('')}</div>` : ''}
+      ${open ? `<button class="press cond small-btn" ${act('openSheet', 'member:' + r.id)} style="display:flex;width:calc(100% - 24px);margin:0 0 12px 24px;height:40px;border-radius:20px;justify-content:center;align-items:center;padding:0;line-height:1;font-size:16px">VIEW PROFILE ›</button>` : ''}</div>`;
     }).join('')}</div>`;
 }
 function seasonSheet() {
@@ -5068,6 +5171,15 @@ const AWARD_ART = {
   perfecto: ['#F2C14E', 'M12 7.5a4.5 4.5 0 110 9 4.5 4.5 0 010-9zM5.5 5c-2.8 3.5-2.6 10 1.5 13.5M18.5 5c2.8 3.5 2.6 10-1.5 13.5M3.8 9.5l1.7.8M3.6 13.5l1.8.3M20.2 9.5l-1.7.8M20.4 13.5l-1.8.3M10 21h4'],
   blanked: ['#E8E8EA', 'M12 3c3.6 0 6 5.3 6 10a6 6 0 01-12 0c0-4.7 2.4-10 6-10z'],
   marathon: ['#9BE0FF', 'M6.5 3h11M6.5 21h11M8 3c0 4.5 8 5 8 9s-8 4.5-8 9M16 3c0 4.5-8 5-8 9s8 4.5 8 9M10 18.5h4'],
+  // build 23: trash talk
+  trash_talker: ['#B07A45', 'M6 19h12a2.5 2.5 0 00.5-4.9M6.5 14.1h11a2.4 2.4 0 00-1-4.6M8 9.5h8a2.6 2.6 0 00-2-3.6c-.5-1.5-1.6-2.4-3-2.9.4 1.4-.3 2.6-1.5 2.9A2.3 2.3 0 008 9.5zM6 19a2.5 2.5 0 01-.5-4.9h1'],
+  jinx: ['#FFC94D', 'M12 3a9 9 0 110 18 9 9 0 010-18zM9 9.5v1M15 9.5v1M7.5 14h9v3h-9zM10.5 14v3M13.5 14v3'],
+  called_it: ['#FF8A3D', 'M12 3c1 3 4.5 5 4.5 9.5a4.5 4.5 0 01-9 0c0-2.2 1.2-3.5 2.2-4.5.2 2 1 3 2.3 3.2C12 8.5 11 6 12 3zM9.8 15.6l1.6 1.6 3-3.2'],
+  cap: ['#4FA3F7', 'M4.5 15a7.5 7.5 0 0115 0zM2 15h15.5l4 2.5H2zM12 7.5V6'],
+  sore_loser: ['#9BE0FF', 'M12 3a9 9 0 110 18 9 9 0 010-18zM8.5 10h2M13.5 10h2M9 16.5c1.8-1.6 4.2-1.6 6 0M16.6 11.6c.9 1.3.9 2.4 0 3.2'],
+  hype_man: ['#FF5A4E', 'M3.5 10v4h3l7.5 4.5v-13L6.5 10zM17 9.5a3.5 3.5 0 010 5M19.5 7a7 7 0 010 10M6.5 14l1.2 5h2.5l-1.2-5'],
+  silent_treatment: ['#C7C7CC', 'M3.5 9v6h4l5.5 4.5v-15L7.5 9zM16 9.5l5 5M21 9.5l-5 5'],
+  emoji_artist: ['#B39DFF', 'M12 3a9 9 0 100 18c1.2 0 1.8-.8 1.8-1.7 0-1.2-1-1.6-1-2.6 0-1 .8-1.7 1.9-1.7H17a4 4 0 004-4C21 6.6 17 3 12 3zM7.5 11.5v.01M9.8 7.5v.01M14.4 7.5v.01'],
 };
 const AWARD_PIC = {
   wins: 'medal', games: 'ticket', season_ticket: 'stadium', points: 'star',
@@ -5090,7 +5202,8 @@ const AWARD_PIC = {
   hot_potato: 'potato', collapse: 'collapse', early_bird: 'bird', clutch: 'stopwatch', every_frame: 'filmstrip', oaf_king: 'crookedcrown',
   punchout_king: 'glove', twin_killing: 'chainlinks', bases_clearing: 'broom',
   october_baseball: 'pumpkin', opening_day: 'sunrise', doubleheader: 'twoballs', iron_man: 'dumbbell',
-  couch_potato: 'couch_potato', long_distance: 'long_distance', phone_tag: 'phone_tag', welcome_show: 'welcome_show', rookie_mistake: 'rookie_mistake', full_house: 'full_house', spoiler: 'spoiler', creature_habit: 'creature_habit', chaos_theory: 'chaos_theory', double_dip: 'double_dip', silver_lining: 'silver_lining', slugfest: 'slugfest', barn_burner: 'barn_burner', pitchers_duel: 'pitchers_duel', no_no: 'no_no', perfecto: 'perfecto', blanked: 'blanked', marathon: 'marathon'
+  couch_potato: 'couch_potato', long_distance: 'long_distance', phone_tag: 'phone_tag', welcome_show: 'welcome_show', rookie_mistake: 'rookie_mistake', full_house: 'full_house', spoiler: 'spoiler', creature_habit: 'creature_habit', chaos_theory: 'chaos_theory', double_dip: 'double_dip', silver_lining: 'silver_lining', slugfest: 'slugfest', barn_burner: 'barn_burner', pitchers_duel: 'pitchers_duel', no_no: 'no_no', perfecto: 'perfecto', blanked: 'blanked', marathon: 'marathon',
+  trash_talker: 'trash_talker', jinx: 'jinx', called_it: 'called_it', cap: 'cap', sore_loser: 'sore_loser', hype_man: 'hype_man', silent_treatment: 'silent_treatment', emoji_artist: 'emoji_artist'
 };
 const AWARD_OFF = '#6E6E76';
 // The award's picture. on = earned (in color) or not yet (gray).
@@ -5105,7 +5218,7 @@ function awardIcon(a, px = 32, on = true) {
     + (art[5] ? `<path d="${art[5]}" stroke="${c(art[6])}" stroke-width="2.6"/>` : '') + '</svg>';
 }
 const AWARD_CATS = [['WINS & GAMES', 'WINS'], ['RIVALRIES', 'RIVALRIES'], ['BIG CALLS', 'BIG CALLS'], ['PICK 3', 'PICK 3'], ['STREAKS & ACCURACY', 'STREAKS'],
-  ['PRIORITY', 'PRIORITY'], ['GAME MOMENTS', 'MOMENTS'], ['BIG PLAYS', 'BIG PLAYS'], ['THE REAL GAME', 'REAL GAME'], ['CAREER CALLS', 'CAREER'], ['TRAVEL', 'TRAVEL'], ['CALENDAR', 'CALENDAR']];
+  ['PRIORITY', 'PRIORITY'], ['GAME MOMENTS', 'MOMENTS'], ['BIG PLAYS', 'BIG PLAYS'], ['THE REAL GAME', 'REAL GAME'], ['TRASH TALK', 'TRASH TALK'], ['CAREER CALLS', 'CAREER'], ['TRAVEL', 'TRAVEL'], ['CALENDAR', 'CALENDAR']];
 const tierNum = n => (n >= 1000 ? (n / 1000) + 'K' : String(n));
 const TIER_NAMES = ['', 'Bronze', 'Silver', 'Gold', 'Platinum', 'Diamond', 'Hall of Fame'];
 // Long ladders show 3 tiers at a time: the last one earned, the one you're chasing, and the one after
@@ -5197,6 +5310,10 @@ SCREENS.awards = () => {
   <div data-scroll data-swipe>${body}</div>
 </div>${tabbar('awards')}${liveBar()}`;
 };
+// One-time awards keep their description secret until YOU earn it (counting awards and the starter ones always show)
+const OPEN_AWARDS = new Set(['welcome_show', 'bold', 'first_p3']);
+function myEarned() { const g = (S.aw && S.aw.games) || scopeGames() || []; return ((Statistician.awardBook(g)[S.user.uid] || {}).earned) || {}; }
+const awardDesc = a => (a.kind !== 'once' || OPEN_AWARDS.has(a.id) || myEarned()[a.id] ? a.desc : '???');
 function awardRow(a, inGame) {
   const on = a.tier > 0, p = a.progress;
   const last = a.earnedAt[a.earnedAt.length - 1];
@@ -5220,7 +5337,7 @@ function awardRow(a, inGame) {
     <span style="width:40px;height:40px;flex-shrink:0;display:flex;align-items:center;justify-content:center;opacity:${on ? 1 : 0.75}">${awardIcon(a, 32, on)}</span>
     <div style="flex-grow:1;min-width:0;display:flex;flex-direction:column;gap:3px">
       <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px"><span style="font-size:15px;font-weight:700;color:${on ? 'var(--text)' : 'var(--text2)'}">${esc(a.name)}${tiers}</span>${right}</div>
-      <span class="courier" style="font-size:11px;font-weight:700;color:var(--text3)">${esc(a.desc)}</span>${bar}</div></button>`;
+      <span class="courier" style="font-size:11px;font-weight:700;color:var(--text3)">${esc(awardDesc(a))}</span>${bar}</div></button>`;
 }
 
 // ── Award detail sheet ──
@@ -5271,7 +5388,7 @@ function awardSheet() {
     <div style="width:68px;height:68px;border-radius:20px;background:${on ? 'rgba(242,193,78,.12)' : 'var(--sheetcard)'};display:flex;align-items:center;justify-content:center;flex-shrink:0">${awardIcon(a, 44, on)}</div>
     <div style="min-width:0;display:flex;flex-direction:column;gap:3px">
       <span class="cond" style="font-size:30px;font-weight:800;letter-spacing:.4px;line-height:1">${esc(a.name.toUpperCase())}</span>
-      <span class="courier" style="font-size:12px;font-weight:700;color:var(--text2)">${esc(a.desc)} · ${esc(titleCase(a.cat))}</span>
+      <span class="courier" style="font-size:12px;font-weight:700;color:var(--text2)">${esc(awardDesc(a))} · ${esc(titleCase(a.cat))}</span>
       <span class="courier" style="font-size:11px;font-weight:700;color:var(--text4)">${counts}</span></div></div>
   <div style="background:var(--sheetcard);border-radius:16px;padding:14px 16px;display:flex;flex-direction:column;gap:12px">${prog}</div>
   <span class="cond" style="margin-top:2px;font-size:16px;font-weight:800;letter-spacing:.8px;color:var(--text3)">WHO HAS IT · ${esc(scopeName())}</span>
@@ -5429,13 +5546,48 @@ function scoutingReport(games, pid, name) {
     ${card('PICK 3', r.p3.halves ? pct(r.p3.hits / r.p3.halves) : '—', r.p3.halves ? `${r.p3.hits} of ${r.p3.halves}` : 'never tried')}
     ${card('PRIORITY', r.priority != null ? pct(r.priority) : '—', 'of at-bats')}
     ${card('BEST STREAK', streak, 'in a row')}</div>
+  ${accuracyTrend(games, pid)}
   ${r.best.length || r.worst.length ? `<div style="background:var(--sheetcard);border-radius:16px;padding:4px 14px 6px">
     ${r.best.length ? `<div class="cond" style="font-size:13px;font-weight:800;letter-spacing:.8px;color:var(--text3);padding-top:8px">BEST CALLS</div>${r.best.map(c => callRow(c, 'var(--green)')).join('')}` : ''}
     ${r.worst.length ? `<div class="cond" style="font-size:13px;font-weight:800;letter-spacing:.8px;color:var(--text3);padding-top:10px">BLIND SPOTS</div>${r.worst.map(c => callRow(c, 'var(--orange)')).join('')}` : ''}</div>` : ''}`;
 }
+// Accuracy, game by game (app games, oldest → newest): one line, a dot per game, the player's average as a dashed guide.
+// Tap a dot for that game's number. Needs 3+ app games.
+function accuracyTrend(games, pid) {
+  const list = games.filter(g => g.era === 'app' && g.ended !== false && g.players.some(p => p.id === pid))
+    .sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : (a.seq || 0) - (b.seq || 0)))
+    .map(g => { const k = g.players.findIndex(p => p.id === pid), n = Statistician.gameNumbers(g); const x = n && n[k]; return x && x.picks >= 5 ? { g, v: x.right / x.picks } : null; })
+    .filter(Boolean).slice(-12);
+  if (list.length < 3) return '';
+  const W = 320, H = 116, L = 30, R = 12, T = 14, B = 22, top = Math.max(0.5, Math.ceil(Math.max(...list.map(p => p.v)) * 10) / 10);
+  const X = i => L + (W - L - R) * (list.length === 1 ? 0.5 : i / (list.length - 1)), Y = v => T + (H - T - B) * (1 - v / top);
+  const avg = list.reduce((t, p) => t + p.v, 0) / list.length;
+  const recent = list.slice(-3), before = list.slice(0, -3), delta = before.length ? recent.reduce((t, p) => t + p.v, 0) / recent.length - before.reduce((t, p) => t + p.v, 0) / before.length : 0;
+  const pctS = v => Math.round(v * 100) + '%', tip = S.trendTip && S.trendTip.pid === pid && list[S.trendTip.i] ? S.trendTip.i : list.length - 1;
+  const trend = Math.abs(delta) < 0.02 ? '<span class="courier meta">Holding steady lately</span>'
+    : `<span class="courier meta" style="color:${delta > 0 ? 'var(--green)' : 'var(--orange)'}">${delta > 0 ? '▲ Up' : '▼ Down'} ${Math.round(Math.abs(delta) * 100)} pts lately</span>`;
+  const grid = [0, top / 2, top].map(v => `<line x1="${L}" x2="${W - R}" y1="${Y(v)}" y2="${Y(v)}" stroke="var(--line)" stroke-width="1"/><text x="${L - 6}" y="${Y(v) + 4}" text-anchor="end" font-size="10" fill="var(--text3)" font-family="Courier Prime, monospace">${pctS(v)}</text>`).join('');
+  const path = list.map((p, i) => (i ? 'L' : 'M') + X(i).toFixed(1) + ' ' + Y(p.v).toFixed(1)).join(' ');
+  const t = list[tip];
+  return `<div style="background:var(--sheetcard);border-radius:16px;padding:10px 14px 8px">
+    <div style="display:flex;justify-content:space-between;align-items:baseline"><span class="cond" style="font-size:13px;font-weight:800;letter-spacing:.8px;color:var(--text3)">ACCURACY TREND</span>${trend}</div>
+    <svg viewBox="0 0 ${W} ${H}" width="100%" style="display:block;margin-top:4px;overflow:visible" role="img" aria-label="Accuracy over the last ${list.length} games, average ${pctS(avg)}">
+      ${grid}
+      <line x1="${L}" x2="${W - R}" y1="${Y(avg)}" y2="${Y(avg)}" stroke="var(--text3)" stroke-width="1" stroke-dasharray="3 4"/>
+      <text x="${L + 4}" y="${Y(avg) - 5}" font-size="10" fill="var(--text3)" font-family="Courier Prime, monospace">avg ${pctS(avg)}</text>
+      <path d="${path}" fill="none" stroke="var(--link)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+      ${list.map((p, i) => `<circle cx="${X(i)}" cy="${Y(p.v)}" r="${i === tip ? 5 : 4}" fill="${i === tip ? 'var(--link)' : 'var(--sheetcard)'}" stroke="var(--link)" stroke-width="2"/>
+        <rect x="${X(i) - 12}" y="${T - 6}" width="24" height="${H - T - B + 12}" fill="transparent" ${act('trendTip', i)} style="cursor:pointer"/>`).join('')}
+      <text x="${X(tip) > W - R - 30 ? X(tip) + 6 : X(tip) < L + 30 ? X(tip) - 6 : X(tip)}" y="${Math.max(10, Y(t.v) - 10)}" text-anchor="${X(tip) > W - R - 30 ? 'end' : X(tip) < L + 30 ? 'start' : 'middle'}" font-size="12" font-weight="700" fill="var(--text)" font-family="Courier Prime, monospace">${pctS(t.v)}</text>
+      <text x="${L}" y="${H - 4}" font-size="10" fill="var(--text3)" font-family="Courier Prime, monospace">${esc(niceDate(list[0].g.date).replace(/, \d{4}$/, ''))}</text>
+      <text x="${W - R}" y="${H - 4}" text-anchor="end" font-size="10" fill="var(--text3)" font-family="Courier Prime, monospace">${esc(niceDate(list[list.length - 1].g.date).replace(/, \d{4}$/, ''))}</text>
+    </svg>
+    <span class="courier meta" style="font-size:11px">${tip === list.length - 1 ? 'Last game' : esc(niceDate(t.g.date))} · tap a dot for any game</span></div>`;
+}
 function memberSheet() {
-  const pid = S.sheet.arg, d = clubData() || { roster: [] }, m = (d.roster || []).find(x => x.pid === pid) || { name: 'Player' };
+  const pid = S.sheet.arg, d = clubData() || { roster: [] };
   const games = scopeGames() || [], row = Statistician.standings(games).find(r => r.id === pid) || { w: 0, l: 0, t: 0, games: 0, winPct: null, avgPts: null, accuracy: null };
+  const m = (d.roster || []).find(x => x.pid === pid) || { pid, name: (Statistician.standings(games).find(r => r.id === pid) || {}).name || 'Player' };   // also opened from Stats → Standings
   const tile = (label, big, small) => `<div style="background:var(--sheetcard);border-radius:16px;padding:10px 14px;display:flex;flex-direction:column;gap:2px"><span class="cond" style="font-size:13px;font-weight:800;letter-spacing:.8px;color:var(--text3)">${label}</span><span class="shoulders num" style="font-size:30px;font-weight:900;line-height:1.05">${big}</span><span class="courier meta">${small}</span></div>`;
   const me = S.user.uid, cap = amCaptain();
   let vs = '';
@@ -5455,6 +5607,7 @@ function memberSheet() {
       <div style="flex-grow:1;min-width:0;display:flex;flex-direction:column"><span style="font-size:15px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">vs ${esc(others.map(p => p.name).join(', '))}</span><div style="display:flex;align-items:center;gap:6px;min-width:0"><span class="courier meta">${niceDate(g.date)}</span>${gameTag(g)}</div></div>
       <span style="display:flex;align-items:baseline;gap:6px;white-space:nowrap"><span class="shoulders num" style="font-size:20px;font-weight:900">${signed0(sc[i])}</span><span class="courier meta">vs</span><span class="shoulders num" style="font-size:20px;font-weight:900;color:var(--text3)">${signed0(best)}</span></span></button>`; };
   const since = m.joinedAt ? new Date(m.joinedAt).getFullYear() : null;
+  const titles = Statistician.champions(games, todayStr()).filter(c => c.id === pid);
   const sc0 = Statistician.scouting(games, pid), appCount = sc0.games ? `${plural(sc0.games, 'game')} · ${sc0.picks} picks` : '';
   return `<div style="display:flex;align-items:center;gap:12px">
     ${avatar(m.pid, m.name, 52)}
@@ -5463,6 +5616,9 @@ function memberSheet() {
   <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px">
     ${tile('RECORD', `${row.w}–${row.l}${row.t ? '–' + row.t : ''}`, plural(row.games, 'game'))}${tile('WIN %', row.winPct == null ? '—' : Math.round(row.winPct * 100) + '%', 'All seasons')}
     ${tile('AVG POINTS', row.avgPts == null ? '—' : row.avgPts.toFixed(1), 'Per game')}${tile('ACCURACY', row.accuracy == null ? '—' : Math.round(row.accuracy * 100) + '%', 'Correct calls')}</div>
+  ${titles.length ? `<div style="background:var(--sheetcard);border-radius:16px;padding:10px 14px;display:flex;align-items:center;gap:12px;box-shadow:inset 0 0 0 1.5px rgba(242,193,78,.35)">
+    <div style="display:flex;flex-direction:column;gap:2px;flex-grow:1;min-width:0"><span class="cond" style="font-size:13px;font-weight:800;letter-spacing:.8px;color:var(--gold)">${titles.length === 1 ? 'SEASON CHAMPION' : titles.length + '× SEASON CHAMPION'}</span>
+      <div style="display:flex;flex-wrap:wrap;gap:4px 10px">${titles.map(c => `<span style="display:flex;align-items:center;gap:3px">${crownIcon(14)}<span class="shoulders num" style="font-size:18px;font-weight:900">${c.season}</span></span>`).join('')}</div></div></div>` : ''}
   ${vs}
   ${recent.length ? sectionHead('RECENT GAMES', appCount) + `<div class="list" style="background:var(--sheetcard)">${recent.map(line).join('')}</div>` : ''}
   ${scoutingReport(games, pid, m.name)}
@@ -5622,6 +5778,7 @@ Object.assign(ACT, {
     } catch (e) { fail(e); }
   },
   memberH2H: pid => { S.sheet = null; S.h2hA = S.user.uid; S.h2hB = pid; S.statTab = 'H2H'; ACT.tab('stats'); },
+  trendTip: i => { S.trendTip = { pid: S.sheet && S.sheet.arg, i: +i }; render(); },
   memberGame: id => { S.sheet = null; ACT.openGame(id); },
   removeMember: async pid => {
     S.busy = true; render();
@@ -6039,6 +6196,7 @@ const Two = {
     if (!S.g) return;
     if (!v) { if (S.g.remote) Two.gone(Two.hostName() + ' threw out this game'); return; }
     if (v.id && v.id !== S.g.game.id) return;
+    Reacts.arrived(v.reacts);
     if (v.ended) return Two.finish(v);                     // ended on another phone: this one shows the final page too
     Two.lastV = v;
     if (!S.g.remote) S.g.game.joined = v.joined || null;
@@ -6269,6 +6427,69 @@ Object.assign(ACT, {
   wrap('resume', orig => { const r = orig(); Two.watch(); return r; });
   wrap('startGame', async orig => { const r = await orig(); if (S.g && !S.g.remote) Two.watch(); return r; });
 })();
+
+
+// ════════════ Quick reactions (online games) ════════════
+// Six fixed emoji + a wildcard you pick yourself (hold it to change). A reaction pops up on every phone for 2.5 seconds,
+// then goes; it's also saved quietly with the game so the Trash Talk awards can count it.
+const Reacts = {
+  online: () => !!(S.g && S.g.game && (S.g.remote || (S.g.game.joined && Object.values(S.g.game.joined).some(Boolean)))),
+  wild: () => Store.getItem('gb_wild') || '🐐',
+  last: 0, seen: {}, for: null,
+  // the first grapheme of what was typed, if it's an emoji (stickers and pictures can't be typed into a box)
+  pick(str) {
+    const t = String(str || '').trim(); if (!t) return null;
+    let first = t;
+    try { first = [...new Intl.Segmenter(undefined, { granularity: 'grapheme' }).segment(t)][0].segment; } catch (e) { first = Array.from(t)[0]; }
+    return /\p{Extended_Pictographic}|\p{Regional_Indicator}|⃣/u.test(first) && first.length <= 16 ? first : null;
+  },
+  send(e) {
+    if (!S.g || !Reacts.online() || !FCab) return;
+    if (Date.now() - Reacts.last < 1500) return;              // one every second and a half, per phone
+    Reacts.last = Date.now();
+    const g = S.g.game, seat = Two.me();
+    Reacts.show(seat, e); S.sheet = null; render();
+    FCab.sendReact(g, seat, e).then(({ k, v }) => { Reacts.seen[k] = 1; g.reacts = { ...(g.reacts || {}), [k]: v }; Diag.add('app', 'react sent ' + e); })
+      .catch(err => Diag.add('error', 'react: ' + (err && err.message)));
+  },
+  arrived(rx) {
+    if (!S.g) return;
+    const id = S.g.game.id, all = rx || {};
+    if (Reacts.for !== id) { Reacts.for = id; Reacts.seen = {}; Object.keys(all).forEach(k => { Reacts.seen[k] = 1; }); S.g.game.reacts = { ...all }; return; }   // old ones: no bubbles
+    Object.entries(all).forEach(([k, v]) => {
+      if (Reacts.seen[k] || !v) return; Reacts.seen[k] = 1;
+      S.g.game.reacts = { ...(S.g.game.reacts || {}), [k]: v };
+      if (v.s !== Two.me()) Reacts.show(v.s, v.e);
+    });
+  },
+  show(seat, e) {
+    const p = S.g && S.g.game.players[seat]; if (!p) return;
+    let layer = document.getElementById('reactLayer');
+    if (!layer) { layer = document.createElement('div'); layer.id = 'reactLayer'; document.body.appendChild(layer); }
+    const b = document.createElement('div'); b.className = 'react-bubble';
+    b.innerHTML = `${avatar(p.id, p.name, 28, 'var(--card3)')}<span style="font-size:15px;font-weight:700">${esc(p.name)}</span><span class="react-emoji">${esc(e)}</span>`;
+    layer.appendChild(b);
+    setTimeout(() => b.classList.add('out'), 2200); setTimeout(() => b.remove(), 2550);
+  },
+};
+const reactBtn = () => (Reacts.online() ? `<button class="press" aria-label="Quick reaction" ${act('openSheet', 'react')} style="width:36px;height:36px;border-radius:18px;background:var(--card);display:flex;align-items:center;justify-content:center;font-size:19px;line-height:1">😀</button>` : '');
+function reactSheet() {
+  const edit = S.draft && S.draft.wildEdit, w = Reacts.wild();
+  const btn = (e, ring = false) => `<button class="press" ${act('sendReact', e)} ${ring ? 'data-long="wildEdit"' : ''} aria-label="${ring ? 'Wildcard ' : ''}${attr(e)}" style="aspect-ratio:1;border-radius:18px;background:var(--sheetcard);${ring ? 'box-shadow:inset 0 0 0 1.5px var(--gold);' : ''}font-size:30px;line-height:1;display:flex;align-items:center;justify-content:center;-webkit-touch-callout:none">${esc(e)}</button>`;
+  return `<h2 class="cond" style="margin:0;font-size:28px;font-weight:800">REACT</h2>
+  <div style="display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px">${Statistician.FIXED_REACTS.map(e => btn(e)).join('')}${btn(w, true)}</div>
+  ${edit ? `<div style="display:flex;gap:8px;align-items:center"><label class="field" style="flex:1;height:46px;background:var(--sheetcard)"><input data-model="draft.wild" value="${attr(S.draft.wild || '')}" placeholder="Type any emoji" autocomplete="off" maxlength="16" style="font-size:22px"></label>
+    <button class="press cond small-btn" style="height:46px;border-radius:23px;background:var(--accent);color:var(--onaccent)" ${act('wildSave')}>SAVE</button></div>
+    <span class="courier meta">Switch to the emoji keyboard (🌐 or 😀 key) and pick one. Stickers and Memoji can’t go here.</span>`
+    : `<span class="courier meta">The gold one is your wildcard — hold it to change it.</span>`}`;
+}
+Object.assign(SHEETS, { react: reactSheet });
+Object.assign(ACT, {
+  sendReact: e => Reacts.send(e),
+  wildEdit: () => { S.draft = { ...(S.draft || {}), wildEdit: true, wild: '' }; render(); setTimeout(() => { const i = document.querySelector('.sheet input[data-model="draft.wild"]'); if (i) i.focus(); }, 60); },
+  wildSave: () => { const e = Reacts.pick(S.draft && S.draft.wild); if (!e) return toast('That isn’t an emoji — try the emoji keyboard', true);
+    Store.setItem('gb_wild', e); S.draft = { ...(S.draft || {}), wildEdit: false, wild: '' }; buzz(); render(); },
+});
 
 // ════════════ Tips for first-timers ════════════
 // Every tip shows once per account, the first time that moment comes up (on the phone running the game).
